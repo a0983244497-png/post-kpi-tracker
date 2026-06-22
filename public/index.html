@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>貼文績效素材庫｜重心開始</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Montserrat:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --gold: #D4A843;
+  --gold-light: #F5E6C0;
+  --gold-dark: #A07820;
+  --charcoal: #1A1A1A;
+  --charcoal-2: #242424;
+  --charcoal-3: #2E2E2E;
+  --charcoal-4: #3A3A3A;
+  --text-primary: #F0EDE6;
+  --text-secondary: #A09A8E;
+  --text-muted: #6A6460;
+  --danger: #C44F2B;
+  --danger-bg: rgba(196,79,43,0.12);
+  --border: rgba(212,168,67,0.15);
+  --border-strong: rgba(212,168,67,0.3);
+  --radius: 10px;
+  --radius-sm: 6px;
+  --font-display: 'Montserrat', sans-serif;
+  --font-body: 'Noto Sans TC', sans-serif;
+}
+html { font-size: 15px; }
+body {
+  background: var(--charcoal);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--charcoal-2); }
+::-webkit-scrollbar-thumb { background: var(--charcoal-4); border-radius: 3px; }
+
+/* ===== HEADER ===== */
+.header {
+  background: var(--charcoal-2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header-logo {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.header-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+.header-right {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ===== LAYOUT ===== */
+.container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+/* ===== STATS BAR ===== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 1.75rem;
+}
+.stat-card {
+  background: var(--charcoal-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .875rem 1.125rem;
+}
+.stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: .04em;
+  margin-bottom: 4px;
+}
+.stat-val {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+/* ===== TOOLBAR ===== */
+.toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.search-wrap {
+  flex: 1;
+  min-width: 180px;
+  position: relative;
+}
+.search-wrap svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.search-wrap input {
+  padding-left: 34px;
+  width: 100%;
+}
+input, select, textarea {
+  background: var(--charcoal-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 7px 11px;
+  outline: none;
+  transition: border-color .15s;
+}
+input::placeholder, textarea::placeholder { color: var(--text-muted); }
+input:focus, select:focus, textarea:focus { border-color: var(--gold-dark); }
+select { cursor: pointer; }
+select option { background: var(--charcoal-2); }
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--charcoal-3); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn-primary {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--charcoal);
+  font-weight: 700;
+}
+.btn-primary:hover { background: var(--gold-dark); border-color: var(--gold-dark); }
+.btn-danger {
+  border-color: rgba(196,79,43,0.4);
+  color: var(--danger);
+}
+.btn-danger:hover { background: var(--danger-bg); }
+
+/* ===== ADD PANEL ===== */
+.add-panel {
+  background: var(--charcoal-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 1.375rem 1.5rem;
+  margin-bottom: 1.25rem;
+  display: none;
+}
+.add-panel.open { display: block; }
+.panel-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+.form-grid { display: grid; gap: 10px; }
+.form-grid.c2 { grid-template-columns: 1fr 1fr; }
+.form-grid.c3 { grid-template-columns: 1fr 1fr 1fr; }
+.form-grid.c4 { grid-template-columns: repeat(4, 1fr); }
+.form-field label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  letter-spacing: .03em;
+}
+.form-field input,
+.form-field select,
+.form-field textarea { width: 100%; }
+.form-field textarea { resize: vertical; }
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 14px 0;
+}
+.form-actions { display: flex; gap: 8px; margin-top: 14px; align-items: center; }
+.form-msg { font-size: 12px; color: var(--gold); margin-left: 4px; }
+.form-err { font-size: 12px; color: var(--danger); margin-left: 4px; }
+
+/* ===== LIST LABEL ===== */
+.list-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  letter-spacing: .03em;
+}
+
+/* ===== BADGES ===== */
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.t-market  { background: rgba(212,168,67,.15); color: #EAC96A; }
+.t-result  { background: rgba(80,180,100,.15); color: #7DC98A; }
+.t-loss    { background: rgba(196,79,43,.15);  color: #E07A5A; }
+.t-edu     { background: rgba(80,140,220,.15); color: #7AACE0; }
+.t-reminder{ background: rgba(160,154,142,.15);color: #B0AAA0; }
+.t-humor   { background: rgba(180,80,160,.15); color: #C98AB8; }
+.t-opinion { background: rgba(100,120,220,.15);color: #90A0E0; }
+
+/* ===== POST CARDS ===== */
+.post-card {
+  background: var(--charcoal-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: border-color .15s;
+}
+.post-card:hover { border-color: var(--border-strong); }
+.post-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 13px 16px;
+  cursor: pointer;
+  user-select: none;
+}
+.post-card-header:hover { background: var(--charcoal-3); }
+.post-card-left { flex: 1; min-width: 0; }
+.post-tags { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; flex-wrap: wrap; }
+.post-name { font-size: 11px; color: var(--text-muted); }
+.post-date { font-size: 11px; color: var(--text-muted); }
+.post-title { font-size: 14px; font-weight: 500; color: var(--text-primary); line-height: 1.45; }
+.post-mini-stats { display: flex; gap: 14px; margin-top: 6px; flex-wrap: wrap; }
+.mini-stat { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+.mini-stat strong { color: var(--text-primary); font-weight: 500; }
+.chevron {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  margin-top: 2px;
+  transition: transform .2s;
+}
+.chevron.open { transform: rotate(180deg); }
+
+/* ===== CARD BODY ===== */
+.post-card-body {
+  border-top: 1px solid var(--border);
+  padding: 16px;
+  display: none;
+}
+.post-card-body.open { display: block; }
+.post-content-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.75;
+  white-space: pre-wrap;
+  background: var(--charcoal-3);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+.metrics-grid.c3 { grid-template-columns: repeat(3, 1fr); }
+.metric-box {
+  background: var(--charcoal-3);
+  border-radius: var(--radius-sm);
+  padding: .625rem .875rem;
+}
+.metric-box-label { font-size: 11px; color: var(--text-muted); margin-bottom: 3px; }
+.metric-box-val {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--gold);
+}
+.bar-wrap {
+  height: 3px;
+  background: var(--charcoal-4);
+  border-radius: 3px;
+  margin-top: 5px;
+  overflow: hidden;
+}
+.bar-fill { height: 3px; background: var(--gold); border-radius: 3px; }
+
+/* ===== LOADING / EMPTY ===== */
+.loading {
+  text-align: center;
+  padding: 3.5rem 2rem;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.loading-spinner {
+  width: 28px; height: 28px;
+  border: 2px solid var(--charcoal-4);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  margin: 0 auto 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty {
+  text-align: center;
+  padding: 3.5rem 2rem;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.empty-icon { font-size: 32px; margin-bottom: 10px; opacity: .4; }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 640px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .form-grid.c4 { grid-template-columns: repeat(2, 1fr); }
+  .form-grid.c3 { grid-template-columns: repeat(2, 1fr); }
+  .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  .metrics-grid.c3 { grid-template-columns: repeat(2, 1fr); }
+  .container { padding: 1.25rem 1rem 3rem; }
+  .header { padding: 0 1rem; }
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div>
+    <div class="header-logo">重心開始</div>
+    <div class="header-sub">貼文績效素材庫</div>
+  </div>
+  <div class="header-right" id="header-count"></div>
+</header>
+
+<main class="container">
+
+  <!-- 統計列 -->
+  <div class="stats-grid" id="stats-grid"></div>
+
+  <!-- 工具列 -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="search" placeholder="搜尋標題、業務名稱…" oninput="render()">
+    </div>
+    <select id="filter-type" onchange="render()">
+      <option value="">全部類型</option>
+      <option value="market">市場回顧</option>
+      <option value="result">戰果分享</option>
+      <option value="loss">虧損反思</option>
+      <option value="edu">教育內容</option>
+      <option value="reminder">溫馨提醒</option>
+      <option value="humor">互動幽默</option>
+      <option value="opinion">個人觀點</option>
+    </select>
+    <select id="filter-name" onchange="render()">
+      <option value="">全部業務</option>
+    </select>
+    <select id="sort-by" onchange="render()">
+      <option value="date">最新日期</option>
+      <option value="view">觀看最多</option>
+      <option value="deal">成交最多</option>
+      <option value="lead">引流最多</option>
+    </select>
+    <button class="btn btn-primary" onclick="toggleAdd()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+      新增貼文
+    </button>
+    <button class="btn" onclick="exportCSV()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      匯出 CSV
+    </button>
+  </div>
+
+  <!-- 新增面板 -->
+  <div class="add-panel" id="add-panel">
+    <div class="panel-title">新增貼文紀錄</div>
+    <div class="form-grid c2">
+      <div class="form-field"><label>業務姓名</label><input type="text" id="a-name" placeholder="例：小王"></div>
+      <div class="form-field"><label>發文日期</label><input type="date" id="a-date"></div>
+    </div>
+    <div class="form-grid c3" style="margin-top:10px">
+      <div class="form-field">
+        <label>貼文類型</label>
+        <select id="a-type">
+          <option value="">選擇類型</option>
+          <option value="market">市場回顧</option>
+          <option value="result">戰果分享</option>
+          <option value="loss">虧損反思</option>
+          <option value="edu">教育內容</option>
+          <option value="reminder">溫馨提醒</option>
+          <option value="humor">互動幽默</option>
+          <option value="opinion">個人觀點</option>
+        </select>
+      </div>
+      <div class="form-field" style="grid-column:span 2"><label>標題／摘要</label><input type="text" id="a-title" placeholder="貼文前幾個字或關鍵摘要"></div>
+    </div>
+    <div class="form-field" style="margin-top:10px"><label>貼文內容（選填）</label><textarea id="a-content" rows="3" placeholder="貼文全文或重點內容…"></textarea></div>
+    <hr class="divider">
+    <div class="form-grid c4">
+      <div class="form-field"><label>觀看數</label><input type="number" id="a-view" placeholder="0" min="0"></div>
+      <div class="form-field"><label>按讚數</label><input type="number" id="a-like" placeholder="0" min="0"></div>
+      <div class="form-field"><label>留言數</label><input type="number" id="a-comment" placeholder="0" min="0"></div>
+      <div class="form-field"><label>轉發 / 收藏</label><input type="number" id="a-share" placeholder="0" min="0"></div>
+    </div>
+    <div class="form-grid c3" style="margin-top:10px">
+      <div class="form-field"><label>引流人數</label><input type="number" id="a-lead" placeholder="0" min="0"></div>
+      <div class="form-field"><label>成交人數</label><input type="number" id="a-deal" placeholder="0" min="0"></div>
+      <div class="form-field"><label>成交金額（選填）</label><input type="number" id="a-rev" placeholder="0" min="0"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" id="save-btn" onclick="addPost()">儲存紀錄</button>
+      <button class="btn" onclick="toggleAdd()">取消</button>
+      <span class="form-msg" id="add-msg"></span>
+      <span class="form-err" id="add-err"></span>
+    </div>
+  </div>
+
+  <!-- 列表 -->
+  <div class="list-meta" id="list-meta"></div>
+  <div id="post-list"></div>
+
+</main>
+
+<script>
+// ===== CONSTANTS =====
+const TYPE_MAP = {
+  market: '市場回顧', result: '戰果分享', loss: '虧損反思',
+  edu: '教育內容', reminder: '溫馨提醒', humor: '互動幽默', opinion: '個人觀點'
+};
+const TYPE_CLS = {
+  market: 't-market', result: 't-result', loss: 't-loss',
+  edu: 't-edu', reminder: 't-reminder', humor: 't-humor', opinion: 't-opinion'
+};
+
+// ===== STATE =====
+let posts   = [];
+let openIds = new Set();
+
+// ===== DOM HELPERS =====
+function g(id) { return document.getElementById(id); }
+function nv(id) { return parseInt(g(id).value) || 0; }
+function pct(a, b) { return b ? ((a / b) * 100).toFixed(1) : '0'; }
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ===== API =====
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(path, opts);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+// ===== STATS =====
+function renderStats() {
+  const tv = posts.reduce((s, p) => s + p.view,    0);
+  const tl = posts.reduce((s, p) => s + p.lead,    0);
+  const td = posts.reduce((s, p) => s + p.deal,    0);
+  g('stats-grid').innerHTML = `
+    <div class="stat-card"><div class="stat-label">總貼文數</div><div class="stat-val">${posts.length}</div></div>
+    <div class="stat-card"><div class="stat-label">總觀看數</div><div class="stat-val">${tv.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">觀看 → 引流</div><div class="stat-val">${pct(tl, tv)}%</div></div>
+    <div class="stat-card"><div class="stat-label">引流 → 成交</div><div class="stat-val">${pct(td, tl)}%</div></div>`;
+}
+
+// ===== NAME FILTER =====
+function updateNameFilter() {
+  const names = [...new Set(posts.map(p => p.name))].sort();
+  const sel   = g('filter-name');
+  const cur   = sel.value;
+  sel.innerHTML = '<option value="">全部業務</option>' +
+    names.map(n => `<option value="${esc(n)}"${cur === n ? ' selected' : ''}>${esc(n)}</option>`).join('');
+}
+
+// ===== ADD PANEL =====
+function toggleAdd() {
+  const panel = g('add-panel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) {
+    g('a-date').value = new Date().toISOString().split('T')[0];
+    g('a-name').focus();
+    g('add-msg').textContent = '';
+    g('add-err').textContent = '';
+  }
+}
+
+async function addPost() {
+  const name  = g('a-name').value.trim();
+  const date  = g('a-date').value;
+  const type  = g('a-type').value;
+  const title = g('a-title').value.trim();
+
+  g('add-err').textContent = '';
+  if (!name || !date || !type || !title) {
+    g('add-err').textContent = '請填寫業務、日期、類型、標題';
+    return;
+  }
+
+  const btn = g('save-btn');
+  btn.disabled = true;
+  btn.textContent = '儲存中...';
+
+  try {
+    const saved = await apiFetch('/api/posts', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name, date, type, title,
+        content: g('a-content').value.trim(),
+        view:    nv('a-view'), like: nv('a-like'),
+        comment: nv('a-comment'), share: nv('a-share'),
+        lead:    nv('a-lead'), deal: nv('a-deal'), revenue: nv('a-rev')
+      })
+    });
+
+    posts.unshift(saved);
+    ['a-name','a-type','a-title','a-content','a-view','a-like','a-comment','a-share','a-lead','a-deal','a-rev']
+      .forEach(id => { g(id).value = ''; });
+    g('a-date').value = new Date().toISOString().split('T')[0];
+    g('add-msg').textContent = '已新增！';
+    setTimeout(() => { g('add-msg').textContent = ''; }, 2500);
+    updateNameFilter();
+    renderStats();
+    render();
+  } catch (e) {
+    g('add-err').textContent = `新增失敗：${e.message}`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '儲存紀錄';
+  }
+}
+
+// ===== DELETE =====
+async function deletePost(id) {
+  if (!confirm('確定刪除這筆紀錄？')) return;
+  try {
+    await apiFetch(`/api/posts/${id}`, { method: 'DELETE' });
+    posts   = posts.filter(p => p.id !== id);
+    openIds.delete(id);
+    updateNameFilter();
+    renderStats();
+    render();
+  } catch (e) {
+    alert(`刪除失敗：${e.message}`);
+  }
+}
+
+// ===== TOGGLE CARD =====
+function toggleCard(id) {
+  if (openIds.has(id)) openIds.delete(id);
+  else openIds.add(id);
+  render();
+}
+
+// ===== FILTERED DATA =====
+function filtered() {
+  const q  = g('search').value.toLowerCase();
+  const ft = g('filter-type').value;
+  const fn = g('filter-name').value;
+  const sb = g('sort-by').value;
+  let data = posts.filter(p => {
+    if (ft && p.type !== ft)  return false;
+    if (fn && p.name !== fn)  return false;
+    if (q  && !p.title.toLowerCase().includes(q) && !p.name.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  data.sort((a, b) => {
+    if (sb === 'view') return b.view - a.view;
+    if (sb === 'deal') return b.deal - a.deal;
+    if (sb === 'lead') return b.lead - a.lead;
+    return b.date.localeCompare(a.date);
+  });
+  return data;
+}
+
+// ===== RENDER =====
+function render() {
+  const data = filtered();
+  g('list-meta').textContent = `共 ${data.length} 筆紀錄`;
+  g('header-count').textContent = `${posts.length} 筆 / ${[...new Set(posts.map(p=>p.name))].length} 位業務`;
+  if (!data.length) {
+    g('post-list').innerHTML = `<div class="empty"><div class="empty-icon">📋</div>尚無符合的紀錄，按「新增貼文」開始記錄</div>`;
+    return;
+  }
+  const maxView = Math.max(...data.map(p => p.view), 1);
+  g('post-list').innerHTML = data.map(p => {
+    const isOpen    = openIds.has(p.id);
+    const convRate  = p.lead ? ((p.deal / p.lead) * 100).toFixed(1) : '0';
+    const barW      = Math.round(p.view / maxView * 100);
+    return `
+    <div class="post-card" id="card-${p.id}">
+      <div class="post-card-header" onclick="toggleCard(${p.id})">
+        <div class="post-card-left">
+          <div class="post-tags">
+            <span class="badge ${TYPE_CLS[p.type] || ''}">${TYPE_MAP[p.type] || esc(p.type)}</span>
+            <span class="post-name">${esc(p.name)}</span>
+            <span class="post-date">${p.date}</span>
+          </div>
+          <div class="post-title">${esc(p.title)}</div>
+          <div class="post-mini-stats">
+            <div class="mini-stat">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <strong>${p.view.toLocaleString()}</strong>
+            </div>
+            <div class="mini-stat">引流 <strong>${p.lead}</strong></div>
+            <div class="mini-stat">成交 <strong>${p.deal}</strong></div>
+            ${p.revenue ? `<div class="mini-stat">金額 <strong>$${p.revenue.toLocaleString()}</strong></div>` : ''}
+          </div>
+        </div>
+        <svg class="chevron ${isOpen ? 'open' : ''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="post-card-body ${isOpen ? 'open' : ''}">
+        ${p.content ? `<div class="post-content-text">${esc(p.content)}</div>` : ''}
+        <div class="metrics-grid">
+          <div class="metric-box">
+            <div class="metric-box-label">觀看數</div>
+            <div class="metric-box-val">${p.view.toLocaleString()}</div>
+            <div class="bar-wrap"><div class="bar-fill" style="width:${barW}%"></div></div>
+          </div>
+          <div class="metric-box"><div class="metric-box-label">按讚</div><div class="metric-box-val">${p.like}</div></div>
+          <div class="metric-box"><div class="metric-box-label">留言</div><div class="metric-box-val">${p.comment}</div></div>
+          <div class="metric-box"><div class="metric-box-label">轉發 / 收藏</div><div class="metric-box-val">${p.share}</div></div>
+        </div>
+        <div class="metrics-grid c3">
+          <div class="metric-box"><div class="metric-box-label">引流人數</div><div class="metric-box-val">${p.lead}</div></div>
+          <div class="metric-box"><div class="metric-box-label">成交人數</div><div class="metric-box-val">${p.deal}</div></div>
+          <div class="metric-box"><div class="metric-box-label">引流 → 成交率</div><div class="metric-box-val">${convRate}%</div></div>
+        </div>
+        ${p.revenue ? `<div class="metric-box" style="margin-top:8px;display:inline-block;min-width:140px"><div class="metric-box-label">成交金額</div><div class="metric-box-val">$${p.revenue.toLocaleString()}</div></div>` : ''}
+        <div style="margin-top:14px">
+          <button class="btn btn-danger" onclick="deletePost(${p.id})">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            刪除這筆紀錄
+          </button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===== EXPORT CSV =====
+function exportCSV() {
+  const data   = filtered();
+  const header = '業務,日期,類型,標題,觀看,按讚,留言,轉發收藏,引流,成交,成交金額,引流成交率%';
+  const rows   = data.map(p => {
+    const rate = p.lead ? ((p.deal / p.lead) * 100).toFixed(1) : 0;
+    return [p.name, p.date, TYPE_MAP[p.type] || p.type, `"${p.title.replace(/"/g,'""')}"`,
+      p.view, p.like, p.comment, p.share, p.lead, p.deal, p.revenue, rate].join(',');
+  });
+  const csv = '﻿' + [header, ...rows].join('\n');
+  const a   = document.createElement('a');
+  a.href    = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = '貼文績效素材庫.csv';
+  a.click();
+}
+
+// ===== INIT =====
+async function init() {
+  g('stats-grid').innerHTML = `<div class="stat-card" style="grid-column:span 4"><div class="loading"><div class="loading-spinner"></div>載入中…</div></div>`;
+  g('post-list').innerHTML  = '';
+  try {
+    posts = await apiFetch('/api/posts');
+  } catch (e) {
+    g('stats-grid').innerHTML = '';
+    g('post-list').innerHTML  = `<div class="empty"><div class="empty-icon">⚠️</div>資料載入失敗：${esc(e.message)}<br><small style="margin-top:6px;display:block">請重新整理頁面</small></div>`;
+    return;
+  }
+  updateNameFilter();
+  renderStats();
+  render();
+}
+
+init();
+</script>
+</body>
+</html>

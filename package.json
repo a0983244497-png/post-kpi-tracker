@@ -1,0 +1,14 @@
+{
+  "name": "post-kpi-tracker",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "貼文績效素材庫 — 多人共用雲端版",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
+  }
+}
