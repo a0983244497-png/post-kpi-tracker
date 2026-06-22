@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Montserrat:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
 /* ===== RESET & BASE ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -382,6 +383,20 @@ select option { background: var(--charcoal-2); }
 }
 .ptab.active .ptab-count { background: rgba(212,168,67,.18); color: var(--gold); }
 
+/* ===== CHARTS ===== */
+.chart-section { margin-bottom: 1.5rem; }
+.chart-section-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.chart-section-hd-label { font-size:11px; font-weight:700; color:var(--text-muted); letter-spacing:.1em; text-transform:uppercase; }
+.chart-toggle-btn { font-size:11px; color:var(--text-muted); background:none; border:1px solid var(--border); border-radius:var(--radius-sm); padding:3px 10px; cursor:pointer; font-family:var(--font-body); }
+.chart-toggle-btn:hover { color:var(--gold); border-color:var(--border-strong); }
+.chart-row { display:grid; gap:12px; margin-bottom:12px; }
+.chart-r2 { grid-template-columns:1fr 1fr; }
+.chart-r3 { grid-template-columns:1fr 1fr 1fr; }
+.chart-card { background:var(--charcoal-2); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
+.chart-card-title { font-size:10px; font-weight:700; color:var(--text-muted); letter-spacing:.1em; text-transform:uppercase; margin-bottom:12px; }
+.chart-h { position:relative; height:200px; }
+.chart-h-sm { position:relative; height:160px; }
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 640px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -392,6 +407,7 @@ select option { background: var(--charcoal-2); }
   .container { padding: 1.25rem 1rem 3rem; }
   .header { padding: 0 1rem; }
   .ptab { padding: 10px 14px; font-size: 12px; }
+  .chart-r2, .chart-r3 { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -412,6 +428,29 @@ select option { background: var(--charcoal-2); }
 
   <!-- 統計列 -->
   <div class="stats-grid" id="stats-grid"></div>
+
+  <!-- 數據分析 -->
+  <div class="chart-section" id="chart-section">
+    <div class="chart-section-hd">
+      <span class="chart-section-hd-label">數據分析</span>
+      <button class="chart-toggle-btn" id="chart-toggle-btn" onclick="toggleCharts(this)">收起</button>
+    </div>
+    <div id="charts-body">
+      <div class="chart-row chart-r2">
+        <div class="chart-card"><p class="chart-card-title">業務貼文占比</p><div class="chart-h"><canvas id="ch-pp"></canvas></div></div>
+        <div class="chart-card"><p class="chart-card-title">貼文類型分布</p><div class="chart-h"><canvas id="ch-tp"></canvas></div></div>
+      </div>
+      <div class="chart-row chart-r3">
+        <div class="chart-card"><p class="chart-card-title">各業務平均觀看數</p><div class="chart-h-sm"><canvas id="ch-av"></canvas></div></div>
+        <div class="chart-card"><p class="chart-card-title">各業務引流轉化率</p><div class="chart-h-sm"><canvas id="ch-lr"></canvas></div></div>
+        <div class="chart-card"><p class="chart-card-title">各業務總成交金額</p><div class="chart-h-sm"><canvas id="ch-rv"></canvas></div></div>
+      </div>
+      <div class="chart-row chart-r2">
+        <div class="chart-card"><p class="chart-card-title">每週貼文數趨勢</p><div class="chart-h"><canvas id="ch-wp"></canvas></div></div>
+        <div class="chart-card"><p class="chart-card-title">每週觀看數趨勢</p><div class="chart-h"><canvas id="ch-wv"></canvas></div></div>
+      </div>
+    </div>
+  </div>
 
   <!-- 工具列 -->
   <div class="toolbar">
@@ -555,9 +594,7 @@ function renderPersonTabs() {
 function switchTab(key) {
   activeTab = key;
   openIds.clear();
-  renderPersonTabs();
-  renderStats();
-  render();
+  refreshAll();
 }
 
 // ===== STATS（依當前 tab 過濾）=====
@@ -622,9 +659,7 @@ async function addPost() {
     g('a-date').value = new Date().toISOString().split('T')[0];
     g('add-msg').textContent = '已新增！';
     setTimeout(() => { g('add-msg').textContent = ''; }, 2500);
-    renderPersonTabs();
-    renderStats();
-    render();
+    refreshAll();
   } catch (e) {
     g('add-err').textContent = `新增失敗：${e.message}`;
   } finally {
@@ -640,9 +675,7 @@ async function deletePost(id) {
     await apiFetch(`/api/posts/${id}`, { method: 'DELETE' });
     posts = posts.filter(p => p.id !== id);
     openIds.delete(id);
-    renderPersonTabs();
-    renderStats();
-    render();
+    refreshAll();
   } catch (e) {
     alert(`刪除失敗：${e.message}`);
   }
@@ -757,6 +790,87 @@ function exportCSV() {
   a.click();
 }
 
+// ===== CHARTS =====
+const PERSON_COLORS = ['#D4A843','#4A9EBF','#7FB069','#C98AB8'];
+const TYPE_COLORS   = ['#7AACE0','#7DC98A','#E07A5A','#EAC96A','#A0C4FF','#C98AB8','#90A0E0'];
+let ch = {};
+
+function sc(o) {
+  return Object.assign({ grid:{color:'rgba(255,255,255,0.04)'}, border:{color:'rgba(255,255,255,0.08)'}, ticks:{color:'#6A6460',font:{size:11}} }, o || {});
+}
+function pColors() {
+  return PERSONS.map((n,i) => !activeTab || n===activeTab ? PERSON_COLORS[i] : PERSON_COLORS[i]+'33');
+}
+function getMon(s) {
+  const d = new Date(s + 'T12:00:00'), dow = d.getDay() || 7;
+  d.setDate(d.getDate() - dow + 1);
+  return d.toISOString().slice(0,10);
+}
+function weeklyData(src) {
+  const m = {};
+  src.forEach(p => {
+    const k = getMon(p.date);
+    if (!m[k]) m[k] = {c:0, v:0};
+    m[k].c++; m[k].v += p.view;
+  });
+  const keys = Object.keys(m).sort().slice(-12);
+  return { labels: keys.map(k => k.slice(5).replace('-','/')), counts: keys.map(k=>m[k].c), views: keys.map(k=>m[k].v) };
+}
+
+function buildCharts() {
+  Object.values(ch).forEach(c => c.destroy()); ch = {};
+  const src = activeTab ? posts.filter(p => p.name === activeTab) : posts;
+  const pc  = pColors();
+  const tk  = Object.keys(TYPE_MAP);
+  const wk  = weeklyData(src);
+  const B   = {responsive:true, maintainAspectRatio:false, animation:{duration:300}};
+  const TT  = {backgroundColor:'#2E2E2E', titleColor:'#F0EDE6', bodyColor:'#A09A8E', borderColor:'rgba(212,168,67,.2)', borderWidth:1};
+  const LL  = {position:'bottom', labels:{color:'#A09A8E', font:{size:11}, padding:10, boxWidth:12}};
+  const NN  = {display:false};
+
+  ch.pp = new Chart(g('ch-pp'), { type:'pie',
+    data:{ labels:PERSONS, datasets:[{ data:PERSONS.map(n=>posts.filter(p=>p.name===n).length), backgroundColor:pc, borderColor:'#242424', borderWidth:2 }] },
+    options:{ ...B, plugins:{tooltip:TT, legend:LL} } });
+
+  ch.tp = new Chart(g('ch-tp'), { type:'pie',
+    data:{ labels:tk.map(k=>TYPE_MAP[k]), datasets:[{ data:tk.map(k=>src.filter(p=>p.type===k).length), backgroundColor:TYPE_COLORS, borderColor:'#242424', borderWidth:2 }] },
+    options:{ ...B, plugins:{tooltip:TT, legend:LL} } });
+
+  ch.av = new Chart(g('ch-av'), { type:'bar',
+    data:{ labels:PERSONS, datasets:[{ data:PERSONS.map(n=>{ const pp=posts.filter(p=>p.name===n); return pp.length?Math.round(pp.reduce((s,p)=>s+p.view,0)/pp.length):0; }), backgroundColor:pc, borderRadius:4 }] },
+    options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:sc(), y:sc()} } });
+
+  ch.lr = new Chart(g('ch-lr'), { type:'bar',
+    data:{ labels:PERSONS, datasets:[{ data:PERSONS.map(n=>{ const pp=posts.filter(p=>p.name===n), tv=pp.reduce((s,p)=>s+p.view,0), tl=pp.reduce((s,p)=>s+p.lead,0); return tv?parseFloat((tl/tv*100).toFixed(2)):0; }), backgroundColor:pc, borderRadius:4 }] },
+    options:{ ...B, plugins:{tooltip:{...TT, callbacks:{label:ctx=>ctx.raw.toFixed(2)+'%'}}, legend:NN}, scales:{x:sc(), y:sc({ticks:{color:'#6A6460', font:{size:11}, callback:v=>v+'%'}})} } });
+
+  ch.rv = new Chart(g('ch-rv'), { type:'bar',
+    data:{ labels:PERSONS, datasets:[{ data:PERSONS.map(n=>posts.filter(p=>p.name===n).reduce((s,p)=>s+p.revenue,0)), backgroundColor:pc, borderRadius:4 }] },
+    options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:sc(), y:sc()} } });
+
+  const LS = sc({ticks:{color:'#6A6460', font:{size:10}, maxTicksLimit:8}});
+  ch.wp = new Chart(g('ch-wp'), { type:'line',
+    data:{ labels:wk.labels, datasets:[{ data:wk.counts, borderColor:'#D4A843', backgroundColor:'rgba(212,168,67,.1)', fill:true, pointBackgroundColor:'#D4A843', tension:0.3, pointRadius:3 }] },
+    options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:LS, y:sc({ticks:{color:'#6A6460', font:{size:10}}})} } });
+
+  ch.wv = new Chart(g('ch-wv'), { type:'line',
+    data:{ labels:wk.labels, datasets:[{ data:wk.views, borderColor:'#4A9EBF', backgroundColor:'rgba(74,158,191,.1)', fill:true, pointBackgroundColor:'#4A9EBF', tension:0.3, pointRadius:3 }] },
+    options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:LS, y:sc({ticks:{color:'#6A6460', font:{size:10}}})} } });
+}
+
+function toggleCharts(btn) {
+  const body = g('charts-body'), hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  btn.textContent = hidden ? '收起' : '展開';
+}
+
+function refreshAll() {
+  renderPersonTabs();
+  renderStats();
+  render();
+  buildCharts();
+}
+
 // ===== INIT =====
 async function init() {
   g('stats-grid').innerHTML = `<div class="stat-card" style="grid-column:span 4"><div class="loading"><div class="loading-spinner"></div>載入中…</div></div>`;
@@ -768,9 +882,7 @@ async function init() {
     g('post-list').innerHTML  = `<div class="empty"><div class="empty-icon">⚠️</div>資料載入失敗：${esc(e.message)}<br><small style="margin-top:6px;display:block">請重新整理頁面</small></div>`;
     return;
   }
-  renderPersonTabs();
-  renderStats();
-  render();
+  refreshAll();
 }
 
 init();
