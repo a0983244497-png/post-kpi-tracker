@@ -443,7 +443,7 @@ select option { background: var(--charcoal-2); }
       <div class="chart-row chart-r3">
         <div class="chart-card"><p class="chart-card-title">各業務平均觀看數</p><div class="chart-h-sm"><canvas id="ch-av"></canvas></div></div>
         <div class="chart-card"><p class="chart-card-title">各業務引流轉化率</p><div class="chart-h-sm"><canvas id="ch-lr"></canvas></div></div>
-        <div class="chart-card"><p class="chart-card-title">各業務總成交金額</p><div class="chart-h-sm"><canvas id="ch-rv"></canvas></div></div>
+        <div class="chart-card"><p class="chart-card-title">各業務總入金金額</p><div class="chart-h-sm"><canvas id="ch-rv"></canvas></div></div>
       </div>
       <div class="chart-row chart-r2">
         <div class="chart-card"><p class="chart-card-title">每週貼文數趨勢</p><div class="chart-h"><canvas id="ch-wp"></canvas></div></div>
@@ -526,7 +526,7 @@ select option { background: var(--charcoal-2); }
     <div class="form-grid c3" style="margin-top:10px">
       <div class="form-field"><label>引流人數</label><input type="number" id="a-lead" placeholder="0" min="0"></div>
       <div class="form-field"><label>成交人數</label><input type="number" id="a-deal" placeholder="0" min="0"></div>
-      <div class="form-field"><label>成交金額（選填）</label><input type="number" id="a-rev" placeholder="0" min="0"></div>
+      <div class="form-field"><label>入金金額（選填）</label><input type="number" id="a-rev" placeholder="0" min="0"></div>
     </div>
     <div class="form-actions">
       <button class="btn btn-primary" id="save-btn" onclick="addPost()">儲存紀錄</button>
@@ -740,7 +740,7 @@ function render() {
             </div>
             <div class="mini-stat">引流 <strong>${p.lead}</strong></div>
             <div class="mini-stat">成交 <strong>${p.deal}</strong></div>
-            ${p.revenue ? `<div class="mini-stat">金額 <strong>$${p.revenue.toLocaleString()}</strong></div>` : ''}
+            ${p.revenue ? `<div class="mini-stat">入金 <strong>$${p.revenue.toLocaleString()}</strong></div>` : ''}
           </div>
         </div>
         <svg class="chevron ${isOpen ? 'open' : ''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
@@ -762,7 +762,7 @@ function render() {
           <div class="metric-box"><div class="metric-box-label">成交人數</div><div class="metric-box-val">${p.deal}</div></div>
           <div class="metric-box"><div class="metric-box-label">引流 → 成交率</div><div class="metric-box-val">${convRate}%</div></div>
         </div>
-        ${p.revenue ? `<div class="metric-box" style="margin-top:8px;display:inline-block;min-width:140px"><div class="metric-box-label">成交金額</div><div class="metric-box-val">$${p.revenue.toLocaleString()}</div></div>` : ''}
+        ${p.revenue ? `<div class="metric-box" style="margin-top:8px;display:inline-block;min-width:140px"><div class="metric-box-label">入金金額</div><div class="metric-box-val">$${p.revenue.toLocaleString()}</div></div>` : ''}
         <div style="margin-top:14px">
           <button class="btn btn-danger" onclick="deletePost(${p.id})">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
@@ -777,7 +777,7 @@ function render() {
 // ===== EXPORT CSV（依當前 tab 範圍）=====
 function exportCSV() {
   const data   = filtered();
-  const header = '業務,日期,類型,標題,觀看,按讚,留言,轉發收藏,引流,成交,成交金額,引流成交率%';
+  const header = '業務,日期,類型,標題,觀看,按讚,留言,轉發收藏,引流,成交,入金金額,引流成交率%';
   const rows   = data.map(p => {
     const rate = p.lead ? ((p.deal / p.lead) * 100).toFixed(1) : 0;
     return [p.name, p.date, TYPE_MAP[p.type] || p.type, `"${p.title.replace(/"/g,'""')}"`,
