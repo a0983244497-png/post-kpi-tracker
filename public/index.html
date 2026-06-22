@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>貼文績效素材庫｜重心開始</title>
+<title>水軍貼文統計</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Montserrat:wght@500;700&display=swap" rel="stylesheet">
@@ -343,6 +343,45 @@ select option { background: var(--charcoal-2); }
 }
 .empty-icon { font-size: 32px; margin-bottom: 10px; opacity: .4; }
 
+/* ===== PERSON TABS ===== */
+.person-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.person-tabs::-webkit-scrollbar { display: none; }
+.ptab {
+  padding: 10px 22px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  letter-spacing: .04em;
+  white-space: nowrap;
+  transition: color .15s;
+  font-family: var(--font-body);
+}
+.ptab:hover { color: var(--text-secondary); }
+.ptab.active { color: var(--gold); border-bottom-color: var(--gold); }
+.ptab-count {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--charcoal-3);
+  color: var(--text-muted);
+  border-radius: 10px;
+  padding: 1px 7px;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+.ptab.active .ptab-count { background: rgba(212,168,67,.18); color: var(--gold); }
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 640px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -352,6 +391,7 @@ select option { background: var(--charcoal-2); }
   .metrics-grid.c3 { grid-template-columns: repeat(2, 1fr); }
   .container { padding: 1.25rem 1rem 3rem; }
   .header { padding: 0 1rem; }
+  .ptab { padding: 10px 14px; font-size: 12px; }
 }
 </style>
 </head>
@@ -359,13 +399,16 @@ select option { background: var(--charcoal-2); }
 
 <header class="header">
   <div>
-    <div class="header-logo">重心開始</div>
+    <div class="header-logo">水軍貼文統計</div>
     <div class="header-sub">貼文績效素材庫</div>
   </div>
   <div class="header-right" id="header-count"></div>
 </header>
 
 <main class="container">
+
+  <!-- 業務分頁 -->
+  <div class="person-tabs" id="person-tabs"></div>
 
   <!-- 統計列 -->
   <div class="stats-grid" id="stats-grid"></div>
@@ -374,7 +417,7 @@ select option { background: var(--charcoal-2); }
   <div class="toolbar">
     <div class="search-wrap">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input type="text" id="search" placeholder="搜尋標題、業務名稱…" oninput="render()">
+      <input type="text" id="search" placeholder="搜尋標題…" oninput="render()">
     </div>
     <select id="filter-type" onchange="render()">
       <option value="">全部類型</option>
@@ -385,9 +428,6 @@ select option { background: var(--charcoal-2); }
       <option value="reminder">溫馨提醒</option>
       <option value="humor">互動幽默</option>
       <option value="opinion">個人觀點</option>
-    </select>
-    <select id="filter-name" onchange="render()">
-      <option value="">全部業務</option>
     </select>
     <select id="sort-by" onchange="render()">
       <option value="date">最新日期</option>
@@ -409,7 +449,15 @@ select option { background: var(--charcoal-2); }
   <div class="add-panel" id="add-panel">
     <div class="panel-title">新增貼文紀錄</div>
     <div class="form-grid c2">
-      <div class="form-field"><label>業務姓名</label><input type="text" id="a-name" placeholder="例：小王"></div>
+      <div class="form-field"><label>業務姓名</label>
+        <select id="a-name">
+          <option value="">選擇業務</option>
+          <option value="Gino">Gino</option>
+          <option value="Darren">Darren</option>
+          <option value="Josh">Josh</option>
+          <option value="Jenna">Jenna</option>
+        </select>
+      </div>
       <div class="form-field"><label>發文日期</label><input type="date" id="a-date"></div>
     </div>
     <div class="form-grid c3" style="margin-top:10px">
@@ -457,6 +505,8 @@ select option { background: var(--charcoal-2); }
 
 <script>
 // ===== CONSTANTS =====
+const PERSONS = ['Gino', 'Darren', 'Josh', 'Jenna'];
+
 const TYPE_MAP = {
   market: '市場回顧', result: '戰果分享', loss: '虧損反思',
   edu: '教育內容', reminder: '溫馨提醒', humor: '互動幽默', opinion: '個人觀點'
@@ -467,8 +517,9 @@ const TYPE_CLS = {
 };
 
 // ===== STATE =====
-let posts   = [];
-let openIds = new Set();
+let posts      = [];
+let openIds    = new Set();
+let activeTab  = '';   // '' = 全部，否則為業務名稱
 
 // ===== DOM HELPERS =====
 function g(id) { return document.getElementById(id); }
@@ -490,25 +541,37 @@ async function apiFetch(path, opts = {}) {
   return res.json();
 }
 
-// ===== STATS =====
+// ===== PERSON TABS =====
+function renderPersonTabs() {
+  const tabs = [{ label: '全部', key: '' }, ...PERSONS.map(n => ({ label: n, key: n }))];
+  g('person-tabs').innerHTML = tabs.map(t => {
+    const cnt = t.key ? posts.filter(p => p.name === t.key).length : posts.length;
+    return `<button class="ptab${activeTab === t.key ? ' active' : ''}" onclick="switchTab('${t.key}')">
+      ${esc(t.label)}<span class="ptab-count">${cnt}</span>
+    </button>`;
+  }).join('');
+}
+
+function switchTab(key) {
+  activeTab = key;
+  openIds.clear();
+  renderPersonTabs();
+  renderStats();
+  render();
+}
+
+// ===== STATS（依當前 tab 過濾）=====
 function renderStats() {
-  const tv = posts.reduce((s, p) => s + p.view,    0);
-  const tl = posts.reduce((s, p) => s + p.lead,    0);
-  const td = posts.reduce((s, p) => s + p.deal,    0);
+  const src = activeTab ? posts.filter(p => p.name === activeTab) : posts;
+  const tv  = src.reduce((s, p) => s + p.view, 0);
+  const tl  = src.reduce((s, p) => s + p.lead, 0);
+  const td  = src.reduce((s, p) => s + p.deal, 0);
+  const label = activeTab || '全部';
   g('stats-grid').innerHTML = `
-    <div class="stat-card"><div class="stat-label">總貼文數</div><div class="stat-val">${posts.length}</div></div>
+    <div class="stat-card"><div class="stat-label">${esc(label)} 貼文數</div><div class="stat-val">${src.length}</div></div>
     <div class="stat-card"><div class="stat-label">總觀看數</div><div class="stat-val">${tv.toLocaleString()}</div></div>
     <div class="stat-card"><div class="stat-label">觀看 → 引流</div><div class="stat-val">${pct(tl, tv)}%</div></div>
     <div class="stat-card"><div class="stat-label">引流 → 成交</div><div class="stat-val">${pct(td, tl)}%</div></div>`;
-}
-
-// ===== NAME FILTER =====
-function updateNameFilter() {
-  const names = [...new Set(posts.map(p => p.name))].sort();
-  const sel   = g('filter-name');
-  const cur   = sel.value;
-  sel.innerHTML = '<option value="">全部業務</option>' +
-    names.map(n => `<option value="${esc(n)}"${cur === n ? ' selected' : ''}>${esc(n)}</option>`).join('');
 }
 
 // ===== ADD PANEL =====
@@ -516,15 +579,16 @@ function toggleAdd() {
   const panel = g('add-panel');
   panel.classList.toggle('open');
   if (panel.classList.contains('open')) {
+    // 若當前在個人 tab，預設選中該業務
+    if (activeTab) g('a-name').value = activeTab;
     g('a-date').value = new Date().toISOString().split('T')[0];
-    g('a-name').focus();
     g('add-msg').textContent = '';
     g('add-err').textContent = '';
   }
 }
 
 async function addPost() {
-  const name  = g('a-name').value.trim();
+  const name  = g('a-name').value;
   const date  = g('a-date').value;
   const type  = g('a-type').value;
   const title = g('a-title').value.trim();
@@ -558,7 +622,7 @@ async function addPost() {
     g('a-date').value = new Date().toISOString().split('T')[0];
     g('add-msg').textContent = '已新增！';
     setTimeout(() => { g('add-msg').textContent = ''; }, 2500);
-    updateNameFilter();
+    renderPersonTabs();
     renderStats();
     render();
   } catch (e) {
@@ -574,9 +638,9 @@ async function deletePost(id) {
   if (!confirm('確定刪除這筆紀錄？')) return;
   try {
     await apiFetch(`/api/posts/${id}`, { method: 'DELETE' });
-    posts   = posts.filter(p => p.id !== id);
+    posts = posts.filter(p => p.id !== id);
     openIds.delete(id);
-    updateNameFilter();
+    renderPersonTabs();
     renderStats();
     render();
   } catch (e) {
@@ -591,16 +655,15 @@ function toggleCard(id) {
   render();
 }
 
-// ===== FILTERED DATA =====
+// ===== FILTERED DATA（tab + 搜尋 + 類型 + 排序）=====
 function filtered() {
   const q  = g('search').value.toLowerCase();
   const ft = g('filter-type').value;
-  const fn = g('filter-name').value;
   const sb = g('sort-by').value;
   let data = posts.filter(p => {
-    if (ft && p.type !== ft)  return false;
-    if (fn && p.name !== fn)  return false;
-    if (q  && !p.title.toLowerCase().includes(q) && !p.name.toLowerCase().includes(q)) return false;
+    if (activeTab && p.name !== activeTab) return false;
+    if (ft && p.type !== ft)              return false;
+    if (q  && !p.title.toLowerCase().includes(q)) return false;
     return true;
   });
   data.sort((a, b) => {
@@ -615,17 +678,18 @@ function filtered() {
 // ===== RENDER =====
 function render() {
   const data = filtered();
-  g('list-meta').textContent = `共 ${data.length} 筆紀錄`;
-  g('header-count').textContent = `${posts.length} 筆 / ${[...new Set(posts.map(p=>p.name))].length} 位業務`;
+  const tabLabel = activeTab || '全部';
+  g('list-meta').textContent = `${esc(tabLabel)}：共 ${data.length} 筆`;
+  g('header-count').textContent = `${posts.length} 筆 / ${PERSONS.length} 位業務`;
   if (!data.length) {
-    g('post-list').innerHTML = `<div class="empty"><div class="empty-icon">📋</div>尚無符合的紀錄，按「新增貼文」開始記錄</div>`;
+    g('post-list').innerHTML = `<div class="empty"><div class="empty-icon">📋</div>尚無紀錄，按「新增貼文」開始記錄</div>`;
     return;
   }
   const maxView = Math.max(...data.map(p => p.view), 1);
   g('post-list').innerHTML = data.map(p => {
-    const isOpen    = openIds.has(p.id);
-    const convRate  = p.lead ? ((p.deal / p.lead) * 100).toFixed(1) : '0';
-    const barW      = Math.round(p.view / maxView * 100);
+    const isOpen   = openIds.has(p.id);
+    const convRate = p.lead ? ((p.deal / p.lead) * 100).toFixed(1) : '0';
+    const barW     = Math.round(p.view / maxView * 100);
     return `
     <div class="post-card" id="card-${p.id}">
       <div class="post-card-header" onclick="toggleCard(${p.id})">
@@ -677,7 +741,7 @@ function render() {
   }).join('');
 }
 
-// ===== EXPORT CSV =====
+// ===== EXPORT CSV（依當前 tab 範圍）=====
 function exportCSV() {
   const data   = filtered();
   const header = '業務,日期,類型,標題,觀看,按讚,留言,轉發收藏,引流,成交,成交金額,引流成交率%';
@@ -689,7 +753,7 @@ function exportCSV() {
   const csv = '﻿' + [header, ...rows].join('\n');
   const a   = document.createElement('a');
   a.href    = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = '貼文績效素材庫.csv';
+  a.download = `貼文績效_${activeTab || '全部'}.csv`;
   a.click();
 }
 
@@ -704,7 +768,7 @@ async function init() {
     g('post-list').innerHTML  = `<div class="empty"><div class="empty-icon">⚠️</div>資料載入失敗：${esc(e.message)}<br><small style="margin-top:6px;display:block">請重新整理頁面</small></div>`;
     return;
   }
-  updateNameFilter();
+  renderPersonTabs();
   renderStats();
   render();
 }
