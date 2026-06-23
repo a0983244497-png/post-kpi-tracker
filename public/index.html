@@ -383,6 +383,22 @@ select option { background: var(--charcoal-2); }
 }
 .ptab.active .ptab-count { background: rgba(212,168,67,.18); color: var(--gold); }
 
+/* ===== MODAL ===== */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.65); display:none; align-items:center; justify-content:center; z-index:1000; }
+.modal { background:var(--charcoal-2); border:1px solid var(--border-strong); border-radius:var(--radius); width:min(440px,92vw); max-height:82vh; overflow-y:auto; padding:24px; }
+.modal-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.modal-hd-title { font-size:15px; font-weight:700; color:var(--text-primary); }
+.modal-close { background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; line-height:1; padding:0 2px; }
+.modal-close:hover { color:var(--text-primary); }
+.staff-item { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); }
+.staff-item:last-child { border-bottom:none; }
+.staff-name { font-size:14px; font-weight:500; }
+.modal-add-row { display:flex; gap:8px; margin-top:16px; }
+.modal-add-row input { flex:1; background:var(--charcoal-3); border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 12px; color:var(--text-primary); font-family:var(--font-body); font-size:14px; }
+.modal-add-row input:focus { outline:none; border-color:var(--border-strong); }
+/* ===== EDIT BUTTON ===== */
+.btn-edit { color:var(--gold); border-color:rgba(212,168,67,.3); }
+.btn-edit:hover { background:rgba(212,168,67,.1); border-color:var(--border-strong); }
 /* ===== CHARTS ===== */
 .chart-section { margin-bottom: 1.5rem; }
 .chart-section-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
@@ -482,20 +498,18 @@ select option { background: var(--charcoal-2); }
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       匯出 CSV
     </button>
+    <button class="btn" onclick="openStaffModal()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      管理業務
+    </button>
   </div>
 
   <!-- 新增面板 -->
   <div class="add-panel" id="add-panel">
-    <div class="panel-title">新增貼文紀錄</div>
+    <div class="panel-title" id="panel-title">新增貼文紀錄</div>
     <div class="form-grid c2">
       <div class="form-field"><label>業務姓名</label>
-        <select id="a-name">
-          <option value="">選擇業務</option>
-          <option value="Gino">Gino</option>
-          <option value="Darren">Darren</option>
-          <option value="Josh">Josh</option>
-          <option value="Jenna">Jenna</option>
-        </select>
+        <select id="a-name"><option value="">選擇業務</option></select>
       </div>
       <div class="form-field"><label>發文日期</label><input type="date" id="a-date"></div>
     </div>
@@ -540,11 +554,26 @@ select option { background: var(--charcoal-2); }
   <div class="list-meta" id="list-meta"></div>
   <div id="post-list"></div>
 
+  <!-- 管理業務 Modal -->
+  <div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
+    <div class="modal">
+      <div class="modal-hd">
+        <span class="modal-hd-title">管理業務人員</span>
+        <button class="modal-close" onclick="closeStaffModal()">✕</button>
+      </div>
+      <div id="staff-list"></div>
+      <div class="modal-add-row">
+        <input type="text" id="new-staff-name" placeholder="輸入新業務姓名" onkeydown="if(event.key==='Enter')addStaff()">
+        <button class="btn btn-primary" onclick="addStaff()">新增</button>
+      </div>
+      <p class="form-err" id="staff-err" style="margin-top:8px"></p>
+    </div>
+  </div>
+
 </main>
 
 <script>
 // ===== CONSTANTS =====
-const PERSONS = ['Gino', 'Darren', 'Josh', 'Jenna'];
 
 const TYPE_MAP = {
   market: '市場回顧', result: '戰果分享', loss: '虧損反思',
@@ -557,8 +586,10 @@ const TYPE_CLS = {
 
 // ===== STATE =====
 let posts      = [];
+let staff      = [];
 let openIds    = new Set();
 let activeTab  = '';   // '' = 全部，否則為業務名稱
+let editingId  = null; // null = 新增模式，number = 編輯模式
 
 // ===== DOM HELPERS =====
 function g(id) { return document.getElementById(id); }
@@ -582,7 +613,7 @@ async function apiFetch(path, opts = {}) {
 
 // ===== PERSON TABS =====
 function renderPersonTabs() {
-  const tabs = [{ label: '全部', key: '' }, ...PERSONS.map(n => ({ label: n, key: n }))];
+  const tabs = [{ label: '全部', key: '' }, ...staff.map(s => ({ label: s.name, key: s.name }))];
   g('person-tabs').innerHTML = tabs.map(t => {
     const cnt = t.key ? posts.filter(p => p.name === t.key).length : posts.length;
     return `<button class="ptab${activeTab === t.key ? ' active' : ''}" onclick="switchTab('${t.key}')">
@@ -613,10 +644,12 @@ function renderStats() {
 
 // ===== ADD PANEL =====
 function toggleAdd() {
+  editingId = null;
   const panel = g('add-panel');
   panel.classList.toggle('open');
   if (panel.classList.contains('open')) {
-    // 若當前在個人 tab，預設選中該業務
+    g('panel-title').textContent = '新增貼文紀錄';
+    g('save-btn').textContent    = '儲存紀錄';
     if (activeTab) g('a-name').value = activeTab;
     g('a-date').value = new Date().toISOString().split('T')[0];
     g('add-msg').textContent = '';
@@ -636,35 +669,43 @@ async function addPost() {
     return;
   }
 
+  const isEditing = editingId !== null;
+  const targetId  = editingId;
+  const body = JSON.stringify({
+    name, date, type, title,
+    content: g('a-content').value.trim(),
+    view:    nv('a-view'), like: nv('a-like'),
+    comment: nv('a-comment'), share: nv('a-share'),
+    lead:    nv('a-lead'), deal: nv('a-deal'), revenue: nv('a-rev')
+  });
+
   const btn = g('save-btn');
   btn.disabled = true;
-  btn.textContent = '儲存中...';
+  btn.textContent = isEditing ? '更新中...' : '儲存中...';
 
   try {
-    const saved = await apiFetch('/api/posts', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name, date, type, title,
-        content: g('a-content').value.trim(),
-        view:    nv('a-view'), like: nv('a-like'),
-        comment: nv('a-comment'), share: nv('a-share'),
-        lead:    nv('a-lead'), deal: nv('a-deal'), revenue: nv('a-rev')
-      })
-    });
-
-    posts.unshift(saved);
+    if (isEditing) {
+      const updated = await apiFetch(`/api/posts/${targetId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body });
+      const idx = posts.findIndex(p => p.id === targetId);
+      if (idx !== -1) posts[idx] = updated;
+      editingId = null;
+      g('panel-title').textContent = '新增貼文紀錄';
+      g('add-msg').textContent = '已更新！';
+    } else {
+      const saved = await apiFetch('/api/posts', { method:'POST', headers:{'Content-Type':'application/json'}, body });
+      posts.unshift(saved);
+      g('add-msg').textContent = '已新增！';
+    }
     ['a-name','a-type','a-title','a-content','a-view','a-like','a-comment','a-share','a-lead','a-deal','a-rev']
       .forEach(id => { g(id).value = ''; });
     g('a-date').value = new Date().toISOString().split('T')[0];
-    g('add-msg').textContent = '已新增！';
     setTimeout(() => { g('add-msg').textContent = ''; }, 2500);
     refreshAll();
   } catch (e) {
-    g('add-err').textContent = `新增失敗：${e.message}`;
+    g('add-err').textContent = `${isEditing ? '更新' : '新增'}失敗：${e.message}`;
   } finally {
     btn.disabled = false;
-    btn.textContent = '儲存紀錄';
+    btn.textContent = editingId !== null ? '更新紀錄' : '儲存紀錄';
   }
 }
 
@@ -713,7 +754,7 @@ function render() {
   const data = filtered();
   const tabLabel = activeTab || '全部';
   g('list-meta').textContent = `${esc(tabLabel)}：共 ${data.length} 筆`;
-  g('header-count').textContent = `${posts.length} 筆 / ${PERSONS.length} 位業務`;
+  g('header-count').textContent = `${posts.length} 筆 / ${staff.length} 位業務`;
   if (!data.length) {
     g('post-list').innerHTML = `<div class="empty"><div class="empty-icon">📋</div>尚無紀錄，按「新增貼文」開始記錄</div>`;
     return;
@@ -763,10 +804,14 @@ function render() {
           <div class="metric-box"><div class="metric-box-label">引流 → 成交率</div><div class="metric-box-val">${convRate}%</div></div>
         </div>
         ${p.revenue ? `<div class="metric-box" style="margin-top:8px;display:inline-block;min-width:140px"><div class="metric-box-label">入金金額</div><div class="metric-box-val">$${p.revenue.toLocaleString()}</div></div>` : ''}
-        <div style="margin-top:14px">
+        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-edit" onclick="editPost(${p.id})">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            編輯
+          </button>
           <button class="btn btn-danger" onclick="deletePost(${p.id})">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-            刪除這筆紀錄
+            刪除
           </button>
         </div>
       </div>
@@ -790,8 +835,90 @@ function exportCSV() {
   a.click();
 }
 
+// ===== EDIT POST =====
+function editPost(postId) {
+  const p = posts.find(x => x.id === postId);
+  if (!p) return;
+  editingId = postId;
+  g('a-name').value    = p.name;
+  g('a-date').value    = p.date;
+  g('a-type').value    = p.type;
+  g('a-title').value   = p.title;
+  g('a-content').value = p.content;
+  g('a-view').value    = p.view;
+  g('a-like').value    = p.like;
+  g('a-comment').value = p.comment;
+  g('a-share').value   = p.share;
+  g('a-lead').value    = p.lead;
+  g('a-deal').value    = p.deal;
+  g('a-rev').value     = p.revenue;
+  g('panel-title').textContent = '編輯貼文紀錄';
+  g('save-btn').textContent    = '更新紀錄';
+  g('add-msg').textContent     = '';
+  g('add-err').textContent     = '';
+  g('add-panel').classList.add('open');
+  g('add-panel').scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+// ===== NAME DROPDOWN =====
+function renderNameDropdown() {
+  g('a-name').innerHTML = '<option value="">選擇業務</option>' +
+    staff.map(s => `<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');
+}
+
+// ===== STAFF MODAL =====
+function openStaffModal() { renderStaffList(); g('staff-modal').style.display = 'flex'; }
+function closeStaffModal() { g('staff-modal').style.display = 'none'; }
+
+function renderStaffList() {
+  if (!staff.length) {
+    g('staff-list').innerHTML = '<p style="color:var(--text-muted);font-size:13px;padding:8px 0">尚無業務人員</p>';
+    return;
+  }
+  g('staff-list').innerHTML = staff.map(s => `
+    <div class="staff-item">
+      <span class="staff-name">${esc(s.name)}</span>
+      <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="deleteStaff(${s.id})">刪除</button>
+    </div>`).join('');
+}
+
+async function addStaff() {
+  const name = g('new-staff-name').value.trim();
+  g('staff-err').textContent = '';
+  if (!name) { g('staff-err').textContent = '請輸入姓名'; return; }
+  try {
+    const s = await apiFetch('/api/staff', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name}) });
+    staff.push(s);
+    g('new-staff-name').value = '';
+    renderStaffList();
+    renderNameDropdown();
+    refreshAll();
+  } catch (e) {
+    g('staff-err').textContent = e.message;
+  }
+}
+
+async function deleteStaff(id) {
+  const member = staff.find(s => s.id === id);
+  if (!member) return;
+  const hasPosts = posts.some(p => p.name === member.name);
+  const msg = hasPosts
+    ? `${member.name} 還有貼文紀錄，確定移除此業務？（不會刪除已有貼文）`
+    : `確定刪除業務「${member.name}」？`;
+  if (!confirm(msg)) return;
+  try {
+    await apiFetch(`/api/staff/${id}`, { method:'DELETE' });
+    staff = staff.filter(s => s.id !== id);
+    renderStaffList();
+    renderNameDropdown();
+    refreshAll();
+  } catch (e) {
+    alert(`刪除失敗：${e.message}`);
+  }
+}
+
 // ===== CHARTS =====
-const PERSON_COLORS = ['#D4A843','#4A9EBF','#7FB069','#C98AB8'];
+const PERSON_COLORS = ['#D4A843','#4A9EBF','#7FB069','#C98AB8','#E07A5A','#90A0E0','#EAC96A','#7AC8C0'];
 const TYPE_COLORS   = ['#7AACE0','#7DC98A','#E07A5A','#EAC96A','#A0C4FF','#C98AB8','#90A0E0'];
 let ch = {};
 
@@ -799,7 +926,7 @@ function sc(o) {
   return Object.assign({ grid:{color:'rgba(255,255,255,0.04)'}, border:{color:'rgba(255,255,255,0.08)'}, ticks:{color:'#6A6460',font:{size:11}} }, o || {});
 }
 function pColors() {
-  return PERSONS.map((n,i) => !activeTab || n===activeTab ? PERSON_COLORS[i] : PERSON_COLORS[i]+'33');
+  return staff.map((s,i) => !activeTab || s.name===activeTab ? PERSON_COLORS[i % PERSON_COLORS.length] : PERSON_COLORS[i % PERSON_COLORS.length]+'33');
 }
 function getMon(s) {
   const d = new Date(s + 'T12:00:00'), dow = d.getDay() || 7;
@@ -828,8 +955,9 @@ function buildCharts() {
   const LL  = {position:'bottom', labels:{color:'#A09A8E', font:{size:11}, padding:10, boxWidth:12}};
   const NN  = {display:false};
 
+  const sn = staff.map(s => s.name);
   ch.pp = new Chart(g('ch-pp'), { type:'pie',
-    data:{ labels:PERSONS, datasets:[{ data:PERSONS.map(n=>posts.filter(p=>p.name===n).length), backgroundColor:pc, borderColor:'#242424', borderWidth:2 }] },
+    data:{ labels:sn, datasets:[{ data:sn.map(n=>posts.filter(p=>p.name===n).length), backgroundColor:pc, borderColor:'#242424', borderWidth:2 }] },
     options:{ ...B, plugins:{tooltip:TT, legend:LL} } });
 
   ch.tp = new Chart(g('ch-tp'), { type:'pie',
@@ -837,15 +965,15 @@ function buildCharts() {
     options:{ ...B, plugins:{tooltip:TT, legend:LL} } });
 
   ch.av = new Chart(g('ch-av'), { type:'bar',
-    data:{ labels:PERSONS, datasets:[{ data:PERSONS.map(n=>{ const pp=posts.filter(p=>p.name===n); return pp.length?Math.round(pp.reduce((s,p)=>s+p.view,0)/pp.length):0; }), backgroundColor:pc, borderRadius:4 }] },
+    data:{ labels:sn, datasets:[{ data:sn.map(n=>{ const pp=posts.filter(p=>p.name===n); return pp.length?Math.round(pp.reduce((a,p)=>a+p.view,0)/pp.length):0; }), backgroundColor:pc, borderRadius:4 }] },
     options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:sc(), y:sc()} } });
 
   ch.lr = new Chart(g('ch-lr'), { type:'bar',
-    data:{ labels:PERSONS, datasets:[{ data:PERSONS.map(n=>{ const pp=posts.filter(p=>p.name===n), tv=pp.reduce((s,p)=>s+p.view,0), tl=pp.reduce((s,p)=>s+p.lead,0); return tv?parseFloat((tl/tv*100).toFixed(2)):0; }), backgroundColor:pc, borderRadius:4 }] },
+    data:{ labels:sn, datasets:[{ data:sn.map(n=>{ const pp=posts.filter(p=>p.name===n), tv=pp.reduce((a,p)=>a+p.view,0), tl=pp.reduce((a,p)=>a+p.lead,0); return tv?parseFloat((tl/tv*100).toFixed(2)):0; }), backgroundColor:pc, borderRadius:4 }] },
     options:{ ...B, plugins:{tooltip:{...TT, callbacks:{label:ctx=>ctx.raw.toFixed(2)+'%'}}, legend:NN}, scales:{x:sc(), y:sc({ticks:{color:'#6A6460', font:{size:11}, callback:v=>v+'%'}})} } });
 
   ch.rv = new Chart(g('ch-rv'), { type:'bar',
-    data:{ labels:PERSONS, datasets:[{ data:PERSONS.map(n=>posts.filter(p=>p.name===n).reduce((s,p)=>s+p.revenue,0)), backgroundColor:pc, borderRadius:4 }] },
+    data:{ labels:sn, datasets:[{ data:sn.map(n=>posts.filter(p=>p.name===n).reduce((a,p)=>a+p.revenue,0)), backgroundColor:pc, borderRadius:4 }] },
     options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:sc(), y:sc()} } });
 
   const LS = sc({ticks:{color:'#6A6460', font:{size:10}, maxTicksLimit:8}});
@@ -876,12 +1004,13 @@ async function init() {
   g('stats-grid').innerHTML = `<div class="stat-card" style="grid-column:span 4"><div class="loading"><div class="loading-spinner"></div>載入中…</div></div>`;
   g('post-list').innerHTML  = '';
   try {
-    posts = await apiFetch('/api/posts');
+    [posts, staff] = await Promise.all([apiFetch('/api/posts'), apiFetch('/api/staff')]);
   } catch (e) {
     g('stats-grid').innerHTML = '';
     g('post-list').innerHTML  = `<div class="empty"><div class="empty-icon">⚠️</div>資料載入失敗：${esc(e.message)}<br><small style="margin-top:6px;display:block">請重新整理頁面</small></div>`;
     return;
   }
+  renderNameDropdown();
   refreshAll();
 }
 

@@ -26,6 +26,18 @@ export async function initDb() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS staff (
+      id         SERIAL PRIMARY KEY,
+      name       VARCHAR(100) NOT NULL UNIQUE,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  // Seed default staff if table is empty
+  const { rows } = await pool.query('SELECT COUNT(*)::int AS cnt FROM staff');
+  if (rows[0].cnt === 0) {
+    await pool.query(`INSERT INTO staff (name) VALUES ('Gino'),('Darren'),('Josh'),('Jenna') ON CONFLICT DO NOTHING`);
+  }
   console.log('✓ Database ready');
 }
 

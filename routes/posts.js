@@ -68,6 +68,29 @@ router.post('/posts', async (req, res) => {
   }
 });
 
+// PUT /api/posts/:id — 更新一筆
+router.put('/posts/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
+  const { name, date, type, title, content, view, like, comment, share, lead, deal, revenue } = req.body;
+  if (!name || !date || !type || !title) {
+    return res.status(400).json({ error: '業務、日期、類型、標題為必填' });
+  }
+  try {
+    const { rows } = await pool.query(
+      `UPDATE posts SET name=$1, date=$2, type=$3, title=$4, content=$5,
+       views=$6, likes=$7, comments=$8, shares=$9, leads=$10, deals=$11, revenue=$12
+       WHERE id=$13 RETURNING *`,
+      [name, date, type, title, content||'', view||0, like||0, comment||0, share||0, lead||0, deal||0, revenue||0, id]
+    );
+    if (!rows.length) return res.status(404).json({ error: '找不到此筆資料' });
+    res.json(toClient(rows[0]));
+  } catch (e) {
+    console.error('[DB] PUT posts:', e.message);
+    res.status(500).json({ error: '更新失敗' });
+  }
+});
+
 // DELETE /api/posts/:id
 router.delete('/posts/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10);

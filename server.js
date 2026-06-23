@@ -2,7 +2,8 @@ import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { initDb } from './db.js';
-import postsRouter from './routes/posts.js';
+import postsRouter  from './routes/posts.js';
+import staffRouter from './routes/staff.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -30,6 +31,7 @@ app.use(express.json());
 
 // ─── API 路由（受 Auth 保護）─────────────────────────────
 app.use('/api', requireAuth, postsRouter);
+app.use('/api', requireAuth, staffRouter);
 
 // ─── 靜態頁面（受 Auth 保護）────────────────────────────
 app.use(requireAuth, express.static(join(__dirname, 'public')));
