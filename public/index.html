@@ -408,8 +408,15 @@ select option { background: var(--charcoal-2); }
 
     <!-- 週報登記 -->
     <div class="weekly-entry">
-      <div class="weekly-entry-title">週報登記（粉絲 / 私訊）</div>
-      <div class="form-grid c2">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+        <div class="weekly-entry-title" style="margin-bottom:0">週報登記（粉絲 / 私訊）</div>
+        <button class="btn" style="padding:4px 10px;font-size:11px" onclick="openStaffModal()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          管理業務
+        </button>
+      </div>
+      <div class="form-grid c3">
+        <div class="form-field"><label>業務姓名</label><select id="ws-name"><option value="">全隊（不分人）</option></select></div>
         <div class="form-field"><label>週開始日期</label><input type="date" id="ws-date" readonly style="opacity:.6"></div>
         <div class="form-field"><label>私訊數（手動）</label><input type="number" id="ws-dms" placeholder="0" min="0"></div>
       </div>
@@ -858,7 +865,7 @@ async function addStaff() {
     const s = await apiFetch('/api/staff', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name}) });
     staff.push(s);
     g('new-staff-name').value = '';
-    renderStaffList(); renderNameDropdown(); refreshAll();
+    renderStaffList(); renderNameDropdown(); renderWeeklyNameDropdown(); refreshAll();
   } catch (e) { g('staff-err').textContent = e.message; }
 }
 async function deleteStaff(id) {
@@ -872,7 +879,7 @@ async function deleteStaff(id) {
   try {
     await apiFetch(`/api/staff/${id}`, { method:'DELETE' });
     staff = staff.filter(s => s.id !== id);
-    renderStaffList(); renderNameDropdown(); refreshAll();
+    renderStaffList(); renderNameDropdown(); renderWeeklyNameDropdown(); refreshAll();
   } catch (e) { alert(`刪除失敗：${e.message}`); }
 }
 
@@ -953,6 +960,16 @@ function toggleCharts(btn) {
   btn.textContent = hidden ? '收起' : '展開';
 }
 
+// ===== WEEKLY NAME DROPDOWN =====
+function renderWeeklyNameDropdown() {
+  const sel = g('ws-name');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">全隊（不分人）</option>' +
+    staff.map(s => `<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');
+  sel.value = cur; // restore selection if still valid
+}
+
 // ===== WEEKLY PERSON TABS =====
 function renderWeeklyPersonTabs() {
   const tabs = [{ label: '全部', key: '' }, ...staff.map(s => ({ label: s.name, key: s.name }))];
@@ -969,30 +986,32 @@ function switchWeeklyTab(key) {
 // ===== WEEKLY SECTION =====
 function renderWeeklySection() {
   renderWeeklyPersonTabs();
+  renderWeeklyNameDropdown();
 
   const thisWeek = getWeekStart(0);
   const lastWeek = getWeekStart(1);
-  const isAll    = !weeklyActiveTab;
+  const wsName   = weeklyActiveTab; // '' = 全隊, else person name
 
   // Date labels
   const fmtDate = d => d.slice(5).replace('-','/');
   const thisEnd = new Date(thisWeek); thisEnd.setDate(thisEnd.getDate() + 6);
   g('weekly-range-label').textContent =
-    `${isAll ? '全隊' : weeklyActiveTab}　本週 ${fmtDate(thisWeek)} ~ ${fmtDate(thisEnd.toISOString().slice(0,10))}`;
+    `${wsName || '全隊'}　本週 ${fmtDate(thisWeek)} ~ ${fmtDate(thisEnd.toISOString().slice(0,10))}`;
 
   // Posts for each week, filtered by person
-  const filterPosts = arr => isAll ? arr : arr.filter(p => p.name === weeklyActiveTab);
+  const filterPosts = arr => wsName ? arr.filter(p => p.name === wsName) : arr;
   const thisPosts = filterPosts(posts.filter(p => getMon(p.date) === thisWeek));
   const lastPosts = filterPosts(posts.filter(p => getMon(p.date) === lastWeek));
 
-  // weekly_stats entries (team-level)
-  const thisWS = weeklyStats.find(w => (w.week_start_date||'').slice(0,10) === thisWeek) || {};
-  const lastWS = weeklyStats.find(w => (w.week_start_date||'').slice(0,10) === lastWeek) || {};
+  // weekly_stats entries matched by (week + name)
+  const findWS = (week) =>
+    weeklyStats.find(w => (w.week_start_date||'').slice(0,10) === week && (w.name||'') === wsName) || {};
+  const thisWS = findWS(thisWeek);
+  const lastWS = findWS(lastWeek);
 
   const sumViews = arr => arr.reduce((s,p) => s+p.view, 0);
   const sumDeals = arr => arr.reduce((s,p) => s+p.deal, 0);
   const sumRev   = arr => arr.reduce((s,p) => s+p.revenue, 0);
-  const sumDms   = arr => arr.reduce((s,p) => s+(p.dms||0), 0);
 
   function cmpCard(label, curr, prev, unit = '') {
     const c = curr ?? null, p = prev ?? null;
@@ -1010,57 +1029,41 @@ function renderWeeklySection() {
     </div>`;
   }
 
-  const thisViews = sumViews(thisPosts);
-  const lastViews = sumViews(lastPosts);
-  // DMs: team tab → weekly_stats manual entry; individual tab → sum from posts
-  const thisDms = isAll
-    ? (thisWS.total_dms != null ? Number(thisWS.total_dms) : null)
-    : sumDms(thisPosts);
-  const lastDms = isAll
-    ? (lastWS.total_dms != null ? Number(lastWS.total_dms) : null)
-    : sumDms(lastPosts);
-  const thisDeals = sumDeals(thisPosts);
-  const lastDeals = sumDeals(lastPosts);
-  const thisRev   = sumRev(thisPosts);
-  const lastRev   = sumRev(lastPosts);
+  // DMs from weekly_stats entry (manual input); falls back to null if no entry
+  const thisDms = thisWS.total_dms != null ? Number(thisWS.total_dms) : null;
+  const lastDms = lastWS.total_dms != null ? Number(lastWS.total_dms) : null;
 
   g('weekly-cmp-grid').innerHTML = [
-    cmpCard('本週觀看數',  thisViews, lastViews),
-    cmpCard(isAll ? '本週私訊（手動）' : '本週私訊（貼文）', thisDms, lastDms),
-    cmpCard('本週成交數',  thisDeals, lastDeals),
-    cmpCard('本週入金金額', thisRev,  lastRev, ''),
+    cmpCard('本週觀看數',  sumViews(thisPosts), sumViews(lastPosts)),
+    cmpCard('本週私訊（手動）', thisDms, lastDms),
+    cmpCard('本週成交數',  sumDeals(thisPosts), sumDeals(lastPosts)),
+    cmpCard('本週入金金額', sumRev(thisPosts),  sumRev(lastPosts)),
   ].join('');
 
-  // Weekly entry form: only for team (全部) tab
-  const entryEl = document.querySelector('.weekly-entry');
-  if (entryEl) entryEl.style.display = isAll ? '' : 'none';
-  if (isAll) {
-    g('ws-date').value   = thisWeek;
-    g('ws-dms').value    = thisWS.total_dms    || '';
-    g('ws-fstart').value = thisWS.followers_start || '';
-    g('ws-fend').value   = thisWS.followers_end   || '';
-  }
+  // Weekly entry form: always visible, pre-select name + pre-fill from matching entry
+  g('ws-name').value   = wsName;
+  g('ws-date').value   = thisWeek;
+  g('ws-dms').value    = thisWS.total_dms    != null ? thisWS.total_dms    : '';
+  g('ws-fstart').value = thisWS.followers_start != null ? thisWS.followers_start : '';
+  g('ws-fend').value   = thisWS.followers_end   != null ? thisWS.followers_end   : '';
 
   // Build weekly charts
   Object.values(wkCh).forEach(c => c.destroy()); wkCh = {};
-
-  // Followers trend: team-level (from weekly_stats), only meaningful for 全部
-  const followersChartEl = g('ch-wk-followers').closest('.chart-card');
-  if (followersChartEl) followersChartEl.style.display = isAll ? '' : 'none';
 
   const B  = {responsive:true, maintainAspectRatio:false, animation:{duration:300}};
   const TT = {backgroundColor:'#2E2E2E', titleColor:'#F0EDE6', bodyColor:'#A09A8E', borderColor:'rgba(212,168,67,.2)', borderWidth:1};
   const NN = {display:false};
   const LS = sc({ticks:{color:'#6A6460', font:{size:10}, maxTicksLimit:8}});
 
-  if (isAll) {
-    const wsSorted    = [...weeklyStats].sort((a,b) => (a.week_start_date>b.week_start_date?1:-1)).slice(-12);
-    const wsLabels    = wsSorted.map(w => (w.week_start_date||'').slice(5,10).replace('-','/'));
-    const wsFollowers = wsSorted.map(w => (Number(w.followers_end||0) - Number(w.followers_start||0)));
-    wkCh.followers = new Chart(g('ch-wk-followers'), { type:'line',
-      data:{ labels: wsLabels, datasets:[{ data: wsFollowers, borderColor:'#7DC98A', backgroundColor:'rgba(125,201,138,.1)', fill:true, pointBackgroundColor:'#7DC98A', tension:0.3, pointRadius:3 }] },
-      options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:LS, y:sc()} } });
-  }
+  // Followers trend from weekly_stats, filtered by current name
+  const wsSorted    = [...weeklyStats].filter(w => (w.name||'') === wsName)
+                       .sort((a,b) => (a.week_start_date>b.week_start_date?1:-1)).slice(-12);
+  const wsLabels    = wsSorted.map(w => (w.week_start_date||'').slice(5,10).replace('-','/'));
+  const wsFollowers = wsSorted.map(w => (Number(w.followers_end||0) - Number(w.followers_start||0)));
+
+  wkCh.followers = new Chart(g('ch-wk-followers'), { type:'line',
+    data:{ labels: wsLabels, datasets:[{ data: wsFollowers, borderColor:'#7DC98A', backgroundColor:'rgba(125,201,138,.1)', fill:true, pointBackgroundColor:'#7DC98A', tension:0.3, pointRadius:3 }] },
+    options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:LS, y:sc()} } });
 
   // Engagement rate and deals from filtered posts by week (last 12 weeks)
   const wk = weeklyData(filterPosts(posts));
@@ -1076,6 +1079,7 @@ function renderWeeklySection() {
 
 async function saveWeeklyStats() {
   const week_start_date = g('ws-date').value;
+  const name            = g('ws-name').value;
   const followers_start = parseInt(g('ws-fstart').value) || 0;
   const followers_end   = parseInt(g('ws-fend').value)   || 0;
   const total_dms       = parseInt(g('ws-dms').value)    || 0;
@@ -1083,10 +1087,14 @@ async function saveWeeklyStats() {
   g('ws-err').textContent = '';
   if (!week_start_date) { g('ws-err').textContent = '缺少週開始日期'; return; }
 
-  // Compute from posts for that week
-  const wps = posts.filter(p => getMon(p.date) === week_start_date);
+  // Compute from posts for that week (filtered by name if set)
+  const wps = posts.filter(p => {
+    const wMatch = getMon(p.date) === week_start_date;
+    return name ? wMatch && p.name === name : wMatch;
+  });
   const body = JSON.stringify({
     week_start_date,
+    name,
     total_posts:   wps.length,
     total_views:   wps.reduce((s,p) => s+p.view, 0),
     total_likes:   wps.reduce((s,p) => s+p.like, 0),

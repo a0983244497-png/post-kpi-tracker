@@ -61,11 +61,15 @@ export async function initDb() {
       created_at       TIMESTAMPTZ DEFAULT NOW()
     )
   `);
-  // Seed default staff if table is empty
-  const { rows } = await pool.query('SELECT COUNT(*)::int AS cnt FROM staff');
-  if (rows[0].cnt === 0) {
-    await pool.query(`INSERT INTO staff (name) VALUES ('Gino'),('Darren'),('Josh'),('Jenna') ON CONFLICT DO NOTHING`);
-  }
+  // Migration: add name column + composite unique index (week + name)
+  await pool.query(`ALTER TABLE weekly_stats ADD COLUMN IF NOT EXISTS name VARCHAR(100) NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE weekly_stats DROP CONSTRAINT IF EXISTS weekly_stats_week_start_date_key`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS weekly_stats_week_name_uidx ON weekly_stats(week_start_date, name)`);
+
+  // Seed default staff (unconditional, skips if already exists)
+  await pool.query(
+    `INSERT INTO staff (name) VALUES ('Gino'),('Darren'),('Josh'),('Jenna'),('路克') ON CONFLICT (name) DO NOTHING`
+  );
   console.log('✓ Database ready');
 }
 
