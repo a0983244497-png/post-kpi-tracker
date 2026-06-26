@@ -1,0 +1,64 @@
+import express from 'express';
+import pool from '../db.js';
+
+const router = express.Router();
+
+router.get('/weekly-stats', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT * FROM weekly_stats ORDER BY week_start_date DESC LIMIT 52'
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error('[DB] GET weekly-stats:', e.message);
+    res.status(500).json({ error: '查詢失敗' });
+  }
+});
+
+router.post('/weekly-stats', async (req, res) => {
+  const {
+    week_start_date,
+    total_posts    = 0,
+    total_views    = 0,
+    total_likes    = 0,
+    total_replies  = 0,
+    total_reposts  = 0,
+    total_quotes   = 0,
+    total_dms      = 0,
+    conversions    = 0,
+    revenue        = 0,
+    followers_end  = 0,
+    followers_start = 0,
+  } = req.body;
+
+  if (!week_start_date) {
+    return res.status(400).json({ error: '缺少 week_start_date' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO weekly_stats
+         (week_start_date, total_posts, total_views, total_likes, total_replies,
+          total_reposts, total_quotes, total_dms, conversions, revenue,
+          followers_end, followers_start)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       ON CONFLICT (week_start_date) DO UPDATE SET
+         total_posts=$2, total_views=$3, total_likes=$4, total_replies=$5,
+         total_reposts=$6, total_quotes=$7, total_dms=$8, conversions=$9,
+         revenue=$10, followers_end=$11, followers_start=$12
+       RETURNING *`,
+      [
+        week_start_date,
+        total_posts, total_views, total_likes, total_replies,
+        total_reposts, total_quotes, total_dms, conversions, revenue,
+        followers_end, followers_start,
+      ]
+    );
+    res.json(rows[0]);
+  } catch (e) {
+    console.error('[DB] POST weekly-stats:', e.message);
+    res.status(500).json({ error: '儲存失敗' });
+  }
+});
+
+export default router;

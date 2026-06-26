@@ -24,6 +24,7 @@
   --text-muted: #6A6460;
   --danger: #C44F2B;
   --danger-bg: rgba(196,79,43,0.12);
+  --green: #7DC98A;
   --border: rgba(212,168,67,0.15);
   --border-strong: rgba(212,168,67,0.3);
   --radius: 10px;
@@ -32,13 +33,7 @@
   --font-body: 'Noto Sans TC', sans-serif;
 }
 html { font-size: 15px; }
-body {
-  background: var(--charcoal);
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  line-height: 1.6;
-  min-height: 100vh;
-}
+body { background: var(--charcoal); color: var(--text-primary); font-family: var(--font-body); line-height: 1.6; min-height: 100vh; }
 
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar { width: 6px; }
@@ -46,223 +41,82 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--charcoal-4); border-radius: 3px; }
 
 /* ===== HEADER ===== */
-.header {
-  background: var(--charcoal-2);
-  border-bottom: 1px solid var(--border);
-  padding: 0 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 56px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-.header-logo {
-  font-family: var(--font-display);
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--gold);
-  letter-spacing: .06em;
-  text-transform: uppercase;
-}
-.header-sub {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 1px;
-}
-.header-right {
-  font-size: 11px;
-  color: var(--text-muted);
-}
+.header { background: var(--charcoal-2); border-bottom: 1px solid var(--border); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
+.header-logo { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--gold); letter-spacing: .06em; text-transform: uppercase; }
+.header-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.header-right { font-size: 11px; color: var(--text-muted); }
 
 /* ===== LAYOUT ===== */
 .container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
 
-/* ===== STATS BAR ===== */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: 1.75rem;
-}
-.stat-card {
-  background: var(--charcoal-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: .875rem 1.125rem;
-}
-.stat-label {
-  font-size: 11px;
-  color: var(--text-muted);
-  letter-spacing: .04em;
-  margin-bottom: 4px;
-}
-.stat-val {
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--gold);
-}
+/* ===== SECTION NAV TABS ===== */
+.nav-section-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border-strong); margin-bottom: 1.75rem; }
+.ntab { padding: 11px 26px; font-size: 13px; font-weight: 700; color: var(--text-muted); background: none; border: none; border-bottom: 3px solid transparent; margin-bottom: -2px; cursor: pointer; letter-spacing: .06em; white-space: nowrap; transition: color .15s; font-family: var(--font-body); text-transform: uppercase; }
+.ntab:hover { color: var(--text-secondary); }
+.ntab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+/* ===== STATS GRID ===== */
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.75rem; }
+.stat-card { background: var(--charcoal-2); border: 1px solid var(--border); border-radius: var(--radius); padding: .875rem 1.125rem; }
+.stat-label { font-size: 11px; color: var(--text-muted); letter-spacing: .04em; margin-bottom: 4px; }
+.stat-val { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--gold); }
+.stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
 
 /* ===== TOOLBAR ===== */
-.toolbar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 1.25rem;
-  flex-wrap: wrap;
-  align-items: center;
-}
-.search-wrap {
-  flex: 1;
-  min-width: 180px;
-  position: relative;
-}
-.search-wrap svg {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-muted);
-  pointer-events: none;
-}
-.search-wrap input {
-  padding-left: 34px;
-  width: 100%;
-}
-input, select, textarea {
-  background: var(--charcoal-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  font-size: 13px;
-  padding: 7px 11px;
-  outline: none;
-  transition: border-color .15s;
-}
+.toolbar { display: flex; gap: 8px; margin-bottom: 1.25rem; flex-wrap: wrap; align-items: center; }
+.search-wrap { flex: 1; min-width: 180px; position: relative; }
+.search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+.search-wrap input { padding-left: 34px; width: 100%; }
+input, select, textarea { background: var(--charcoal-2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-body); font-size: 13px; padding: 7px 11px; outline: none; transition: border-color .15s; }
 input::placeholder, textarea::placeholder { color: var(--text-muted); }
 input:focus, select:focus, textarea:focus { border-color: var(--gold-dark); }
 select { cursor: pointer; }
 select option { background: var(--charcoal-2); }
 
 /* ===== BUTTONS ===== */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  padding: 7px 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-strong);
-  background: transparent;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: background .15s, border-color .15s;
-  white-space: nowrap;
-}
+.btn { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-body); font-size: 13px; font-weight: 500; padding: 7px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: transparent; color: var(--text-primary); cursor: pointer; transition: background .15s, border-color .15s; white-space: nowrap; }
 .btn:hover { background: var(--charcoal-3); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
-.btn-primary {
-  background: var(--gold);
-  border-color: var(--gold);
-  color: var(--charcoal);
-  font-weight: 700;
-}
+.btn-primary { background: var(--gold); border-color: var(--gold); color: var(--charcoal); font-weight: 700; }
 .btn-primary:hover { background: var(--gold-dark); border-color: var(--gold-dark); }
-.btn-danger {
-  border-color: rgba(196,79,43,0.4);
-  color: var(--danger);
-}
+.btn-danger { border-color: rgba(196,79,43,0.4); color: var(--danger); }
 .btn-danger:hover { background: var(--danger-bg); }
+.btn-edit { color: var(--gold); border-color: rgba(212,168,67,.3); }
+.btn-edit:hover { background: rgba(212,168,67,.1); border-color: var(--border-strong); }
 
 /* ===== ADD PANEL ===== */
-.add-panel {
-  background: var(--charcoal-2);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  padding: 1.375rem 1.5rem;
-  margin-bottom: 1.25rem;
-  display: none;
-}
+.add-panel { background: var(--charcoal-2); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 1.375rem 1.5rem; margin-bottom: 1.25rem; display: none; }
 .add-panel.open { display: block; }
-.panel-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--gold);
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  margin-bottom: 1rem;
-}
+.panel-title { font-size: 12px; font-weight: 700; color: var(--gold); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 1rem; }
 .form-grid { display: grid; gap: 10px; }
 .form-grid.c2 { grid-template-columns: 1fr 1fr; }
 .form-grid.c3 { grid-template-columns: 1fr 1fr 1fr; }
 .form-grid.c4 { grid-template-columns: repeat(4, 1fr); }
-.form-field label {
-  display: block;
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-bottom: 4px;
-  letter-spacing: .03em;
-}
-.form-field input,
-.form-field select,
-.form-field textarea { width: 100%; }
+.form-field label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; letter-spacing: .03em; }
+.form-field input, .form-field select, .form-field textarea { width: 100%; }
 .form-field textarea { resize: vertical; }
-.divider {
-  border: none;
-  border-top: 1px solid var(--border);
-  margin: 14px 0;
-}
+.divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
 .form-actions { display: flex; gap: 8px; margin-top: 14px; align-items: center; }
 .form-msg { font-size: 12px; color: var(--gold); margin-left: 4px; }
 .form-err { font-size: 12px; color: var(--danger); margin-left: 4px; }
 
 /* ===== LIST LABEL ===== */
-.list-meta {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-bottom: 10px;
-  letter-spacing: .03em;
-}
+.list-meta { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; letter-spacing: .03em; }
 
 /* ===== BADGES ===== */
-.badge {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 500;
-  padding: 2px 9px;
-  border-radius: 20px;
-  white-space: nowrap;
-}
-.t-market  { background: rgba(212,168,67,.15); color: #EAC96A; }
-.t-result  { background: rgba(80,180,100,.15); color: #7DC98A; }
-.t-loss    { background: rgba(196,79,43,.15);  color: #E07A5A; }
-.t-edu     { background: rgba(80,140,220,.15); color: #7AACE0; }
-.t-reminder{ background: rgba(160,154,142,.15);color: #B0AAA0; }
-.t-humor   { background: rgba(180,80,160,.15); color: #C98AB8; }
-.t-opinion { background: rgba(100,120,220,.15);color: #90A0E0; }
+.badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 2px 9px; border-radius: 20px; white-space: nowrap; }
+.t-market   { background: rgba(212,168,67,.15); color: #EAC96A; }
+.t-result   { background: rgba(80,180,100,.15);  color: #7DC98A; }
+.t-loss     { background: rgba(196,79,43,.15);   color: #E07A5A; }
+.t-edu      { background: rgba(80,140,220,.15);  color: #7AACE0; }
+.t-reminder { background: rgba(160,154,142,.15); color: #B0AAA0; }
+.t-humor    { background: rgba(180,80,160,.15);  color: #C98AB8; }
+.t-opinion  { background: rgba(100,120,220,.15); color: #90A0E0; }
 
 /* ===== POST CARDS ===== */
-.post-card {
-  background: var(--charcoal-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  margin-bottom: 10px;
-  overflow: hidden;
-  transition: border-color .15s;
-}
+.post-card { background: var(--charcoal-2); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; overflow: hidden; transition: border-color .15s; }
 .post-card:hover { border-color: var(--border-strong); }
-.post-card-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 13px 16px;
-  cursor: pointer;
-  user-select: none;
-}
+.post-card-header { display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px; cursor: pointer; user-select: none; }
 .post-card-header:hover { background: var(--charcoal-3); }
 .post-card-left { flex: 1; min-width: 0; }
 .post-tags { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; flex-wrap: wrap; }
@@ -272,115 +126,38 @@ select option { background: var(--charcoal-2); }
 .post-mini-stats { display: flex; gap: 14px; margin-top: 6px; flex-wrap: wrap; }
 .mini-stat { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
 .mini-stat strong { color: var(--text-primary); font-weight: 500; }
-.chevron {
-  flex-shrink: 0;
-  color: var(--text-muted);
-  margin-top: 2px;
-  transition: transform .2s;
-}
+.mini-er { font-size: 12px; color: var(--gold); font-weight: 600; }
+.chevron { flex-shrink: 0; color: var(--text-muted); margin-top: 2px; transition: transform .2s; }
 .chevron.open { transform: rotate(180deg); }
 
 /* ===== CARD BODY ===== */
-.post-card-body {
-  border-top: 1px solid var(--border);
-  padding: 16px;
-  display: none;
-}
+.post-card-body { border-top: 1px solid var(--border); padding: 16px; display: none; }
 .post-card-body.open { display: block; }
-.post-content-text {
-  font-size: 13px;
-  color: var(--text-secondary);
-  line-height: 1.75;
-  white-space: pre-wrap;
-  background: var(--charcoal-3);
-  border-radius: var(--radius-sm);
-  padding: 12px 14px;
-  margin-bottom: 14px;
-}
+.post-content-text { font-size: 13px; color: var(--text-secondary); line-height: 1.75; white-space: pre-wrap; background: var(--charcoal-3); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 14px; }
 .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
 .metrics-grid.c3 { grid-template-columns: repeat(3, 1fr); }
-.metric-box {
-  background: var(--charcoal-3);
-  border-radius: var(--radius-sm);
-  padding: .625rem .875rem;
-}
+.metrics-grid.c2 { grid-template-columns: repeat(2, 1fr); }
+.metric-box { background: var(--charcoal-3); border-radius: var(--radius-sm); padding: .625rem .875rem; }
 .metric-box-label { font-size: 11px; color: var(--text-muted); margin-bottom: 3px; }
-.metric-box-val {
-  font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--gold);
-}
-.bar-wrap {
-  height: 3px;
-  background: var(--charcoal-4);
-  border-radius: 3px;
-  margin-top: 5px;
-  overflow: hidden;
-}
+.metric-box-val { font-family: var(--font-display); font-size: 17px; font-weight: 700; color: var(--gold); }
+.metric-box-val.green { color: var(--green); }
+.bar-wrap { height: 3px; background: var(--charcoal-4); border-radius: 3px; margin-top: 5px; overflow: hidden; }
 .bar-fill { height: 3px; background: var(--gold); border-radius: 3px; }
 
 /* ===== LOADING / EMPTY ===== */
-.loading {
-  text-align: center;
-  padding: 3.5rem 2rem;
-  color: var(--text-muted);
-  font-size: 14px;
-}
-.loading-spinner {
-  width: 28px; height: 28px;
-  border: 2px solid var(--charcoal-4);
-  border-top-color: var(--gold);
-  border-radius: 50%;
-  animation: spin .7s linear infinite;
-  margin: 0 auto 12px;
-}
+.loading { text-align: center; padding: 3.5rem 2rem; color: var(--text-muted); font-size: 14px; }
+.loading-spinner { width: 28px; height: 28px; border: 2px solid var(--charcoal-4); border-top-color: var(--gold); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 12px; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.empty {
-  text-align: center;
-  padding: 3.5rem 2rem;
-  color: var(--text-muted);
-  font-size: 14px;
-}
+.empty { text-align: center; padding: 3.5rem 2rem; color: var(--text-muted); font-size: 14px; }
 .empty-icon { font-size: 32px; margin-bottom: 10px; opacity: .4; }
 
 /* ===== PERSON TABS ===== */
-.person-tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 1.5rem;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
+.person-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; overflow-x: auto; scrollbar-width: none; }
 .person-tabs::-webkit-scrollbar { display: none; }
-.ptab {
-  padding: 10px 22px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  letter-spacing: .04em;
-  white-space: nowrap;
-  transition: color .15s;
-  font-family: var(--font-body);
-}
+.ptab { padding: 10px 22px; font-size: 13px; font-weight: 600; color: var(--text-muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; letter-spacing: .04em; white-space: nowrap; transition: color .15s; font-family: var(--font-body); }
 .ptab:hover { color: var(--text-secondary); }
 .ptab.active { color: var(--gold); border-bottom-color: var(--gold); }
-.ptab-count {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 500;
-  background: var(--charcoal-3);
-  color: var(--text-muted);
-  border-radius: 10px;
-  padding: 1px 7px;
-  margin-left: 5px;
-  vertical-align: middle;
-}
+.ptab-count { display: inline-block; font-size: 11px; font-weight: 500; background: var(--charcoal-3); color: var(--text-muted); border-radius: 10px; padding: 1px 7px; margin-left: 5px; vertical-align: middle; }
 .ptab.active .ptab-count { background: rgba(212,168,67,.18); color: var(--gold); }
 
 /* ===== MODAL ===== */
@@ -396,9 +173,7 @@ select option { background: var(--charcoal-2); }
 .modal-add-row { display:flex; gap:8px; margin-top:16px; }
 .modal-add-row input { flex:1; background:var(--charcoal-3); border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 12px; color:var(--text-primary); font-family:var(--font-body); font-size:14px; }
 .modal-add-row input:focus { outline:none; border-color:var(--border-strong); }
-/* ===== EDIT BUTTON ===== */
-.btn-edit { color:var(--gold); border-color:rgba(212,168,67,.3); }
-.btn-edit:hover { background:rgba(212,168,67,.1); border-color:var(--border-strong); }
+
 /* ===== CHARTS ===== */
 .chart-section { margin-bottom: 1.5rem; }
 .chart-section-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
@@ -413,6 +188,44 @@ select option { background: var(--charcoal-2); }
 .chart-h { position:relative; height:200px; }
 .chart-h-sm { position:relative; height:160px; }
 
+/* ===== WEEKLY / MONTHLY SECTIONS ===== */
+.section-hd { margin-bottom: 1.5rem; }
+.section-hd-title { font-size: 12px; font-weight: 700; color: var(--gold); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 4px; }
+.section-hd-sub { font-size: 12px; color: var(--text-muted); }
+
+/* Comparison cards */
+.cmp-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+.cmp-card { background: var(--charcoal-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.125rem; }
+.cmp-label { font-size: 11px; color: var(--text-muted); letter-spacing: .04em; margin-bottom: 6px; }
+.cmp-curr { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--gold); line-height: 1.1; }
+.cmp-prev { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+.cmp-delta { font-weight: 600; }
+.cmp-delta.up   { color: var(--green); }
+.cmp-delta.down { color: var(--danger); }
+.cmp-delta.flat { color: var(--text-muted); }
+
+/* Weekly entry */
+.weekly-entry { background: var(--charcoal-2); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; }
+.weekly-entry-title { font-size: 11px; font-weight: 700; color: var(--gold); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 1rem; }
+
+/* Top posts */
+.top-section { margin-bottom: 1.5rem; }
+.top-section-title { font-size: 11px; font-weight: 700; color: var(--text-muted); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 10px; }
+.top-item { background: var(--charcoal-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 14px; }
+.top-rank { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--charcoal-4); width: 28px; flex-shrink: 0; }
+.top-rank.r1 { color: var(--gold); }
+.top-rank.r2 { color: var(--text-secondary); }
+.top-rank.r3 { color: var(--text-muted); }
+.top-info { flex: 1; min-width: 0; }
+.top-title { font-size: 13px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.top-val { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--gold); flex-shrink: 0; }
+
+/* Month selector */
+.month-selector { display: flex; gap: 8px; align-items: center; margin-bottom: 1.25rem; }
+.month-selector label { font-size: 12px; color: var(--text-muted); }
+.month-selector input { width: 140px; }
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 640px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -420,9 +233,11 @@ select option { background: var(--charcoal-2); }
   .form-grid.c3 { grid-template-columns: repeat(2, 1fr); }
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
   .metrics-grid.c3 { grid-template-columns: repeat(2, 1fr); }
+  .cmp-grid { grid-template-columns: repeat(2, 1fr); }
   .container { padding: 1.25rem 1rem 3rem; }
   .header { padding: 0 1rem; }
   .ptab { padding: 10px 14px; font-size: 12px; }
+  .ntab { padding: 10px 16px; font-size: 11px; }
   .chart-r2, .chart-r3 { grid-template-columns: 1fr; }
 }
 </style>
@@ -439,120 +254,206 @@ select option { background: var(--charcoal-2); }
 
 <main class="container">
 
-  <!-- 業務分頁 -->
-  <div class="person-tabs" id="person-tabs"></div>
-
-  <!-- 統計列 -->
-  <div class="stats-grid" id="stats-grid"></div>
-
-  <!-- 數據分析 -->
-  <div class="chart-section" id="chart-section">
-    <div class="chart-section-hd">
-      <span class="chart-section-hd-label">數據分析</span>
-      <button class="chart-toggle-btn" id="chart-toggle-btn" onclick="toggleCharts(this)">收起</button>
-    </div>
-    <div id="charts-body">
-      <div class="chart-row chart-r2">
-        <div class="chart-card"><p class="chart-card-title">業務貼文占比</p><div class="chart-h"><canvas id="ch-pp"></canvas></div></div>
-        <div class="chart-card"><p class="chart-card-title">貼文類型分布</p><div class="chart-h"><canvas id="ch-tp"></canvas></div></div>
-      </div>
-      <div class="chart-row chart-r3">
-        <div class="chart-card"><p class="chart-card-title">各業務平均觀看數</p><div class="chart-h-sm"><canvas id="ch-av"></canvas></div></div>
-        <div class="chart-card"><p class="chart-card-title">各業務引流轉化率</p><div class="chart-h-sm"><canvas id="ch-lr"></canvas></div></div>
-        <div class="chart-card"><p class="chart-card-title">各業務總入金金額</p><div class="chart-h-sm"><canvas id="ch-rv"></canvas></div></div>
-      </div>
-      <div class="chart-row chart-r2">
-        <div class="chart-card"><p class="chart-card-title">每週貼文數趨勢</p><div class="chart-h"><canvas id="ch-wp"></canvas></div></div>
-        <div class="chart-card"><p class="chart-card-title">每週觀看數趨勢</p><div class="chart-h"><canvas id="ch-wv"></canvas></div></div>
-      </div>
-    </div>
+  <!-- ===== 分區導覽 ===== -->
+  <div class="nav-section-tabs">
+    <button class="ntab active" onclick="switchSection('posts')">貼文記錄</button>
+    <button class="ntab" onclick="switchSection('weekly')">每週統計</button>
+    <button class="ntab" onclick="switchSection('monthly')">月度總覽</button>
   </div>
 
-  <!-- 工具列 -->
-  <div class="toolbar">
-    <div class="search-wrap">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input type="text" id="search" placeholder="搜尋標題…" oninput="render()">
-    </div>
-    <select id="filter-type" onchange="render()">
-      <option value="">全部類型</option>
-      <option value="market">市場回顧</option>
-      <option value="result">戰果分享</option>
-      <option value="loss">虧損反思</option>
-      <option value="edu">教育內容</option>
-      <option value="reminder">溫馨提醒</option>
-      <option value="humor">互動幽默</option>
-      <option value="opinion">個人觀點</option>
-    </select>
-    <select id="sort-by" onchange="render()">
-      <option value="date">最新日期</option>
-      <option value="view">觀看最多</option>
-      <option value="deal">成交最多</option>
-      <option value="lead">引流最多</option>
-    </select>
-    <button class="btn btn-primary" onclick="toggleAdd()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-      新增貼文
-    </button>
-    <button class="btn" onclick="exportCSV()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      匯出 CSV
-    </button>
-    <button class="btn" onclick="openStaffModal()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      管理業務
-    </button>
-  </div>
+  <!-- =====================================================
+       SECTION: 貼文記錄
+  ====================================================== -->
+  <div id="section-posts">
 
-  <!-- 新增面板 -->
-  <div class="add-panel" id="add-panel">
-    <div class="panel-title" id="panel-title">新增貼文紀錄</div>
-    <div class="form-grid c2">
-      <div class="form-field"><label>業務姓名</label>
-        <select id="a-name"><option value="">選擇業務</option></select>
-      </div>
-      <div class="form-field"><label>發文日期</label><input type="date" id="a-date"></div>
-    </div>
-    <div class="form-grid c3" style="margin-top:10px">
-      <div class="form-field">
-        <label>貼文類型</label>
-        <select id="a-type">
-          <option value="">選擇類型</option>
-          <option value="market">市場回顧</option>
-          <option value="result">戰果分享</option>
-          <option value="loss">虧損反思</option>
-          <option value="edu">教育內容</option>
-          <option value="reminder">溫馨提醒</option>
-          <option value="humor">互動幽默</option>
-          <option value="opinion">個人觀點</option>
-        </select>
-      </div>
-      <div class="form-field" style="grid-column:span 2"><label>標題／摘要</label><input type="text" id="a-title" placeholder="貼文前幾個字或關鍵摘要"></div>
-    </div>
-    <div class="form-field" style="margin-top:10px"><label>貼文內容（選填）</label><textarea id="a-content" rows="3" placeholder="貼文全文或重點內容…"></textarea></div>
-    <hr class="divider">
-    <div class="form-grid c4">
-      <div class="form-field"><label>觀看數</label><input type="number" id="a-view" placeholder="0" min="0"></div>
-      <div class="form-field"><label>按讚數</label><input type="number" id="a-like" placeholder="0" min="0"></div>
-      <div class="form-field"><label>留言數</label><input type="number" id="a-comment" placeholder="0" min="0"></div>
-      <div class="form-field"><label>轉發 / 收藏</label><input type="number" id="a-share" placeholder="0" min="0"></div>
-    </div>
-    <div class="form-grid c3" style="margin-top:10px">
-      <div class="form-field"><label>引流人數</label><input type="number" id="a-lead" placeholder="0" min="0"></div>
-      <div class="form-field"><label>成交人數</label><input type="number" id="a-deal" placeholder="0" min="0"></div>
-      <div class="form-field"><label>入金金額（選填）</label><input type="number" id="a-rev" placeholder="0" min="0"></div>
-    </div>
-    <div class="form-actions">
-      <button class="btn btn-primary" id="save-btn" onclick="addPost()">儲存紀錄</button>
-      <button class="btn" onclick="toggleAdd()">取消</button>
-      <span class="form-msg" id="add-msg"></span>
-      <span class="form-err" id="add-err"></span>
-    </div>
-  </div>
+    <!-- 業務分頁 -->
+    <div class="person-tabs" id="person-tabs"></div>
 
-  <!-- 列表 -->
-  <div class="list-meta" id="list-meta"></div>
-  <div id="post-list"></div>
+    <!-- 統計列 (6 cards / 3 col × 2 row) -->
+    <div class="stats-grid" id="stats-grid"></div>
+
+    <!-- 數據分析 -->
+    <div class="chart-section" id="chart-section">
+      <div class="chart-section-hd">
+        <span class="chart-section-hd-label">數據分析</span>
+        <button class="chart-toggle-btn" id="chart-toggle-btn" onclick="toggleCharts(this)">收起</button>
+      </div>
+      <div id="charts-body">
+        <div class="chart-row chart-r2">
+          <div class="chart-card"><p class="chart-card-title">業務貼文占比</p><div class="chart-h"><canvas id="ch-pp"></canvas></div></div>
+          <div class="chart-card"><p class="chart-card-title">貼文類型分布</p><div class="chart-h"><canvas id="ch-tp"></canvas></div></div>
+        </div>
+        <div class="chart-row chart-r3">
+          <div class="chart-card"><p class="chart-card-title">各業務平均觀看數</p><div class="chart-h-sm"><canvas id="ch-av"></canvas></div></div>
+          <div class="chart-card"><p class="chart-card-title">各業務引流轉化率</p><div class="chart-h-sm"><canvas id="ch-lr"></canvas></div></div>
+          <div class="chart-card"><p class="chart-card-title">各業務總入金金額</p><div class="chart-h-sm"><canvas id="ch-rv"></canvas></div></div>
+        </div>
+        <div class="chart-row chart-r2">
+          <div class="chart-card"><p class="chart-card-title">每週貼文數趨勢</p><div class="chart-h"><canvas id="ch-wp"></canvas></div></div>
+          <div class="chart-card"><p class="chart-card-title">每週觀看數趨勢</p><div class="chart-h"><canvas id="ch-wv"></canvas></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 工具列 -->
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="search" placeholder="搜尋標題…" oninput="render()">
+      </div>
+      <select id="filter-type" onchange="render()">
+        <option value="">全部類型</option>
+        <option value="market">市場回顧</option>
+        <option value="result">戰果分享</option>
+        <option value="loss">虧損反思</option>
+        <option value="edu">教育內容</option>
+        <option value="reminder">溫馨提醒</option>
+        <option value="humor">互動幽默</option>
+        <option value="opinion">個人觀點</option>
+      </select>
+      <select id="sort-by" onchange="render()">
+        <option value="date">最新日期</option>
+        <option value="view">觀看最多</option>
+        <option value="er">互動率最高</option>
+        <option value="deal">成交最多</option>
+        <option value="lead">引流最多</option>
+      </select>
+      <button class="btn btn-primary" onclick="toggleAdd()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        新增貼文
+      </button>
+      <button class="btn" onclick="exportCSV()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        匯出 CSV
+      </button>
+      <button class="btn" onclick="openStaffModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        管理業務
+      </button>
+    </div>
+
+    <!-- 新增 / 編輯面板 -->
+    <div class="add-panel" id="add-panel">
+      <div class="panel-title" id="panel-title">新增貼文紀錄</div>
+      <div class="form-grid c2">
+        <div class="form-field"><label>業務姓名</label>
+          <select id="a-name"><option value="">選擇業務</option></select>
+        </div>
+        <div class="form-field"><label>發文日期</label><input type="date" id="a-date"></div>
+      </div>
+      <div class="form-grid c3" style="margin-top:10px">
+        <div class="form-field">
+          <label>貼文類型</label>
+          <select id="a-type">
+            <option value="">選擇類型</option>
+            <option value="market">市場回顧</option>
+            <option value="result">戰果分享</option>
+            <option value="loss">虧損反思</option>
+            <option value="edu">教育內容</option>
+            <option value="reminder">溫馨提醒</option>
+            <option value="humor">互動幽默</option>
+            <option value="opinion">個人觀點</option>
+          </select>
+        </div>
+        <div class="form-field" style="grid-column:span 2"><label>標題／摘要</label><input type="text" id="a-title" placeholder="貼文前幾個字或關鍵摘要"></div>
+      </div>
+      <div class="form-field" style="margin-top:10px"><label>貼文內容（選填）</label><textarea id="a-content" rows="3" placeholder="貼文全文或重點內容…"></textarea></div>
+      <hr class="divider">
+      <div class="form-grid c4">
+        <div class="form-field"><label>觀看數</label><input type="number" id="a-view" placeholder="0" min="0"></div>
+        <div class="form-field"><label>按讚數</label><input type="number" id="a-like" placeholder="0" min="0"></div>
+        <div class="form-field"><label>留言數</label><input type="number" id="a-comment" placeholder="0" min="0"></div>
+        <div class="form-field"><label>轉發 / 收藏</label><input type="number" id="a-share" placeholder="0" min="0"></div>
+      </div>
+      <div class="form-grid c4" style="margin-top:10px">
+        <div class="form-field"><label>回覆數</label><input type="number" id="a-replies" placeholder="0" min="0"></div>
+        <div class="form-field"><label>轉發數 (Repost)</label><input type="number" id="a-reposts" placeholder="0" min="0"></div>
+        <div class="form-field"><label>引用數 (Quote)</label><input type="number" id="a-quotes" placeholder="0" min="0"></div>
+        <div class="form-field"><label>私訊數 (DM)</label><input type="number" id="a-dms" placeholder="0" min="0"></div>
+      </div>
+      <div class="form-grid c3" style="margin-top:10px">
+        <div class="form-field"><label>引流人數</label><input type="number" id="a-lead" placeholder="0" min="0"></div>
+        <div class="form-field"><label>成交人數</label><input type="number" id="a-deal" placeholder="0" min="0"></div>
+        <div class="form-field"><label>入金金額（選填）</label><input type="number" id="a-rev" placeholder="0" min="0"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="save-btn" onclick="addPost()">儲存紀錄</button>
+        <button class="btn" onclick="toggleAdd()">取消</button>
+        <span class="form-msg" id="add-msg"></span>
+        <span class="form-err" id="add-err"></span>
+      </div>
+    </div>
+
+    <!-- 列表 -->
+    <div class="list-meta" id="list-meta"></div>
+    <div id="post-list"></div>
+
+  </div><!-- /section-posts -->
+
+  <!-- =====================================================
+       SECTION: 每週統計
+  ====================================================== -->
+  <div id="section-weekly" style="display:none">
+
+    <div class="section-hd">
+      <div class="section-hd-title">本週 vs 上週</div>
+      <div class="section-hd-sub" id="weekly-range-label"></div>
+    </div>
+
+    <!-- 對比卡片 -->
+    <div class="cmp-grid" id="weekly-cmp-grid"></div>
+
+    <!-- 週報登記 -->
+    <div class="weekly-entry">
+      <div class="weekly-entry-title">週報登記（粉絲 / 私訊）</div>
+      <div class="form-grid c2">
+        <div class="form-field"><label>週開始日期</label><input type="date" id="ws-date" readonly style="opacity:.6"></div>
+        <div class="form-field"><label>私訊數（手動）</label><input type="number" id="ws-dms" placeholder="0" min="0"></div>
+      </div>
+      <div class="form-grid c2" style="margin-top:10px">
+        <div class="form-field"><label>週初粉絲數</label><input type="number" id="ws-fstart" placeholder="0" min="0"></div>
+        <div class="form-field"><label>週末粉絲數</label><input type="number" id="ws-fend" placeholder="0" min="0"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveWeeklyStats()">儲存本週數據</button>
+        <span class="form-msg" id="ws-msg"></span>
+        <span class="form-err" id="ws-err"></span>
+      </div>
+    </div>
+
+    <!-- 趨勢圖 -->
+    <div class="chart-row chart-r3">
+      <div class="chart-card"><p class="chart-card-title">週淨增粉絲</p><div class="chart-h"><canvas id="ch-wk-followers"></canvas></div></div>
+      <div class="chart-card"><p class="chart-card-title">週平均互動率 %</p><div class="chart-h"><canvas id="ch-wk-er"></canvas></div></div>
+      <div class="chart-card"><p class="chart-card-title">週成交數</p><div class="chart-h"><canvas id="ch-wk-deals"></canvas></div></div>
+    </div>
+
+  </div><!-- /section-weekly -->
+
+  <!-- =====================================================
+       SECTION: 月度總覽
+  ====================================================== -->
+  <div id="section-monthly" style="display:none">
+
+    <div class="month-selector">
+      <label>選擇月份</label>
+      <input type="month" id="month-picker" onchange="renderMonthlySection()">
+    </div>
+
+    <div class="stats-grid" id="monthly-stats-grid"></div>
+
+    <div class="chart-row chart-r2" style="margin-bottom:1.5rem">
+      <div class="top-section">
+        <div class="top-section-title">互動率 Top 3</div>
+        <div id="top-er-list"></div>
+      </div>
+      <div class="top-section">
+        <div class="top-section-title">觀看數 Top 3</div>
+        <div id="top-view-list"></div>
+      </div>
+    </div>
+
+  </div><!-- /section-monthly -->
 
   <!-- 管理業務 Modal -->
   <div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
@@ -574,41 +475,65 @@ select option { background: var(--charcoal-2); }
 
 <script>
 // ===== CONSTANTS =====
-
 const TYPE_MAP = {
-  market: '市場回顧', result: '戰果分享', loss: '虧損反思',
-  edu: '教育內容', reminder: '溫馨提醒', humor: '互動幽默', opinion: '個人觀點'
+  market:'市場回顧', result:'戰果分享', loss:'虧損反思',
+  edu:'教育內容', reminder:'溫馨提醒', humor:'互動幽默', opinion:'個人觀點'
 };
 const TYPE_CLS = {
-  market: 't-market', result: 't-result', loss: 't-loss',
-  edu: 't-edu', reminder: 't-reminder', humor: 't-humor', opinion: 't-opinion'
+  market:'t-market', result:'t-result', loss:'t-loss',
+  edu:'t-edu', reminder:'t-reminder', humor:'t-humor', opinion:'t-opinion'
 };
 
 // ===== STATE =====
-let posts      = [];
-let staff      = [];
-let openIds    = new Set();
-let activeTab  = '';   // '' = 全部，否則為業務名稱
-let editingId  = null; // null = 新增模式，number = 編輯模式
+let posts       = [];
+let staff       = [];
+let weeklyStats = [];
+let openIds     = new Set();
+let activeTab   = '';
+let editingId   = null;
+let currentSection = 'posts';
 
 // ===== DOM HELPERS =====
 function g(id) { return document.getElementById(id); }
 function nv(id) { return parseInt(g(id).value) || 0; }
 function pct(a, b) { return b ? ((a / b) * 100).toFixed(1) : '0'; }
 function esc(s) {
-  return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function engRate(p) {
+  if (!p.view) return 0;
+  return (p.like + (p.replies||0) + (p.reposts||0) + (p.quotes||0)) / p.view * 100;
+}
+function getMon(s) {
+  const d = new Date(s + 'T12:00:00'), dow = d.getDay() || 7;
+  d.setDate(d.getDate() - dow + 1);
+  return d.toISOString().slice(0,10);
+}
+function getWeekStart(offsetWeeks = 0) {
+  const d = new Date();
+  const dow = d.getDay() || 7;
+  d.setDate(d.getDate() - dow + 1 - offsetWeeks * 7);
+  return d.toISOString().slice(0, 10);
 }
 
 // ===== API =====
 async function apiFetch(path, opts = {}) {
   const res = await fetch(path, opts);
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `HTTP ${res.status}`);
-  }
+  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.error || `HTTP ${res.status}`); }
   return res.json();
+}
+
+// ===== SECTION SWITCHING =====
+function switchSection(name) {
+  currentSection = name;
+  ['posts','weekly','monthly'].forEach(s => {
+    g(`section-${s}`).style.display = s === name ? '' : 'none';
+  });
+  document.querySelectorAll('.ntab').forEach((t, i) => {
+    t.classList.toggle('active', ['posts','weekly','monthly'][i] === name);
+  });
+  if (name === 'weekly')  renderWeeklySection();
+  if (name === 'monthly') renderMonthlySection();
 }
 
 // ===== PERSON TABS =====
@@ -616,7 +541,7 @@ function renderPersonTabs() {
   const tabs = [{ label: '全部', key: '' }, ...staff.map(s => ({ label: s.name, key: s.name }))];
   g('person-tabs').innerHTML = tabs.map(t => {
     const cnt = t.key ? posts.filter(p => p.name === t.key).length : posts.length;
-    return `<button class="ptab${activeTab === t.key ? ' active' : ''}" onclick="switchTab('${t.key}')">
+    return `<button class="ptab${activeTab === t.key ? ' active' : ''}" onclick="switchTab('${esc(t.key)}')">
       ${esc(t.label)}<span class="ptab-count">${cnt}</span>
     </button>`;
   }).join('');
@@ -628,18 +553,34 @@ function switchTab(key) {
   refreshAll();
 }
 
-// ===== STATS（依當前 tab 過濾）=====
+// ===== STATS (6 cards) =====
 function renderStats() {
   const src = activeTab ? posts.filter(p => p.name === activeTab) : posts;
-  const tv  = src.reduce((s, p) => s + p.view, 0);
-  const tl  = src.reduce((s, p) => s + p.lead, 0);
-  const td  = src.reduce((s, p) => s + p.deal, 0);
+  const tv  = src.reduce((s,p) => s + p.view, 0);
+  const tl  = src.reduce((s,p) => s + p.lead, 0);
+  const td  = src.reduce((s,p) => s + p.deal, 0);
+
+  // Average engagement rate
+  const avgEr = src.length
+    ? (src.reduce((s,p) => s + engRate(p), 0) / src.length).toFixed(2)
+    : '0';
+
+  // This week net followers from weeklyStats
+  const thisWeek  = getWeekStart(0);
+  const thisWS    = weeklyStats.find(w => (w.week_start_date||'').slice(0,10) === thisWeek);
+  const netFollow = thisWS ? (thisWS.followers_end - thisWS.followers_start) : null;
+  const netFollowTxt = netFollow !== null
+    ? (netFollow >= 0 ? `+${netFollow}` : `${netFollow}`)
+    : '—';
+
   const label = activeTab || '全部';
   g('stats-grid').innerHTML = `
     <div class="stat-card"><div class="stat-label">${esc(label)} 貼文數</div><div class="stat-val">${src.length}</div></div>
     <div class="stat-card"><div class="stat-label">總觀看數</div><div class="stat-val">${tv.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="stat-label">觀看 → 引流</div><div class="stat-val">${pct(tl, tv)}%</div></div>
-    <div class="stat-card"><div class="stat-label">引流 → 成交</div><div class="stat-val">${pct(td, tl)}%</div></div>`;
+    <div class="stat-card"><div class="stat-label">平均互動率</div><div class="stat-val">${avgEr}%</div></div>
+    <div class="stat-card"><div class="stat-label">觀看 → 引流</div><div class="stat-val">${pct(tl,tv)}%</div></div>
+    <div class="stat-card"><div class="stat-label">引流 → 成交</div><div class="stat-val">${pct(td,tl)}%</div></div>
+    <div class="stat-card"><div class="stat-label">本週淨增粉絲</div><div class="stat-val">${netFollowTxt}</div></div>`;
 }
 
 // ===== ADD PANEL =====
@@ -674,9 +615,12 @@ async function addPost() {
   const body = JSON.stringify({
     name, date, type, title,
     content: g('a-content').value.trim(),
-    view:    nv('a-view'), like: nv('a-like'),
-    comment: nv('a-comment'), share: nv('a-share'),
-    lead:    nv('a-lead'), deal: nv('a-deal'), revenue: nv('a-rev')
+    view:    nv('a-view'),    like:    nv('a-like'),
+    comment: nv('a-comment'), share:   nv('a-share'),
+    replies: nv('a-replies'), reposts: nv('a-reposts'),
+    quotes:  nv('a-quotes'),  dms:     nv('a-dms'),
+    lead:    nv('a-lead'),    deal:    nv('a-deal'),
+    revenue: nv('a-rev'),
   });
 
   const btn = g('save-btn');
@@ -696,8 +640,10 @@ async function addPost() {
       posts.unshift(saved);
       g('add-msg').textContent = '已新增！';
     }
-    ['a-name','a-type','a-title','a-content','a-view','a-like','a-comment','a-share','a-lead','a-deal','a-rev']
-      .forEach(id => { g(id).value = ''; });
+    ['a-name','a-type','a-title','a-content',
+     'a-view','a-like','a-comment','a-share',
+     'a-replies','a-reposts','a-quotes','a-dms',
+     'a-lead','a-deal','a-rev'].forEach(id => { g(id).value = ''; });
     g('a-date').value = new Date().toISOString().split('T')[0];
     setTimeout(() => { g('add-msg').textContent = ''; }, 2500);
     refreshAll();
@@ -713,13 +659,11 @@ async function addPost() {
 async function deletePost(id) {
   if (!confirm('確定刪除這筆紀錄？')) return;
   try {
-    await apiFetch(`/api/posts/${id}`, { method: 'DELETE' });
+    await apiFetch(`/api/posts/${id}`, { method:'DELETE' });
     posts = posts.filter(p => p.id !== id);
     openIds.delete(id);
     refreshAll();
-  } catch (e) {
-    alert(`刪除失敗：${e.message}`);
-  }
+  } catch (e) { alert(`刪除失敗：${e.message}`); }
 }
 
 // ===== TOGGLE CARD =====
@@ -729,19 +673,20 @@ function toggleCard(id) {
   render();
 }
 
-// ===== FILTERED DATA（tab + 搜尋 + 類型 + 排序）=====
+// ===== FILTERED DATA =====
 function filtered() {
   const q  = g('search').value.toLowerCase();
   const ft = g('filter-type').value;
   const sb = g('sort-by').value;
   let data = posts.filter(p => {
     if (activeTab && p.name !== activeTab) return false;
-    if (ft && p.type !== ft)              return false;
-    if (q  && !p.title.toLowerCase().includes(q)) return false;
+    if (ft && p.type !== ft) return false;
+    if (q && !p.title.toLowerCase().includes(q)) return false;
     return true;
   });
   data.sort((a, b) => {
     if (sb === 'view') return b.view - a.view;
+    if (sb === 'er')   return engRate(b) - engRate(a);
     if (sb === 'deal') return b.deal - a.deal;
     if (sb === 'lead') return b.lead - a.lead;
     return b.date.localeCompare(a.date);
@@ -749,7 +694,7 @@ function filtered() {
   return data;
 }
 
-// ===== RENDER =====
+// ===== RENDER POSTS =====
 function render() {
   const data = filtered();
   const tabLabel = activeTab || '全部';
@@ -763,6 +708,7 @@ function render() {
   g('post-list').innerHTML = data.map(p => {
     const isOpen   = openIds.has(p.id);
     const convRate = p.lead ? ((p.deal / p.lead) * 100).toFixed(1) : '0';
+    const er       = engRate(p).toFixed(2);
     const barW     = Math.round(p.view / maxView * 100);
     return `
     <div class="post-card" id="card-${p.id}">
@@ -781,12 +727,13 @@ function render() {
             </div>
             <div class="mini-stat">引流 <strong>${p.lead}</strong></div>
             <div class="mini-stat">成交 <strong>${p.deal}</strong></div>
+            ${p.view ? `<span class="mini-er">互動率 ${er}%</span>` : ''}
             ${p.revenue ? `<div class="mini-stat">入金 <strong>$${p.revenue.toLocaleString()}</strong></div>` : ''}
           </div>
         </div>
-        <svg class="chevron ${isOpen ? 'open' : ''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        <svg class="chevron ${isOpen?'open':''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
-      <div class="post-card-body ${isOpen ? 'open' : ''}">
+      <div class="post-card-body ${isOpen?'open':''}">
         ${p.content ? `<div class="post-content-text">${esc(p.content)}</div>` : ''}
         <div class="metrics-grid">
           <div class="metric-box">
@@ -798,12 +745,21 @@ function render() {
           <div class="metric-box"><div class="metric-box-label">留言</div><div class="metric-box-val">${p.comment}</div></div>
           <div class="metric-box"><div class="metric-box-label">轉發 / 收藏</div><div class="metric-box-val">${p.share}</div></div>
         </div>
+        <div class="metrics-grid">
+          <div class="metric-box"><div class="metric-box-label">回覆數</div><div class="metric-box-val">${p.replies||0}</div></div>
+          <div class="metric-box"><div class="metric-box-label">轉發數 (Repost)</div><div class="metric-box-val">${p.reposts||0}</div></div>
+          <div class="metric-box"><div class="metric-box-label">引用數 (Quote)</div><div class="metric-box-val">${p.quotes||0}</div></div>
+          <div class="metric-box"><div class="metric-box-label">互動率</div><div class="metric-box-val green">${er}%</div></div>
+        </div>
         <div class="metrics-grid c3">
           <div class="metric-box"><div class="metric-box-label">引流人數</div><div class="metric-box-val">${p.lead}</div></div>
           <div class="metric-box"><div class="metric-box-label">成交人數</div><div class="metric-box-val">${p.deal}</div></div>
           <div class="metric-box"><div class="metric-box-label">引流 → 成交率</div><div class="metric-box-val">${convRate}%</div></div>
         </div>
-        ${p.revenue ? `<div class="metric-box" style="margin-top:8px;display:inline-block;min-width:140px"><div class="metric-box-label">入金金額</div><div class="metric-box-val">$${p.revenue.toLocaleString()}</div></div>` : ''}
+        <div class="metrics-grid c2" style="margin-top:0">
+          ${p.dms ? `<div class="metric-box"><div class="metric-box-label">私訊數 (DM)</div><div class="metric-box-val">${p.dms}</div></div>` : ''}
+          ${p.revenue ? `<div class="metric-box"><div class="metric-box-label">入金金額</div><div class="metric-box-val">$${p.revenue.toLocaleString()}</div></div>` : ''}
+        </div>
         <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-edit" onclick="editPost(${p.id})">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -819,14 +775,20 @@ function render() {
   }).join('');
 }
 
-// ===== EXPORT CSV（依當前 tab 範圍）=====
+// ===== EXPORT CSV =====
 function exportCSV() {
   const data   = filtered();
-  const header = '業務,日期,類型,標題,觀看,按讚,留言,轉發收藏,引流,成交,入金金額,引流成交率%';
+  const header = '業務,日期,類型,標題,觀看,按讚,留言,轉發收藏,回覆,轉發(Repost),引用,私訊,互動率%,引流,成交,入金金額,引流成交率%';
   const rows   = data.map(p => {
-    const rate = p.lead ? ((p.deal / p.lead) * 100).toFixed(1) : 0;
-    return [p.name, p.date, TYPE_MAP[p.type] || p.type, `"${p.title.replace(/"/g,'""')}"`,
-      p.view, p.like, p.comment, p.share, p.lead, p.deal, p.revenue, rate].join(',');
+    const er   = p.view ? (engRate(p)).toFixed(2) : 0;
+    const conv = p.lead ? ((p.deal / p.lead) * 100).toFixed(1) : 0;
+    return [
+      p.name, p.date, TYPE_MAP[p.type] || p.type,
+      `"${p.title.replace(/"/g,'""')}"`,
+      p.view, p.like, p.comment, p.share,
+      p.replies||0, p.reposts||0, p.quotes||0, p.dms||0,
+      er, p.lead, p.deal, p.revenue, conv
+    ].join(',');
   });
   const csv = '﻿' + [header, ...rows].join('\n');
   const a   = document.createElement('a');
@@ -849,6 +811,10 @@ function editPost(postId) {
   g('a-like').value    = p.like;
   g('a-comment').value = p.comment;
   g('a-share').value   = p.share;
+  g('a-replies').value = p.replies || 0;
+  g('a-reposts').value = p.reposts || 0;
+  g('a-quotes').value  = p.quotes  || 0;
+  g('a-dms').value     = p.dms     || 0;
   g('a-lead').value    = p.lead;
   g('a-deal').value    = p.deal;
   g('a-rev').value     = p.revenue;
@@ -869,7 +835,6 @@ function renderNameDropdown() {
 // ===== STAFF MODAL =====
 function openStaffModal() { renderStaffList(); g('staff-modal').style.display = 'flex'; }
 function closeStaffModal() { g('staff-modal').style.display = 'none'; }
-
 function renderStaffList() {
   if (!staff.length) {
     g('staff-list').innerHTML = '<p style="color:var(--text-muted);font-size:13px;padding:8px 0">尚無業務人員</p>';
@@ -881,7 +846,6 @@ function renderStaffList() {
       <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="deleteStaff(${s.id})">刪除</button>
     </div>`).join('');
 }
-
 async function addStaff() {
   const name = g('new-staff-name').value.trim();
   g('staff-err').textContent = '';
@@ -890,14 +854,9 @@ async function addStaff() {
     const s = await apiFetch('/api/staff', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name}) });
     staff.push(s);
     g('new-staff-name').value = '';
-    renderStaffList();
-    renderNameDropdown();
-    refreshAll();
-  } catch (e) {
-    g('staff-err').textContent = e.message;
-  }
+    renderStaffList(); renderNameDropdown(); refreshAll();
+  } catch (e) { g('staff-err').textContent = e.message; }
 }
-
 async function deleteStaff(id) {
   const member = staff.find(s => s.id === id);
   if (!member) return;
@@ -909,18 +868,15 @@ async function deleteStaff(id) {
   try {
     await apiFetch(`/api/staff/${id}`, { method:'DELETE' });
     staff = staff.filter(s => s.id !== id);
-    renderStaffList();
-    renderNameDropdown();
-    refreshAll();
-  } catch (e) {
-    alert(`刪除失敗：${e.message}`);
-  }
+    renderStaffList(); renderNameDropdown(); refreshAll();
+  } catch (e) { alert(`刪除失敗：${e.message}`); }
 }
 
-// ===== CHARTS =====
+// ===== CHARTS (posts section) =====
 const PERSON_COLORS = ['#D4A843','#4A9EBF','#7FB069','#C98AB8','#E07A5A','#90A0E0','#EAC96A','#7AC8C0'];
 const TYPE_COLORS   = ['#7AACE0','#7DC98A','#E07A5A','#EAC96A','#A0C4FF','#C98AB8','#90A0E0'];
 let ch = {};
+let wkCh = {};
 
 function sc(o) {
   return Object.assign({ grid:{color:'rgba(255,255,255,0.04)'}, border:{color:'rgba(255,255,255,0.08)'}, ticks:{color:'#6A6460',font:{size:11}} }, o || {});
@@ -928,20 +884,21 @@ function sc(o) {
 function pColors() {
   return staff.map((s,i) => !activeTab || s.name===activeTab ? PERSON_COLORS[i % PERSON_COLORS.length] : PERSON_COLORS[i % PERSON_COLORS.length]+'33');
 }
-function getMon(s) {
-  const d = new Date(s + 'T12:00:00'), dow = d.getDay() || 7;
-  d.setDate(d.getDate() - dow + 1);
-  return d.toISOString().slice(0,10);
-}
 function weeklyData(src) {
   const m = {};
   src.forEach(p => {
     const k = getMon(p.date);
-    if (!m[k]) m[k] = {c:0, v:0};
-    m[k].c++; m[k].v += p.view;
+    if (!m[k]) m[k] = {c:0,v:0,er:0,d:0};
+    m[k].c++; m[k].v += p.view; m[k].er += engRate(p); m[k].d += p.deal;
   });
   const keys = Object.keys(m).sort().slice(-12);
-  return { labels: keys.map(k => k.slice(5).replace('-','/')), counts: keys.map(k=>m[k].c), views: keys.map(k=>m[k].v) };
+  return {
+    labels: keys.map(k => k.slice(5).replace('-','/')),
+    counts: keys.map(k => m[k].c),
+    views:  keys.map(k => m[k].v),
+    avgEr:  keys.map(k => m[k].c ? (m[k].er / m[k].c).toFixed(2) : 0),
+    deals:  keys.map(k => m[k].d),
+  };
 }
 
 function buildCharts() {
@@ -954,8 +911,8 @@ function buildCharts() {
   const TT  = {backgroundColor:'#2E2E2E', titleColor:'#F0EDE6', bodyColor:'#A09A8E', borderColor:'rgba(212,168,67,.2)', borderWidth:1};
   const LL  = {position:'bottom', labels:{color:'#A09A8E', font:{size:11}, padding:10, boxWidth:12}};
   const NN  = {display:false};
+  const sn  = staff.map(s => s.name);
 
-  const sn = staff.map(s => s.name);
   ch.pp = new Chart(g('ch-pp'), { type:'pie',
     data:{ labels:sn, datasets:[{ data:sn.map(n=>posts.filter(p=>p.name===n).length), backgroundColor:pc, borderColor:'#242424', borderWidth:2 }] },
     options:{ ...B, plugins:{tooltip:TT, legend:LL} } });
@@ -969,7 +926,7 @@ function buildCharts() {
     options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:sc(), y:sc()} } });
 
   ch.lr = new Chart(g('ch-lr'), { type:'bar',
-    data:{ labels:sn, datasets:[{ data:sn.map(n=>{ const pp=posts.filter(p=>p.name===n), tv=pp.reduce((a,p)=>a+p.view,0), tl=pp.reduce((a,p)=>a+p.lead,0); return tv?parseFloat((tl/tv*100).toFixed(2)):0; }), backgroundColor:pc, borderRadius:4 }] },
+    data:{ labels:sn, datasets:[{ data:sn.map(n=>{ const pp=posts.filter(p=>p.name===n),tv=pp.reduce((a,p)=>a+p.view,0),tl=pp.reduce((a,p)=>a+p.lead,0); return tv?parseFloat((tl/tv*100).toFixed(2)):0; }), backgroundColor:pc, borderRadius:4 }] },
     options:{ ...B, plugins:{tooltip:{...TT, callbacks:{label:ctx=>ctx.raw.toFixed(2)+'%'}}, legend:NN}, scales:{x:sc(), y:sc({ticks:{color:'#6A6460', font:{size:11}, callback:v=>v+'%'}})} } });
 
   ch.rv = new Chart(g('ch-rv'), { type:'bar',
@@ -992,6 +949,185 @@ function toggleCharts(btn) {
   btn.textContent = hidden ? '收起' : '展開';
 }
 
+// ===== WEEKLY SECTION =====
+function renderWeeklySection() {
+  const thisWeek = getWeekStart(0);
+  const lastWeek = getWeekStart(1);
+
+  // Date labels
+  const fmtDate = d => d.slice(5).replace('-','/');
+  const thisEnd = new Date(thisWeek); thisEnd.setDate(thisEnd.getDate() + 6);
+  g('weekly-range-label').textContent = `本週 ${fmtDate(thisWeek)} ~ ${fmtDate(thisEnd.toISOString().slice(0,10))}`;
+
+  // Posts for each week
+  const thisPosts = posts.filter(p => getMon(p.date) === thisWeek);
+  const lastPosts = posts.filter(p => getMon(p.date) === lastWeek);
+
+  // weekly_stats entries
+  const thisWS = weeklyStats.find(w => (w.week_start_date||'').slice(0,10) === thisWeek) || {};
+  const lastWS = weeklyStats.find(w => (w.week_start_date||'').slice(0,10) === lastWeek) || {};
+
+  const sumViews = arr => arr.reduce((s,p) => s+p.view, 0);
+  const sumDeals = arr => arr.reduce((s,p) => s+p.deal, 0);
+  const sumRev   = arr => arr.reduce((s,p) => s+p.revenue, 0);
+
+  function cmpCard(label, curr, prev, unit = '') {
+    const c = curr ?? null, p = prev ?? null;
+    const diff = (c !== null && p !== null) ? c - p : null;
+    let deltaHtml = '';
+    if (diff !== null) {
+      const cls = diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
+      const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '—';
+      deltaHtml = `<span class="cmp-delta ${cls}">${arrow} ${Math.abs(diff).toLocaleString()}${unit}</span>`;
+    }
+    return `<div class="cmp-card">
+      <div class="cmp-label">${label}</div>
+      <div class="cmp-curr">${c !== null ? c.toLocaleString() + unit : '—'}</div>
+      <div class="cmp-prev">上週 ${p !== null ? p.toLocaleString() + unit : '—'}&nbsp;&nbsp;${deltaHtml}</div>
+    </div>`;
+  }
+
+  const thisViews = sumViews(thisPosts);
+  const lastViews = sumViews(lastPosts);
+  const thisDms   = thisWS.total_dms != null ? Number(thisWS.total_dms) : null;
+  const lastDms   = lastWS.total_dms != null ? Number(lastWS.total_dms) : null;
+  const thisDeals = sumDeals(thisPosts);
+  const lastDeals = sumDeals(lastPosts);
+  const thisRev   = sumRev(thisPosts);
+  const lastRev   = sumRev(lastPosts);
+
+  g('weekly-cmp-grid').innerHTML = [
+    cmpCard('本週觀看數',  thisViews, lastViews),
+    cmpCard('本週私訊數',  thisDms,   lastDms),
+    cmpCard('本週成交數',  thisDeals, lastDeals),
+    cmpCard('本週入金金額', thisRev,  lastRev, ''),
+  ].join('');
+
+  // Pre-fill weekly entry form
+  g('ws-date').value   = thisWeek;
+  g('ws-dms').value    = thisWS.total_dms   || '';
+  g('ws-fstart').value = thisWS.followers_start || '';
+  g('ws-fend').value   = thisWS.followers_end   || '';
+
+  // Build weekly charts
+  Object.values(wkCh).forEach(c => c.destroy()); wkCh = {};
+
+  // Followers trend (from weekly_stats)
+  const wsSorted = [...weeklyStats].sort((a,b) => (a.week_start_date>b.week_start_date?1:-1)).slice(-12);
+  const wsLabels = wsSorted.map(w => (w.week_start_date||'').slice(5,10).replace('-','/'));
+  const wsFollowers = wsSorted.map(w => (Number(w.followers_end||0) - Number(w.followers_start||0)));
+  const wsDms       = wsSorted.map(w => Number(w.total_dms||0));
+
+  // Engagement rate and deals from posts by week (last 12 weeks)
+  const wk = weeklyData(posts);
+
+  const B  = {responsive:true, maintainAspectRatio:false, animation:{duration:300}};
+  const TT = {backgroundColor:'#2E2E2E', titleColor:'#F0EDE6', bodyColor:'#A09A8E', borderColor:'rgba(212,168,67,.2)', borderWidth:1};
+  const NN = {display:false};
+  const LS = sc({ticks:{color:'#6A6460', font:{size:10}, maxTicksLimit:8}});
+
+  wkCh.followers = new Chart(g('ch-wk-followers'), { type:'line',
+    data:{ labels: wsLabels, datasets:[{ data: wsFollowers, borderColor:'#7DC98A', backgroundColor:'rgba(125,201,138,.1)', fill:true, pointBackgroundColor:'#7DC98A', tension:0.3, pointRadius:3 }] },
+    options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:LS, y:sc()} } });
+
+  wkCh.er = new Chart(g('ch-wk-er'), { type:'line',
+    data:{ labels: wk.labels, datasets:[{ data: wk.avgEr, borderColor:'#D4A843', backgroundColor:'rgba(212,168,67,.1)', fill:true, pointBackgroundColor:'#D4A843', tension:0.3, pointRadius:3 }] },
+    options:{ ...B, plugins:{tooltip:{...TT, callbacks:{label:ctx=>ctx.raw+'%'}}, legend:NN}, scales:{x:LS, y:sc({ticks:{color:'#6A6460', font:{size:10}, callback:v=>v+'%'}})} } });
+
+  wkCh.deals = new Chart(g('ch-wk-deals'), { type:'bar',
+    data:{ labels: wk.labels, datasets:[{ data: wk.deals, backgroundColor:'rgba(196,79,43,.7)', borderRadius:4 }] },
+    options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:LS, y:sc()} } });
+}
+
+async function saveWeeklyStats() {
+  const week_start_date = g('ws-date').value;
+  const followers_start = parseInt(g('ws-fstart').value) || 0;
+  const followers_end   = parseInt(g('ws-fend').value)   || 0;
+  const total_dms       = parseInt(g('ws-dms').value)    || 0;
+
+  g('ws-err').textContent = '';
+  if (!week_start_date) { g('ws-err').textContent = '缺少週開始日期'; return; }
+
+  // Compute from posts for that week
+  const wps = posts.filter(p => getMon(p.date) === week_start_date);
+  const body = JSON.stringify({
+    week_start_date,
+    total_posts:   wps.length,
+    total_views:   wps.reduce((s,p) => s+p.view, 0),
+    total_likes:   wps.reduce((s,p) => s+p.like, 0),
+    total_replies: wps.reduce((s,p) => s+(p.replies||0), 0),
+    total_reposts: wps.reduce((s,p) => s+(p.reposts||0), 0),
+    total_quotes:  wps.reduce((s,p) => s+(p.quotes||0), 0),
+    total_dms,
+    conversions:   wps.reduce((s,p) => s+p.deal, 0),
+    revenue:       wps.reduce((s,p) => s+p.revenue, 0),
+    followers_start,
+    followers_end,
+  });
+
+  try {
+    const saved = await apiFetch('/api/weekly-stats', { method:'POST', headers:{'Content-Type':'application/json'}, body });
+    const idx = weeklyStats.findIndex(w => (w.week_start_date||'').slice(0,10) === week_start_date);
+    if (idx !== -1) weeklyStats[idx] = saved;
+    else weeklyStats.push(saved);
+    g('ws-msg').textContent = '已儲存！';
+    setTimeout(() => { g('ws-msg').textContent = ''; }, 2500);
+    renderWeeklySection();
+    renderStats(); // refresh net followers stat card
+  } catch (e) {
+    g('ws-err').textContent = `儲存失敗：${e.message}`;
+  }
+}
+
+// ===== MONTHLY SECTION =====
+function renderMonthlySection() {
+  const picker = g('month-picker');
+  if (!picker.value) {
+    const now = new Date();
+    picker.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  }
+  const ym = picker.value; // "2026-06"
+
+  const monthPosts = posts.filter(p => p.date.startsWith(ym));
+  const tv   = monthPosts.reduce((s,p) => s+p.view, 0);
+  const td   = monthPosts.reduce((s,p) => s+p.deal, 0);
+  const trev = monthPosts.reduce((s,p) => s+p.revenue, 0);
+
+  // Net followers this month (sum from weekly_stats in this month)
+  const monthWS = weeklyStats.filter(w => (w.week_start_date||'').startsWith(ym));
+  const netFollowers = monthWS.reduce((s,w) => s + (Number(w.followers_end||0) - Number(w.followers_start||0)), 0);
+  const totalDms     = monthWS.reduce((s,w) => s + Number(w.total_dms||0), 0);
+
+  g('monthly-stats-grid').innerHTML = `
+    <div class="stat-card"><div class="stat-label">本月總觀看</div><div class="stat-val">${tv.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">本月淨增粉絲</div><div class="stat-val">${netFollowers >= 0 ? '+'+netFollowers : netFollowers}</div></div>
+    <div class="stat-card"><div class="stat-label">本月總私訊</div><div class="stat-val">${totalDms}</div></div>
+    <div class="stat-card"><div class="stat-label">本月成交數</div><div class="stat-val">${td}</div></div>
+    <div class="stat-card"><div class="stat-label">本月入金金額</div><div class="stat-val">$${trev.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">本月貼文數</div><div class="stat-val">${monthPosts.length}</div></div>`;
+
+  // Top 3 by engagement rate
+  const byEr   = [...monthPosts].filter(p => p.view > 0).sort((a,b) => engRate(b)-engRate(a)).slice(0,3);
+  const byView = [...monthPosts].sort((a,b) => b.view-a.view).slice(0,3);
+
+  function topList(arr, valFn, unitFn) {
+    if (!arr.length) return '<div style="color:var(--text-muted);font-size:13px;padding:12px 0">本月無資料</div>';
+    return arr.map((p, i) => `
+      <div class="top-item">
+        <span class="top-rank ${['r1','r2','r3'][i]}">${i+1}</span>
+        <div class="top-info">
+          <div class="top-title">${esc(p.title)}</div>
+          <div class="top-sub">${p.name} · ${p.date}</div>
+        </div>
+        <div class="top-val">${valFn(p)}${unitFn ? unitFn(p) : ''}</div>
+      </div>`).join('');
+  }
+
+  g('top-er-list').innerHTML   = topList(byEr,   p => engRate(p).toFixed(2), () => '%');
+  g('top-view-list').innerHTML = topList(byView, p => p.view.toLocaleString(), () => '');
+}
+
+// ===== REFRESH =====
 function refreshAll() {
   renderPersonTabs();
   renderStats();
@@ -1001,10 +1137,14 @@ function refreshAll() {
 
 // ===== INIT =====
 async function init() {
-  g('stats-grid').innerHTML = `<div class="stat-card" style="grid-column:span 4"><div class="loading"><div class="loading-spinner"></div>載入中…</div></div>`;
+  g('stats-grid').innerHTML = `<div class="stat-card" style="grid-column:span 3"><div class="loading"><div class="loading-spinner"></div>載入中…</div></div>`;
   g('post-list').innerHTML  = '';
   try {
-    [posts, staff] = await Promise.all([apiFetch('/api/posts'), apiFetch('/api/staff')]);
+    [posts, staff, weeklyStats] = await Promise.all([
+      apiFetch('/api/posts'),
+      apiFetch('/api/staff'),
+      apiFetch('/api/weekly-stats'),
+    ]);
   } catch (e) {
     g('stats-grid').innerHTML = '';
     g('post-list').innerHTML  = `<div class="empty"><div class="empty-icon">⚠️</div>資料載入失敗：${esc(e.message)}<br><small style="margin-top:6px;display:block">請重新整理頁面</small></div>`;

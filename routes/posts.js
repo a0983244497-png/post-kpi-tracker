@@ -19,6 +19,10 @@ function toClient(row) {
     like:    row.likes    || 0,
     comment: row.comments || 0,
     share:   row.shares   || 0,
+    replies: row.replies  || 0,
+    reposts: row.reposts  || 0,
+    quotes:  row.quotes   || 0,
+    dms:     row.dms      || 0,
     lead:    row.leads    || 0,
     deal:    row.deals    || 0,
     revenue: row.revenue  || 0,
@@ -40,14 +44,14 @@ router.get('/posts', async (req, res) => {
 
 // POST /api/posts — 新增一筆
 router.post('/posts', async (req, res) => {
-  const { name, date, type, title, content, view, like, comment, share, lead, deal, revenue } = req.body;
+  const { name, date, type, title, content, view, like, comment, share, replies, reposts, quotes, dms, lead, deal, revenue } = req.body;
   if (!name || !date || !type || !title) {
     return res.status(400).json({ error: '業務、日期、類型、標題為必填' });
   }
   try {
     const { rows } = await pool.query(
-      `INSERT INTO posts (name, date, type, title, content, views, likes, comments, shares, leads, deals, revenue)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+      `INSERT INTO posts (name, date, type, title, content, views, likes, comments, shares, replies, reposts, quotes, dms, leads, deals, revenue)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
        RETURNING *`,
       [
         name, date, type, title,
@@ -56,6 +60,10 @@ router.post('/posts', async (req, res) => {
         like     || 0,
         comment  || 0,
         share    || 0,
+        replies  || 0,
+        reposts  || 0,
+        quotes   || 0,
+        dms      || 0,
         lead     || 0,
         deal     || 0,
         revenue  || 0,
@@ -72,16 +80,19 @@ router.post('/posts', async (req, res) => {
 router.put('/posts/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
-  const { name, date, type, title, content, view, like, comment, share, lead, deal, revenue } = req.body;
+  const { name, date, type, title, content, view, like, comment, share, replies, reposts, quotes, dms, lead, deal, revenue } = req.body;
   if (!name || !date || !type || !title) {
     return res.status(400).json({ error: '業務、日期、類型、標題為必填' });
   }
   try {
     const { rows } = await pool.query(
       `UPDATE posts SET name=$1, date=$2, type=$3, title=$4, content=$5,
-       views=$6, likes=$7, comments=$8, shares=$9, leads=$10, deals=$11, revenue=$12
-       WHERE id=$13 RETURNING *`,
-      [name, date, type, title, content||'', view||0, like||0, comment||0, share||0, lead||0, deal||0, revenue||0, id]
+       views=$6, likes=$7, comments=$8, shares=$9,
+       replies=$10, reposts=$11, quotes=$12, dms=$13,
+       leads=$14, deals=$15, revenue=$16
+       WHERE id=$17 RETURNING *`,
+      [name, date, type, title, content||'', view||0, like||0, comment||0, share||0,
+       replies||0, reposts||0, quotes||0, dms||0, lead||0, deal||0, revenue||0, id]
     );
     if (!rows.length) return res.status(404).json({ error: '找不到此筆資料' });
     res.json(toClient(rows[0]));
