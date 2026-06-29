@@ -90,4 +90,27 @@ router.post('/students', async (req, res) => {
   }
 });
 
+router.put('/students/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
+  const { status, notes, assigned_staff } = req.body;
+  const updates = [], params = [];
+  if (status !== undefined)         { params.push(status);         updates.push(`status=$${params.length}`); }
+  if (notes !== undefined)          { params.push(notes);          updates.push(`notes=$${params.length}`); }
+  if (assigned_staff !== undefined) { params.push(assigned_staff); updates.push(`assigned_staff=$${params.length}`); }
+  if (!updates.length) return res.status(400).json({ error: '沒有要更新的欄位' });
+  params.push(id);
+  try {
+    const { rows } = await pool.query(
+      `UPDATE course_students SET ${updates.join(',')} WHERE id=$${params.length} RETURNING *`,
+      params
+    );
+    if (!rows.length) return res.status(404).json({ error: '找不到此學員' });
+    res.json(rows[0]);
+  } catch (e) {
+    console.error('[DB] PUT students:', e.message);
+    res.status(500).json({ error: '更新失敗' });
+  }
+});
+
 export default router;

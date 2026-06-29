@@ -343,6 +343,19 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
 .attend-bar-wrap { width:70px; background:var(--charcoal-4); border-radius:3px; height:5px; overflow:hidden; flex-shrink:0; }
 .attend-bar-fill { height:100%; background:var(--gold); border-radius:3px; }
 .chart-h-sm2 { height:220px; }
+/* Identity overlay */
+.identity-overlay { position:fixed; inset:0; background:var(--charcoal); z-index:9000; display:flex; align-items:center; justify-content:center; }
+.identity-card { background:var(--charcoal-2); border:1px solid var(--border-strong); border-radius:16px; padding:2.5rem 2rem; width:min(420px,94vw); text-align:center; }
+.identity-logo-txt { font-family:var(--font-display); font-size:13px; font-weight:700; color:var(--gold); letter-spacing:.12em; text-transform:uppercase; margin-bottom:1.25rem; }
+.identity-title { font-size:20px; font-weight:700; color:var(--text-primary); margin-bottom:.4rem; }
+.identity-sub { font-size:13px; color:var(--text-muted); margin-bottom:1.75rem; line-height:1.6; }
+.identity-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.identity-btn { padding:14px 8px; background:var(--charcoal-3); border:1px solid var(--border); border-radius:var(--radius); color:var(--text-primary); font-size:15px; font-weight:600; font-family:var(--font-body); cursor:pointer; transition:background .15s,border-color .15s; }
+.identity-btn:hover { background:var(--charcoal-4); border-color:var(--border-strong); }
+.identity-btn.gino-btn { grid-column:span 3; background:rgba(212,168,67,.12); border-color:var(--border-strong); color:var(--gold); font-size:16px; }
+.identity-btn.gino-btn:hover { background:rgba(212,168,67,.22); }
+.identity-chip { display:inline-flex; align-items:center; gap:6px; background:rgba(212,168,67,.12); border:1px solid var(--border-strong); border-radius:99px; padding:4px 12px; font-size:12px; color:var(--gold); font-weight:600; cursor:pointer; }
+.identity-chip:hover { background:rgba(212,168,67,.2); }
 </style>
 </head>
 <body>
@@ -354,6 +367,22 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
   </div>
   <div class="header-right" id="header-count"></div>
 </header>
+
+<!-- ===== 身份選擇 Overlay ===== -->
+<div id="identity-overlay" class="identity-overlay" style="display:none">
+  <div class="identity-card">
+    <div class="identity-logo-txt">水軍貼文統計</div>
+    <div class="identity-title">請選擇你的身份</div>
+    <div class="identity-sub">使用同一組團隊密碼，選擇後資料視圖依身份自動篩選</div>
+    <div class="identity-grid">
+      <button class="identity-btn gino-btn" onclick="selectIdentity('Gino')">👑 Gino（管理員）</button>
+      <button class="identity-btn" onclick="selectIdentity('路克')">路克</button>
+      <button class="identity-btn" onclick="selectIdentity('Josh')">Josh</button>
+      <button class="identity-btn" onclick="selectIdentity('Darren')">Darren</button>
+      <button class="identity-btn" onclick="selectIdentity('Jenna')">Jenna</button>
+    </div>
+  </div>
+</div>
 
 <main class="container">
 
@@ -648,13 +677,11 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
   ====================================================== -->
   <div id="section-course" style="display:none">
 
-    <!-- 身份選擇 -->
-    <div class="course-role-bar">
-      <span style="font-size:12px;color:var(--text-muted)">查看身份：</span>
-      <select id="course-role" onchange="setCourseRole(this.value)" style="width:auto;padding:5px 10px;font-size:13px">
-        <option value="Gino">Gino（全部）</option>
-      </select>
-      <span class="course-role-hint">非 Gino 身份僅顯示自己負責的學員</span>
+    <!-- 身份顯示 -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap">
+      <span style="font-size:12px;color:var(--text-muted)">目前身份：</span>
+      <span id="course-identity-chip" class="identity-chip" onclick="switchIdentity()" title="點擊切換身份"></span>
+      <span style="font-size:11px;color:var(--text-muted);margin-left:auto">Gino 可查看全部數據；其他業務僅看自己的學員</span>
     </div>
 
     <!-- 子頁籤 -->
@@ -670,8 +697,10 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
       <div class="stats-grid-9" id="cs-stats-grid"></div>
       <div class="section-hd"><div class="section-hd-title">轉化漏斗</div></div>
       <div class="funnel-wrap" id="cs-funnel-vis"></div>
-      <div class="section-hd"><div class="section-hd-title">業務成交排行</div></div>
-      <div class="stat-card" id="cs-staff-rank" style="padding:0;overflow:hidden"></div>
+      <div id="cs-staff-rank-section">
+        <div class="section-hd"><div class="section-hd-title">業務成交排行</div></div>
+        <div class="stat-card" id="cs-staff-rank" style="padding:0;overflow:hidden"></div>
+      </div>
     </div>
 
     <!-- 子頁：學員管理 -->
@@ -697,15 +726,13 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input type="text" id="cs-search" placeholder="搜尋學員姓名…" oninput="renderStudentList()">
         </div>
-        <select id="cs-fstaff" onchange="renderStudentList()">
-          <option value="">全部業務</option>
-        </select>
         <select id="cs-fstatus" onchange="renderStudentList()">
           <option value="">全部狀態</option>
           <option value="active">進行中</option>
           <option value="completed">已完課</option>
           <option value="dropped">已退出</option>
         </select>
+        <span id="cs-student-count" style="font-size:12px;color:var(--text-muted);padding:0 4px"></span>
       </div>
       <div id="cs-student-list"></div>
     </div>
@@ -860,7 +887,7 @@ let courseSessions   = [];
 let courseStats      = null;
 let courseLoaded     = false;
 let courseSubTab     = 'overview';
-let courseRole       = localStorage.getItem('courseRole') || 'Gino';
+let courseRole       = 'Gino';
 let courseExpandedId = null;
 let courseEditFunnel = {};
 let courseCh         = {};
@@ -1947,37 +1974,51 @@ function renderDailyFollowersChart() {
   });
 }
 
+// ===== IDENTITY (sessionStorage) =====
+
+function selectIdentity(name) {
+  sessionStorage.setItem('courseIdentity', name);
+  courseRole = name;
+  g('identity-overlay').style.display = 'none';
+  initApp();
+}
+
+function switchIdentity() {
+  sessionStorage.removeItem('courseIdentity');
+  courseLoaded = false;
+  courseStudents = []; courseSessions = []; courseStats = null;
+  g('identity-overlay').style.display = 'flex';
+}
+
+function checkIdentity() {
+  const id = sessionStorage.getItem('courseIdentity');
+  if (id) { courseRole = id; return true; }
+  g('identity-overlay').style.display = 'flex';
+  return false;
+}
+
+function updateIdentityChip() {
+  const chip = g('course-identity-chip');
+  if (!chip) return;
+  const isGino = courseRole === 'Gino';
+  chip.innerHTML = `${isGino ? '👑 ' : ''}${esc(courseRole)}${isGino ? '（全部）' : ''} <span style="font-size:10px;opacity:.6">切換</span>`;
+}
+
 // ===== COURSE SECTION =====
 
-function renderCourseRolePicker() {
-  const sel = g('course-role');
-  if (!sel) return;
-  const cur = sel.value || courseRole;
-  sel.innerHTML = '<option value="Gino">Gino（全部）</option>' +
-    staff.map(s => s.name !== 'Gino' ? `<option value="${esc(s.name)}">${esc(s.name)}</option>` : '').join('');
-  sel.value = cur;
-}
-
-function setCourseRole(role) {
-  courseRole = role;
-  localStorage.setItem('courseRole', role);
-  courseLoaded = false;
-  renderCourseSection();
-}
-
 async function renderCourseSection() {
-  renderCourseRolePicker();
+  updateIdentityChip();
   const today = new Date().toISOString().split('T')[0];
   if (!g('cs-sdate').value) g('cs-sdate').value = today;
   if (!g('cs-sess-date').value) g('cs-sess-date').value = today;
   if (!courseLoaded) {
     g('cs-stats-grid').innerHTML = `<div class="stat-card" style="grid-column:span 3"><div class="loading"><div class="loading-spinner"></div>載入中…</div></div>`;
     try {
-      const staffParam = courseRole !== 'Gino' ? `?staff=${encodeURIComponent(courseRole)}` : '';
+      const sp = courseRole !== 'Gino' ? `?staff=${encodeURIComponent(courseRole)}` : '';
       [courseStudents, courseSessions, courseStats] = await Promise.all([
-        apiFetch('/api/students' + staffParam),
+        apiFetch('/api/students' + sp),
         apiFetch('/api/sessions'),
-        apiFetch('/api/funnel-stats' + staffParam),
+        apiFetch('/api/funnel-stats' + sp),
       ]);
       courseLoaded = true;
     } catch (e) {
@@ -2012,9 +2053,10 @@ function switchCourseTab(tab) {
 function renderCourseStaffDropdowns() {
   const staffOpts = staff.map(s => `<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');
   const sstaff = g('cs-sstaff');
-  if (sstaff) { sstaff.innerHTML = '<option value="">選擇業務</option>' + staffOpts; if (courseRole !== 'Gino') sstaff.value = courseRole; }
-  const fstaff = g('cs-fstaff');
-  if (fstaff) { const cur = fstaff.value; fstaff.innerHTML = '<option value="">全部業務</option>' + staffOpts; fstaff.value = cur; }
+  if (sstaff) {
+    sstaff.innerHTML = '<option value="">選擇業務</option>' + staffOpts;
+    if (courseRole !== 'Gino') sstaff.value = courseRole;
+  }
 }
 
 // ---- Funnel Overview ----
@@ -2072,10 +2114,11 @@ function renderFunnelOverview() {
   });
   g('cs-funnel-vis').innerHTML = funnelHtml || '<div style="color:var(--text-muted);font-size:13px">尚無學員資料</div>';
 
-  if (!s.by_staff || !s.by_staff.length) {
-    g('cs-staff-rank').innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px">尚無業務成交資料</div>';
-    return;
-  }
+  // Staff ranking only visible to Gino
+  const rankSection = g('cs-staff-rank-section');
+  if (rankSection) rankSection.style.display = courseRole === 'Gino' ? '' : 'none';
+
+  if (!s.by_staff || !s.by_staff.length || courseRole !== 'Gino') return;
   g('cs-staff-rank').innerHTML = `<table class="rank-table">
     <thead><tr><th>排名</th><th>業務</th><th>成交數</th><th>入金總額</th></tr></thead>
     <tbody>${s.by_staff.map((r, i) => `
@@ -2092,14 +2135,46 @@ function renderFunnelOverview() {
 }
 
 // ---- Student Management ----
+function toggleFunnelCheck(boolKey, dateKey, checked) {
+  courseEditFunnel[boolKey] = checked;
+  const today = new Date().toISOString().split('T')[0];
+  if (checked && !courseEditFunnel[dateKey]) courseEditFunnel[dateKey] = today;
+  else if (!checked) courseEditFunnel[dateKey] = null;
+  // Update DOM in-place without full re-render
+  const expandEl = document.querySelector('.student-expand');
+  if (!expandEl) return;
+  const inp = expandEl.querySelector(`[data-date-key="${dateKey}"]`);
+  if (inp) { inp.value = courseEditFunnel[dateKey] || ''; inp.style.opacity = checked ? '1' : '.4'; }
+}
+
+async function saveStudentMeta(id) {
+  const statusEl = g(`ef-status-${id}`);
+  const notesEl  = g(`ef-notes-${id}`);
+  const msgEl    = g(`cs-metamsg-${id}`);
+  if (!statusEl || !notesEl) return;
+  try {
+    await apiFetch(`/api/students/${id}`, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ status: statusEl.value, notes: notesEl.value.trim() }),
+    });
+    const s = courseStudents.find(x => x.id === id);
+    if (s) { s.status = statusEl.value; s.notes = notesEl.value.trim(); }
+    if (msgEl) { msgEl.textContent = '已儲存'; setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 2000); }
+    showToast('學員資料已更新');
+    renderStudentList();
+  } catch (e) {
+    if (msgEl) msgEl.textContent = '失敗：' + e.message;
+  }
+}
+
 function renderStudentList() {
-  const q      = (g('cs-search')?.value || '').toLowerCase();
-  const fstaff = g('cs-fstaff')?.value || '';
+  const q       = (g('cs-search')?.value || '').toLowerCase();
   const fstatus = g('cs-fstatus')?.value || '';
   let src = courseStudents;
   if (q)       src = src.filter(s => s.name.toLowerCase().includes(q));
-  if (fstaff)  src = src.filter(s => s.assigned_staff === fstaff);
   if (fstatus) src = src.filter(s => s.status === fstatus);
+  const cntEl = g('cs-student-count');
+  if (cntEl) cntEl.textContent = `共 ${src.length} 位`;
 
   if (!src.length) {
     g('cs-student-list').innerHTML = '<div class="empty"><div class="empty-icon">👥</div>尚無學員紀錄</div>';
@@ -2107,68 +2182,96 @@ function renderStudentList() {
   }
 
   const STATUS_LABEL = { active:'進行中', completed:'已完課', dropped:'已退出' };
+  const STAGE_LABELS = ['出席','完課','私訊','開戶','入金','成交'];
   g('cs-student-list').innerHTML = src.map(s => {
     const isOpen = courseExpandedId === s.id;
-    const dotClass = idx => {
-      const stages = [s.attended_sessions > 0, s.completed_course, s.dm_inquiry, s.opened_account, s.deposited, s.converted];
-      const colors  = ['on','on','dm','go','go','go'];
-      return stages[idx] ? colors[idx] : '';
-    };
-    const dots = [0,1,2,3,4,5].map(i => `<div class="fdot ${dotClass(i)}" title="${['出席','完課','私訊','開戶','入金','成交'][i]}"></div>`).join('');
+    const stages = [s.attended_sessions > 0, s.completed_course, s.dm_inquiry, s.opened_account, s.deposited, s.converted];
+    const COLORS  = ['on','on','dm','go','go','go'];
+    const dots = stages.map((on, i) =>
+      `<div class="fdot ${on ? COLORS[i] : ''}" title="${STAGE_LABELS[i]}"></div>`).join('');
 
     let expandHtml = '';
     if (isOpen) {
       const ef = courseEditFunnel;
       expandHtml = `<div class="student-expand">
+        <div style="font-size:11px;color:var(--text-muted);font-weight:600;letter-spacing:.06em;margin-bottom:10px">漏斗進度</div>
         <div class="funnel-form-row">
-          <div>
-            <div class="funnel-check-row">
-              <label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block;min-width:unset">出席場次數</label>
-            </div>
-            <input type="number" min="0" value="${ef.attended_sessions||0}" oninput="courseEditFunnel.attended_sessions=+this.value" style="width:80px;padding:4px 8px;font-size:13px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <label style="font-size:12px;color:var(--text-secondary);width:80px">出席場次</label>
+            <input type="number" min="0" value="${ef.attended_sessions||0}"
+              oninput="courseEditFunnel.attended_sessions=+this.value"
+              style="width:70px;padding:4px 8px;font-size:13px">
+            <span style="font-size:11px;color:var(--text-muted)">場</span>
           </div>
-          <div>
-            <div class="funnel-check-row">
-              <input type="checkbox" id="ef-comp-${s.id}" ${ef.completed_course?'checked':''} onchange="courseEditFunnel.completed_course=this.checked">
-              <label for="ef-comp-${s.id}">已完課</label>
-              <input type="date" value="${ef.completed_date||''}" oninput="courseEditFunnel.completed_date=this.value" style="${ef.completed_course?'':'opacity:.4'}">
-            </div>
+          <div class="funnel-check-row">
+            <input type="checkbox" id="ef-comp-${s.id}" ${ef.completed_course?'checked':''}
+              onchange="toggleFunnelCheck('completed_course','completed_date',this.checked)">
+            <label for="ef-comp-${s.id}">已完課</label>
+            <input type="date" data-date-key="completed_date" value="${ef.completed_date||''}"
+              oninput="courseEditFunnel.completed_date=this.value"
+              style="opacity:${ef.completed_course?'1':'.4'}">
           </div>
-          <div>
-            <div class="funnel-check-row">
-              <input type="checkbox" id="ef-dm-${s.id}" ${ef.dm_inquiry?'checked':''} onchange="courseEditFunnel.dm_inquiry=this.checked">
-              <label for="ef-dm-${s.id}">主動私訊</label>
-              <input type="date" value="${ef.dm_date||''}" oninput="courseEditFunnel.dm_date=this.value" style="${ef.dm_inquiry?'':'opacity:.4'}">
-            </div>
+          <div class="funnel-check-row">
+            <input type="checkbox" id="ef-dm-${s.id}" ${ef.dm_inquiry?'checked':''}
+              onchange="toggleFunnelCheck('dm_inquiry','dm_date',this.checked)">
+            <label for="ef-dm-${s.id}">主動私訊</label>
+            <input type="date" data-date-key="dm_date" value="${ef.dm_date||''}"
+              oninput="courseEditFunnel.dm_date=this.value"
+              style="opacity:${ef.dm_inquiry?'1':'.4'}">
           </div>
-          <div>
-            <div class="funnel-check-row">
-              <input type="checkbox" id="ef-acc-${s.id}" ${ef.opened_account?'checked':''} onchange="courseEditFunnel.opened_account=this.checked">
-              <label for="ef-acc-${s.id}">已開戶</label>
-              <input type="date" value="${ef.account_date||''}" oninput="courseEditFunnel.account_date=this.value" style="${ef.opened_account?'':'opacity:.4'}">
-            </div>
+          <div class="funnel-check-row">
+            <input type="checkbox" id="ef-acc-${s.id}" ${ef.opened_account?'checked':''}
+              onchange="toggleFunnelCheck('opened_account','account_date',this.checked)">
+            <label for="ef-acc-${s.id}">已開戶</label>
+            <input type="date" data-date-key="account_date" value="${ef.account_date||''}"
+              oninput="courseEditFunnel.account_date=this.value"
+              style="opacity:${ef.opened_account?'1':'.4'}">
           </div>
-          <div>
-            <div class="funnel-check-row">
-              <input type="checkbox" id="ef-dep-${s.id}" ${ef.deposited?'checked':''} onchange="courseEditFunnel.deposited=this.checked">
-              <label for="ef-dep-${s.id}">已入金</label>
-              <input type="number" min="0" placeholder="金額" value="${ef.deposit_amount||''}" oninput="courseEditFunnel.deposit_amount=+this.value">
-              <input type="date" value="${ef.deposit_date||''}" oninput="courseEditFunnel.deposit_date=this.value" style="${ef.deposited?'':'opacity:.4'}">
-            </div>
+          <div class="funnel-check-row" style="flex-wrap:wrap">
+            <input type="checkbox" id="ef-dep-${s.id}" ${ef.deposited?'checked':''}
+              onchange="toggleFunnelCheck('deposited','deposit_date',this.checked)">
+            <label for="ef-dep-${s.id}">已入金</label>
+            <input type="number" min="0" placeholder="金額 $" value="${ef.deposit_amount||''}"
+              oninput="courseEditFunnel.deposit_amount=+this.value" style="width:110px">
+            <input type="date" data-date-key="deposit_date" value="${ef.deposit_date||''}"
+              oninput="courseEditFunnel.deposit_date=this.value"
+              style="opacity:${ef.deposited?'1':'.4'}">
           </div>
-          <div>
-            <div class="funnel-check-row">
-              <input type="checkbox" id="ef-conv-${s.id}" ${ef.converted?'checked':''} onchange="courseEditFunnel.converted=this.checked">
-              <label for="ef-conv-${s.id}">成交轉化</label>
-              <input type="date" value="${ef.convert_date||''}" oninput="courseEditFunnel.convert_date=this.value" style="${ef.converted?'':'opacity:.4'}">
-            </div>
+          <div class="funnel-check-row">
+            <input type="checkbox" id="ef-conv-${s.id}" ${ef.converted?'checked':''}
+              onchange="toggleFunnelCheck('converted','convert_date',this.checked)">
+            <label for="ef-conv-${s.id}">成交轉化</label>
+            <input type="date" data-date-key="convert_date" value="${ef.convert_date||''}"
+              oninput="courseEditFunnel.convert_date=this.value"
+              style="opacity:${ef.converted?'1':'.4'}">
           </div>
         </div>
-        <div class="form-actions" style="margin-top:0">
-          <button class="btn btn-primary" onclick="saveFunnel()">更新狀態</button>
-          <button class="btn" onclick="toggleStudentCard(${s.id})">取消</button>
+        <div class="form-actions" style="margin-top:8px">
+          <button class="btn btn-primary" onclick="saveFunnel()">更新漏斗狀態</button>
           <span class="form-msg" id="cs-fmsg-${s.id}"></span>
           <span class="form-err" id="cs-ferr-${s.id}"></span>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
+        <div style="font-size:11px;color:var(--text-muted);font-weight:600;letter-spacing:.06em;margin-bottom:10px">學員資料</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+          <div class="form-field" style="margin:0;min-width:110px">
+            <label style="font-size:12px">狀態</label>
+            <select id="ef-status-${s.id}" style="padding:5px 8px;font-size:13px">
+              <option value="active" ${s.status==='active'?'selected':''}>進行中</option>
+              <option value="completed" ${s.status==='completed'?'selected':''}>已完課</option>
+              <option value="dropped" ${s.status==='dropped'?'selected':''}>已退出</option>
+            </select>
+          </div>
+          <div class="form-field" style="margin:0;flex:1;min-width:160px">
+            <label style="font-size:12px">備註</label>
+            <input type="text" id="ef-notes-${s.id}" value="${esc(s.notes||'')}"
+              placeholder="備注內容…" style="width:100%">
+          </div>
+          <button class="btn" onclick="saveStudentMeta(${s.id})" style="padding:6px 14px;font-size:12px">儲存</button>
+          <span class="form-msg" id="cs-metamsg-${s.id}" style="font-size:12px"></span>
+        </div>
+        <div style="margin-top:12px">
+          <button class="btn" onclick="toggleStudentCard(${s.id})" style="font-size:12px;padding:5px 12px">收起</button>
         </div>
       </div>`;
     }
@@ -2181,7 +2284,7 @@ function renderStudentList() {
             <span class="status-badge status-${s.status}">${STATUS_LABEL[s.status]||s.status}</span>
             ${s.assigned_staff ? `<span style="font-size:11px;color:var(--text-muted)">${esc(s.assigned_staff)}</span>` : ''}
           </div>
-          <div class="student-meta">${s.joined_date} ${s.notes ? '· '+esc(s.notes) : ''}</div>
+          <div class="student-meta">${s.joined_date}${s.notes ? ' · '+esc(s.notes) : ''}</div>
         </div>
         <div class="fdots">${dots}</div>
         <svg class="chevron ${isOpen?'open':''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
@@ -2216,13 +2319,14 @@ async function addStudent() {
       body: JSON.stringify({ name, joined_date: date, assigned_staff: staff_name, notes }),
     });
     courseStudents.unshift(saved);
-    courseStats = null; courseLoaded = false;
     g('cs-sname').value = g('cs-snotes').value = '';
     g('cs-smsg').textContent = `已新增 ${saved.name}`;
     setTimeout(() => { g('cs-smsg').textContent = ''; }, 2500);
     renderStudentList();
+    showToast(`學員「${saved.name}」已新增`);
     // refresh stats in background
-    apiFetch('/api/funnel-stats' + (courseRole !== 'Gino' ? `?staff=${encodeURIComponent(courseRole)}` : '')).then(s => { courseStats = s; if (courseSubTab === 'overview') renderFunnelOverview(); });
+    const sp = courseRole !== 'Gino' ? `?staff=${encodeURIComponent(courseRole)}` : '';
+    apiFetch('/api/funnel-stats' + sp).then(s => { courseStats = s; if (courseSubTab === 'overview') renderFunnelOverview(); });
   } catch (e) { g('cs-serr').textContent = '新增失敗：' + e.message; }
 }
 
@@ -2358,7 +2462,7 @@ function refreshAll() {
 }
 
 // ===== INIT =====
-async function init() {
+async function initApp() {
   g('stats-grid').innerHTML = `<div class="stat-card" style="grid-column:span 3"><div class="loading"><div class="loading-spinner"></div>載入中…</div></div>`;
   g('post-list').innerHTML  = '';
   try {
@@ -2377,8 +2481,13 @@ async function init() {
   renderNameDropdown();
   renderWeeklyNameDropdown();
   renderDailyFollowersDropdown();
-  renderCourseRolePicker();
+  updateIdentityChip();
   refreshAll();
+}
+
+function init() {
+  if (!checkIdentity()) return;
+  initApp();
 }
 
 init();
