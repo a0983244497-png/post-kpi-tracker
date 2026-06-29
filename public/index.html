@@ -255,6 +255,20 @@ select option { background: var(--charcoal-2); }
 .rank-val-bad { color: #C44F2B !important; font-family: var(--font-display); font-size: 14px; font-weight: 700; text-align: right; }
 .rank-num.rb { color: #C44F2B; }
 
+/* ===== GOALS SECTION ===== */
+.goals-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:.75rem; }
+.achieve-card { background:var(--charcoal-2); border:1px solid var(--border); border-radius:var(--radius); padding:.875rem 1.125rem; position:relative; overflow:hidden; }
+.achieve-bar { position:absolute; bottom:0; left:0; height:3px; background:currentColor; opacity:.45; transition:width .4s; }
+/* ===== TYPE PERFORMANCE ===== */
+.type-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+/* ===== DAY ANALYSIS ===== */
+.day-badge { display:inline-block; font-size:10px; font-weight:700; padding:2px 7px; border-radius:99px; margin:0 2px; }
+.day-badge-gold { background:rgba(212,168,67,.18); color:var(--gold); }
+/* ===== MONTHLY COMPARE ===== */
+.mc-controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:.75rem; }
+.mc-controls select { width:140px; }
+.mc-controls input[type=month] { width:130px; }
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 640px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -312,6 +326,15 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
     <!-- 統計列 (6 cards / 3 col × 2 row) -->
     <div class="stats-grid" id="stats-grid"></div>
 
+    <!-- 本週目標達成（個人頁籤才顯示） -->
+    <div id="goals-section" style="display:none;margin-bottom:1.25rem">
+      <div class="goals-hd">
+        <div class="section-hd-title" style="margin:0">本週目標達成</div>
+        <button class="btn" style="padding:5px 12px;font-size:12px" onclick="openGoalsModal()">設定目標</button>
+      </div>
+      <div class="stats-grid" id="goals-grid" style="grid-template-columns:repeat(3,1fr)"></div>
+    </div>
+
     <!-- 數據分析 -->
     <div class="chart-section" id="chart-section">
       <div class="chart-section-hd">
@@ -331,6 +354,11 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
         <div class="chart-row chart-r2">
           <div class="chart-card"><p class="chart-card-title">每週貼文數趨勢</p><div class="chart-h"><canvas id="ch-wp"></canvas></div></div>
           <div class="chart-card"><p class="chart-card-title">每週觀看數趨勢</p><div class="chart-h"><canvas id="ch-wv"></canvas></div></div>
+        </div>
+        <!-- 功能3: 貼文類型平均績效 -->
+        <div class="chart-row chart-r2" style="margin-top:12px">
+          <div class="chart-card"><p class="chart-card-title">貼文類型 — 平均觀看數</p><div class="chart-h-sm"><canvas id="ch-type-views"></canvas></div></div>
+          <div class="chart-card"><p class="chart-card-title">貼文類型 — 互動率 / 引流率 %</p><div class="chart-h-sm"><canvas id="ch-type-er"></canvas></div></div>
         </div>
       </div>
     </div>
@@ -460,6 +488,16 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
       <div class="chart-card"><p class="chart-card-title">週成交數</p><div class="chart-h"><canvas id="ch-wk-deals"></canvas></div></div>
     </div>
 
+    <!-- 功能4: 發文時段分析 -->
+    <div class="section-hd" style="margin-top:1.75rem">
+      <div class="section-hd-title">發文時段分析</div>
+      <div class="section-hd-sub" id="day-analysis-note">各星期幾的平均表現（金色 = 前 2 名）</div>
+    </div>
+    <div class="chart-row chart-r2" style="margin-bottom:1.5rem">
+      <div class="chart-card"><p class="chart-card-title">各星期平均觀看數</p><div class="chart-h-sm"><canvas id="ch-day-views"></canvas></div></div>
+      <div class="chart-card"><p class="chart-card-title">各星期平均互動率 %</p><div class="chart-h-sm"><canvas id="ch-day-er"></canvas></div></div>
+    </div>
+
     <!-- 每日粉絲紀錄 -->
     <div class="section-hd" style="margin-top:1.75rem">
       <div class="section-hd-title">每日粉絲紀錄</div>
@@ -506,6 +544,26 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
         <div class="top-section-title">觀看數 Top 3</div>
         <div id="top-view-list"></div>
       </div>
+    </div>
+
+    <!-- 功能5: 跨月比較 -->
+    <div class="section-hd" style="margin-top:1.75rem">
+      <div class="section-hd-title">跨月趨勢比較</div>
+      <div class="section-hd-sub">選取 2~3 個月份，在同一張圖比較週趨勢</div>
+    </div>
+    <div class="mc-controls">
+      <select id="mc-metric" onchange="renderMonthCompare()">
+        <option value="views">總觀看數</option>
+        <option value="deals">總成交數</option>
+        <option value="revenue">總入金金額</option>
+        <option value="followers">淨增粉絲</option>
+      </select>
+      <input type="month" id="mc-m1" onchange="renderMonthCompare()" title="月份 1">
+      <input type="month" id="mc-m2" onchange="renderMonthCompare()" title="月份 2">
+      <input type="month" id="mc-m3" onchange="renderMonthCompare()" title="月份 3（選填）">
+    </div>
+    <div class="chart-card">
+      <div style="position:relative;height:260px"><canvas id="ch-mc"></canvas></div>
     </div>
 
   </div><!-- /section-monthly -->
@@ -572,6 +630,26 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
     </div>
   </div>
 
+  <!-- 目標設定 Modal -->
+  <div class="modal-overlay" id="goals-modal" style="display:none" onclick="if(event.target===this)closeGoalsModal()">
+    <div class="modal" style="width:min(480px,94vw)">
+      <div class="modal-hd">
+        <span class="modal-hd-title">本週目標設定 — <span id="goals-modal-name" style="color:var(--gold)"></span></span>
+        <button class="modal-close" onclick="closeGoalsModal()">✕</button>
+      </div>
+      <div class="form-grid c3" style="margin-bottom:1rem">
+        <div class="form-field"><label>目標觀看數</label><input type="number" id="g-views" placeholder="0" min="0"></div>
+        <div class="form-field"><label>目標引流數</label><input type="number" id="g-leads" placeholder="0" min="0"></div>
+        <div class="form-field"><label>目標成交數</label><input type="number" id="g-convs" placeholder="0" min="0"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveGoals()">儲存目標</button>
+        <span class="form-msg" id="g-msg"></span>
+        <span class="form-err" id="g-err"></span>
+      </div>
+    </div>
+  </div>
+
   <!-- FAB — 週報登記（僅每週統計分頁顯示） -->
   <button id="weekly-fab" class="weekly-fab" onclick="openWeeklyModal()" title="週報登記" aria-label="週報登記">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -607,7 +685,9 @@ let rankingActiveTab = '';
 let editingId        = null;
 let currentSection   = 'posts';
 let dailyFollowers   = [];
+let staffGoals       = [];
 let dfCh             = null;
+let mcCh             = null;
 
 // ===== DOM HELPERS =====
 function g(id) { return document.getElementById(id); }
@@ -734,6 +814,7 @@ function renderStats() {
     <div class="stat-card"><div class="stat-label">觀看 → 引流</div><div class="stat-val">${pct(tl,tv)}%</div></div>
     <div class="stat-card"><div class="stat-label">引流 → 成交</div><div class="stat-val">${pct(td,tl)}%</div></div>
     <div class="stat-card"><div class="stat-label">本週淨增粉絲</div><div class="stat-val">${netFollowTxt}</div></div>`;
+  renderGoalsSection();
 }
 
 // ===== ADD PANEL =====
@@ -994,6 +1075,76 @@ function openStaffModal() { renderStaffList(); g('staff-modal').style.display = 
 function closeStaffModal() { g('staff-modal').style.display = 'none'; }
 function openWeeklyModal() { g('weekly-modal').style.display = 'flex'; }
 function closeWeeklyModal() { g('weekly-modal').style.display = 'none'; }
+
+// ===== GOALS MODAL =====
+function openGoalsModal() {
+  const name = activeTab; if (!name) return;
+  const thisWeek = getWeekStart(0);
+  const existing = staffGoals.find(sg => sg.staff_name === name && (sg.week_start_date||'').slice(0,10) === thisWeek) || {};
+  g('goals-modal-name').textContent = name;
+  g('g-views').value = existing.target_views  || '';
+  g('g-leads').value = existing.target_leads  || '';
+  g('g-convs').value = existing.target_conversions || '';
+  g('g-msg').textContent = ''; g('g-err').textContent = '';
+  g('goals-modal').style.display = 'flex';
+}
+function closeGoalsModal() { g('goals-modal').style.display = 'none'; }
+
+async function saveGoals() {
+  const name = activeTab; if (!name) return;
+  const thisWeek = getWeekStart(0);
+  try {
+    const saved = await apiFetch('/api/staff-goals', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        staff_name: name, week_start_date: thisWeek,
+        target_views:       parseInt(g('g-views').value) || 0,
+        target_leads:       parseInt(g('g-leads').value) || 0,
+        target_conversions: parseInt(g('g-convs').value) || 0,
+      }),
+    });
+    const idx = staffGoals.findIndex(sg => sg.staff_name === name && (sg.week_start_date||'').slice(0,10) === thisWeek);
+    if (idx !== -1) staffGoals[idx] = saved; else staffGoals.push(saved);
+    g('g-msg').textContent = '已儲存！';
+    setTimeout(() => { g('g-msg').textContent = ''; closeGoalsModal(); }, 1500);
+    renderStats();
+  } catch (e) { g('g-err').textContent = `儲存失敗：${e.message}`; }
+}
+
+function renderGoalsSection() {
+  const div = g('goals-section');
+  if (!activeTab) { div.style.display = 'none'; return; }
+  div.style.display = '';
+  const thisWeek = getWeekStart(0);
+  const src  = posts.filter(p => p.name === activeTab && getMon(p.date) === thisWeek);
+  const goal = staffGoals.find(sg => sg.staff_name === activeTab && (sg.week_start_date||'').slice(0,10) === thisWeek) || {};
+  const tv = src.reduce((s,p) => s+p.view, 0);
+  const tl = src.reduce((s,p) => s+p.lead, 0);
+  const td = src.reduce((s,p) => s+p.deal, 0);
+
+  function achieveCard(label, actual, target) {
+    const t = Number(target) || 0;
+    if (!t) return `<div class="stat-card">
+      <div class="stat-label">${label} 達成率</div>
+      <div class="stat-val" style="color:var(--text-muted)">未設定</div>
+      <div class="stat-sub">實際 ${actual.toLocaleString()}</div></div>`;
+    const rate = Math.min(Math.round(actual / t * 100), 999);
+    const color = rate >= 100 ? 'var(--green)' : rate < 60 ? 'var(--danger)' : 'var(--gold)';
+    const w = Math.min(rate, 100);
+    return `<div class="achieve-card" style="color:${color}">
+      <div class="stat-label" style="color:var(--text-muted)">${label} 達成率</div>
+      <div class="stat-val" style="color:${color};font-family:var(--font-display);font-size:22px;font-weight:700">${rate}%</div>
+      <div class="stat-sub" style="color:var(--text-muted)">${actual.toLocaleString()} / ${t.toLocaleString()}</div>
+      <div class="achieve-bar" style="width:${w}%;background:${color}"></div>
+    </div>`;
+  }
+
+  g('goals-grid').innerHTML = [
+    achieveCard('觀看數', tv, goal.target_views),
+    achieveCard('引流數', tl, goal.target_leads),
+    achieveCard('成交數', td, goal.target_conversions),
+  ].join('');
+}
 function renderStaffList() {
   if (!staff.length) {
     g('staff-list').innerHTML = '<p style="color:var(--text-muted);font-size:13px;padding:8px 0">尚無業務人員</p>';
@@ -1100,6 +1251,28 @@ function buildCharts() {
   ch.wv = new Chart(g('ch-wv'), { type:'line',
     data:{ labels:wk.labels, datasets:[{ data:wk.views, borderColor:'#4A9EBF', backgroundColor:'rgba(74,158,191,.1)', fill:true, pointBackgroundColor:'#4A9EBF', tension:0.3, pointRadius:3 }] },
     options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:LS, y:sc({ticks:{color:'#6A6460', font:{size:10}}})} } });
+
+  // Feature 3: type performance
+  const tkAll = Object.keys(TYPE_MAP);
+  const typeLabels = tkAll.map(k => TYPE_MAP[k]);
+  const typeViews  = tkAll.map(k => { const pp=src.filter(p=>p.type===k); return pp.length ? Math.round(pp.reduce((a,p)=>a+p.view,0)/pp.length) : 0; });
+  const typeEr     = tkAll.map(k => { const pp=src.filter(p=>p.type===k&&p.view>0); return pp.length ? parseFloat((pp.reduce((a,p)=>a+engRate(p),0)/pp.length).toFixed(2)) : 0; });
+  const typeLead   = tkAll.map(k => { const pp=src.filter(p=>p.type===k); const tv=pp.reduce((a,p)=>a+p.view,0),tl=pp.reduce((a,p)=>a+p.lead,0); return tv ? parseFloat((tl/tv*100).toFixed(2)) : 0; });
+
+  ch.typeViews = new Chart(g('ch-type-views'), { type:'bar',
+    data:{ labels:typeLabels, datasets:[{ data:typeViews, backgroundColor:TYPE_COLORS, borderRadius:4 }] },
+    options:{ ...B, indexAxis:'y', plugins:{tooltip:TT, legend:NN}, scales:{x:sc(), y:sc({ticks:{color:'#6A6460',font:{size:10}}})} } });
+
+  ch.typeEr = new Chart(g('ch-type-er'), { type:'bar',
+    data:{ labels:typeLabels, datasets:[
+      { label:'互動率%', data:typeEr,   backgroundColor:'rgba(212,168,67,.75)', borderRadius:3 },
+      { label:'引流率%', data:typeLead, backgroundColor:'rgba(74,158,191,.75)',  borderRadius:3 },
+    ]},
+    options:{ ...B, indexAxis:'y',
+      plugins:{ tooltip:{...TT, callbacks:{label:ctx=>ctx.raw.toFixed(2)+'%'}}, legend:{...LL, position:'top'} },
+      scales:{ x:sc({ticks:{color:'#6A6460',font:{size:10},callback:v=>v+'%'}}), y:sc({ticks:{color:'#6A6460',font:{size:10}}}) }
+    }
+  });
 }
 
 function toggleCharts(btn) {
@@ -1121,8 +1294,35 @@ function renderWeeklyNameDropdown() {
 // ===== WEEKLY PERSON TABS =====
 function renderWeeklyPersonTabs() {
   const tabs = [{ label: '全部', key: '' }, ...staff.map(s => ({ label: s.name, key: s.name }))];
+  const w0 = getWeekStart(0), w1 = getWeekStart(1);
+  const n  = staff.length || 1;
+
+  function weekStats(w) {
+    const tp = posts.filter(p => getMon(p.date) === w);
+    return {
+      avgV: tp.reduce((s,p) => s+p.view, 0) / n,
+      avgD: tp.reduce((s,p) => s+p.deal, 0) / n,
+      total: tp.length,
+    };
+  }
+  const ws0 = weekStats(w0), ws1 = weekStats(w1);
+
+  function hasWarning(name) {
+    if (!name) return false;
+    const check = (w, ws) => {
+      if (!ws.total) return false; // no team data → no warning
+      const pp = posts.filter(p => p.name === name && getMon(p.date) === w);
+      const v  = pp.reduce((s,p) => s+p.view, 0);
+      const d  = pp.reduce((s,p) => s+p.deal, 0);
+      return v < ws.avgV || d < ws.avgD;
+    };
+    return check(w0, ws0) && check(w1, ws1); // consecutive 2 weeks
+  }
+
   g('weekly-person-tabs').innerHTML = tabs.map(t =>
-    `<button class="ptab${weeklyActiveTab === t.key ? ' active' : ''}" onclick="switchWeeklyTab('${esc(t.key)}')">${esc(t.label)}</button>`
+    `<button class="ptab${weeklyActiveTab === t.key ? ' active' : ''}" onclick="switchWeeklyTab('${esc(t.key)}')">
+      ${esc(t.label)}${t.key && hasWarning(t.key) ? ' ⚠️' : ''}
+    </button>`
   ).join('');
 }
 
@@ -1221,6 +1421,29 @@ function renderWeeklySection() {
     data:{ labels: wk.labels, datasets:[{ data: wk.deals, backgroundColor:'rgba(196,79,43,.7)', borderRadius:4 }] },
     options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:LS, y:sc()} } });
 
+  // Feature 4: day-of-week analysis
+  const DOW_LABELS = ['週一','週二','週三','週四','週五','週六','週日'];
+  const dowData = Array.from({length:7}, () => ({v:0,er:0,n:0}));
+  filterPosts(posts).forEach(p => {
+    const dow = (new Date(p.date+'T12:00:00').getDay() + 6) % 7; // 0=Mon
+    dowData[dow].v += p.view; dowData[dow].er += engRate(p); dowData[dow].n++;
+  });
+  const dowAvgV  = dowData.map(d => d.n ? Math.round(d.v/d.n) : 0);
+  const dowAvgEr = dowData.map(d => d.n ? parseFloat((d.er/d.n).toFixed(2)) : 0);
+
+  const top2V  = [...dowAvgV].map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v).slice(0,2).map(x=>x.i);
+  const top2Er = [...dowAvgEr].map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v).slice(0,2).map(x=>x.i);
+  const dowVCol  = dowAvgV.map((_,i)  => top2V.includes(i)  ? '#D4A843' : 'rgba(74,158,191,.55)');
+  const dowErCol = dowAvgEr.map((_,i) => top2Er.includes(i) ? '#D4A843' : 'rgba(212,168,67,.4)');
+
+  wkCh.dayViews = new Chart(g('ch-day-views'), { type:'bar',
+    data:{ labels:DOW_LABELS, datasets:[{ data:dowAvgV, backgroundColor:dowVCol, borderRadius:4 }] },
+    options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:LS, y:sc()} } });
+
+  wkCh.dayEr = new Chart(g('ch-day-er'), { type:'bar',
+    data:{ labels:DOW_LABELS, datasets:[{ data:dowAvgEr, backgroundColor:dowErCol, borderRadius:4 }] },
+    options:{ ...B, plugins:{tooltip:{...TT, callbacks:{label:ctx=>ctx.raw+'%'}}, legend:NN}, scales:{x:LS, y:sc({ticks:{color:'#6A6460',font:{size:10},callback:v=>v+'%'}})} } });
+
   // Daily followers section
   renderDailyFollowersDropdown();
   g('df-name').value = weeklyActiveTab;
@@ -1314,6 +1537,71 @@ function renderMonthlySection() {
 
   g('top-er-list').innerHTML   = topList(byEr,   p => engRate(p).toFixed(2), () => '%');
   g('top-view-list').innerHTML = topList(byView, p => p.view.toLocaleString(), () => '');
+
+  // Feature 5: default month pickers to last 2 months on first load
+  if (!g('mc-m1').value && !g('mc-m2').value) {
+    const now = new Date();
+    const curYm  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const prev   = new Date(now); prev.setMonth(prev.getMonth()-1);
+    const prevYm = `${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}`;
+    g('mc-m1').value = prevYm;
+    g('mc-m2').value = curYm;
+  }
+  renderMonthCompare();
+}
+
+// ===== FEATURE 5: CROSS-MONTH COMPARE =====
+function renderMonthCompare() {
+  if (mcCh) { mcCh.destroy(); mcCh = null; }
+  const months = ['mc-m1','mc-m2','mc-m3'].map(id => g(id)?.value).filter(Boolean);
+  if (!months.length) return;
+  const metric = g('mc-metric')?.value || 'views';
+  const MC_COLORS = ['#D4A843','#4A9EBF','#7DC98A'];
+  const WK_LABELS = ['第1週','第2週','第3週','第4週','第5週'];
+
+  const datasets = months.map((ym, mi) => {
+    const [y, m] = ym.split('-').map(Number);
+    const from = ym + '-01';
+    const lastDay = new Date(y, m, 0).getDate();
+    const to = `${y}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+    const weekData = [0,0,0,0,0];
+
+    if (metric === 'followers') {
+      for (let i = 0; i < 5; i++) {
+        const startDay = i * 7 + 1;
+        if (startDay > lastDay) break;
+        const wkStart = `${y}-${String(m).padStart(2,'0')}-${String(startDay).padStart(2,'0')}`;
+        weekData[i] = weekNetFollowers(wkStart, '') ?? 0;
+      }
+    } else {
+      posts.filter(p => p.date >= from && p.date <= to).forEach(p => {
+        const day  = parseInt(p.date.slice(8,10));
+        const wIdx = Math.min(Math.floor((day-1)/7), 4);
+        if (metric === 'views')   weekData[wIdx] += p.view;
+        if (metric === 'deals')   weekData[wIdx] += p.deal;
+        if (metric === 'revenue') weekData[wIdx] += p.revenue;
+      });
+    }
+
+    return {
+      label: ym,
+      data: weekData.slice(0, Math.ceil(lastDay/7)),
+      borderColor: MC_COLORS[mi],
+      backgroundColor: MC_COLORS[mi] + '22',
+      fill: false, tension: 0.3,
+      pointRadius: 4, pointBackgroundColor: MC_COLORS[mi],
+    };
+  });
+
+  const B  = {responsive:true, maintainAspectRatio:false, animation:{duration:300}};
+  const TT = {backgroundColor:'#2E2E2E', titleColor:'#F0EDE6', bodyColor:'#A09A8E', borderColor:'rgba(212,168,67,.2)', borderWidth:1};
+  const LL = {position:'bottom', labels:{color:'#A09A8E', font:{size:11}, padding:10, boxWidth:12}};
+  const LS = sc({ticks:{color:'#6A6460', font:{size:10}}});
+
+  mcCh = new Chart(g('ch-mc'), { type:'line',
+    data: { labels: WK_LABELS, datasets },
+    options: { ...B, plugins:{tooltip:TT, legend:LL}, scales:{x:LS, y:sc()} }
+  });
 }
 
 // ===== DATE FILTER CLEAR =====
@@ -1454,11 +1742,12 @@ async function init() {
   g('stats-grid').innerHTML = `<div class="stat-card" style="grid-column:span 3"><div class="loading"><div class="loading-spinner"></div>載入中…</div></div>`;
   g('post-list').innerHTML  = '';
   try {
-    [posts, staff, weeklyStats, dailyFollowers] = await Promise.all([
+    [posts, staff, weeklyStats, dailyFollowers, staffGoals] = await Promise.all([
       apiFetch('/api/posts'),
       apiFetch('/api/staff'),
       apiFetch('/api/weekly-stats'),
       apiFetch('/api/daily-followers'),
+      apiFetch('/api/staff-goals'),
     ]);
   } catch (e) {
     g('stats-grid').innerHTML = '';

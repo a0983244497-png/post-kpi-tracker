@@ -78,6 +78,20 @@ export async function initDb() {
     )
   `);
 
+  // Staff goals table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS staff_goals (
+      id                  SERIAL PRIMARY KEY,
+      staff_name          VARCHAR(100) NOT NULL,
+      week_start_date     DATE NOT NULL,
+      target_views        INTEGER DEFAULT 0,
+      target_leads        INTEGER DEFAULT 0,
+      target_conversions  INTEGER DEFAULT 0,
+      created_at          TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(staff_name, week_start_date)
+    )
+  `);
+
   // Seed default staff (unconditional, skips if already exists)
   await pool.query(
     `INSERT INTO staff (name) VALUES ('Gino'),('Darren'),('Josh'),('Jenna'),('路克') ON CONFLICT (name) DO NOTHING`
