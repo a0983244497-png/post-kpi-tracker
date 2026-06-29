@@ -293,6 +293,8 @@ select option { background: var(--charcoal-2); }
 /* Force footer light — covers any global dark override */
 footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#333 !important; border-top:1px solid #ddd !important; }
 .footer-inner { color:#333 !important; }
+.toast { position:fixed; bottom:28px; right:28px; background:var(--charcoal-3); color:var(--text-primary); padding:12px 20px; border-radius:var(--radius); border:1px solid var(--border-strong); font-size:14px; z-index:9999; opacity:0; transform:translateY(10px); transition:opacity .25s,transform .25s; pointer-events:none; }
+.toast.show { opacity:1; transform:translateY(0); }
 </style>
 </head>
 <body>
@@ -367,17 +369,17 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
     <div class="toolbar">
       <div class="search-wrap">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input type="text" id="search" placeholder="搜尋標題…" oninput="render()">
+        <input type="text" id="search" placeholder="搜尋標題…" oninput="currentPage=1;render()">
       </div>
       <div class="date-range-wrap">
-        <input type="date" id="filter-from" onchange="render()" title="開始日期">
+        <input type="date" id="filter-from" onchange="currentPage=1;render()" title="開始日期">
         <span class="date-sep">~</span>
-        <input type="date" id="filter-to" onchange="render()" title="結束日期">
+        <input type="date" id="filter-to" onchange="currentPage=1;render()" title="結束日期">
         <button class="btn" style="padding:6px 9px" onclick="clearDateFilter()" title="清除日期篩選">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
-      <select id="filter-type" onchange="render()">
+      <select id="filter-type" onchange="currentPage=1;render()">
         <option value="">全部類型</option>
         <option value="market">市場回顧</option>
         <option value="result">戰果分享</option>
@@ -387,7 +389,7 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
         <option value="humor">互動幽默</option>
         <option value="opinion">個人觀點</option>
       </select>
-      <select id="sort-by" onchange="render()">
+      <select id="sort-by" onchange="currentPage=1;render()">
         <option value="date">最新日期</option>
         <option value="view">觀看最多</option>
         <option value="er">互動率最高</option>
@@ -452,6 +454,7 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
         <div class="form-field"><label>成交人數</label><input type="number" id="a-deal" placeholder="0" min="0"></div>
         <div class="form-field"><label>入金金額（選填）</label><input type="number" id="a-rev" placeholder="0" min="0"></div>
       </div>
+      <div class="form-field" style="margin-top:10px"><label>貼文連結（選填）</label><input type="url" id="a-url" placeholder="https://www.threads.net/..."></div>
       <div class="form-actions">
         <button class="btn btn-primary" id="save-btn" onclick="addPost()">儲存紀錄</button>
         <button class="btn" onclick="toggleAdd()">取消</button>
@@ -659,6 +662,8 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
 
 </main>
 
+<div class="toast" id="toast-msg"></div>
+
 <footer class="site-footer">
   <div class="footer-inner">水軍貼文統計 · 績效素材庫</div>
 </footer>
@@ -684,6 +689,7 @@ let weeklyActiveTab  = '';
 let rankingActiveTab = '';
 let editingId        = null;
 let currentSection   = 'posts';
+let currentPage      = 1;
 let dailyFollowers   = [];
 let staffGoals       = [];
 let dfCh             = null;
@@ -692,7 +698,7 @@ let mcCh             = null;
 // ===== DOM HELPERS =====
 function g(id) { return document.getElementById(id); }
 function nv(id) { return parseInt(g(id).value) || 0; }
-function pct(a, b) { return b ? ((a / b) * 100).toFixed(1) : '0'; }
+function pct(a, b) { return b ? ((a / b) * 100).toFixed(1) : '0.0'; }
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -785,6 +791,7 @@ function renderPersonTabs() {
 
 function switchTab(key) {
   activeTab = key;
+  currentPage = 1;
   openIds.clear();
   refreshAll();
 }
@@ -825,7 +832,7 @@ function toggleAdd() {
   if (panel.classList.contains('open')) {
     g('panel-title').textContent = '新增貼文紀錄';
     g('save-btn').textContent    = '儲存紀錄';
-    if (activeTab) g('a-name').value = activeTab;
+    g('a-name').value = activeTab || '';
     g('a-date').value = new Date().toISOString().split('T')[0];
     g('add-msg').textContent = '';
     g('add-err').textContent = '';
@@ -855,6 +862,7 @@ async function addPost() {
     quotes:  nv('a-quotes'),  dms:     nv('a-dms'),
     lead:    nv('a-lead'),    deal:    nv('a-deal'),
     revenue: nv('a-rev'),
+    post_url: g('a-url').value.trim(),
   });
 
   const btn = g('save-btn');
@@ -877,7 +885,7 @@ async function addPost() {
     ['a-name','a-type','a-title','a-content',
      'a-view','a-like','a-comment','a-share',
      'a-replies','a-reposts','a-quotes','a-dms',
-     'a-lead','a-deal','a-rev'].forEach(id => { g(id).value = ''; });
+     'a-lead','a-deal','a-rev','a-url'].forEach(id => { g(id).value = ''; });
     g('a-date').value = new Date().toISOString().split('T')[0];
     setTimeout(() => { g('add-msg').textContent = ''; }, 2500);
     refreshAll();
@@ -933,19 +941,27 @@ function filtered() {
 }
 
 // ===== RENDER POSTS =====
+function goPage(n) { currentPage = n; render(); window.scrollTo({top:g('list-meta').offsetTop - 80, behavior:'smooth'}); }
+
 function render() {
   const data = filtered();
   const tabLabel = activeTab || '全部';
-  g('list-meta').textContent = `${esc(tabLabel)}：共 ${data.length} 筆`;
+  const total = data.length;
+  const perPage = 20;
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  if (currentPage > totalPages) currentPage = totalPages;
+  const pageData = data.slice((currentPage - 1) * perPage, currentPage * perPage);
+
+  g('list-meta').textContent = `${esc(tabLabel)}：共 ${total} 筆`;
   g('header-count').textContent = `${posts.length} 筆 / ${staff.length} 位業務`;
-  if (!data.length) {
+  if (!total) {
     g('post-list').innerHTML = `<div class="empty"><div class="empty-icon">📋</div>尚無紀錄，按「新增貼文」開始記錄</div>`;
     return;
   }
   const maxView = Math.max(...data.map(p => p.view), 1);
-  g('post-list').innerHTML = data.map(p => {
+  const cards = pageData.map(p => {
     const isOpen   = openIds.has(p.id);
-    const convRate = p.lead ? ((p.deal / p.lead) * 100).toFixed(1) : '0';
+    const convRate = p.lead ? ((p.deal / p.lead) * 100).toFixed(1) : '0.0';
     const er       = engRate(p).toFixed(2);
     const barW     = Math.round(p.view / maxView * 100);
     return `
@@ -998,6 +1014,7 @@ function render() {
           ${p.dms ? `<div class="metric-box"><div class="metric-box-label">私訊數 (DM)</div><div class="metric-box-val">${p.dms}</div></div>` : ''}
           ${p.revenue ? `<div class="metric-box"><div class="metric-box-label">入金金額</div><div class="metric-box-val">$${p.revenue.toLocaleString()}</div></div>` : ''}
         </div>
+        ${p.post_url ? `<div style="margin-top:10px"><a href="${esc(p.post_url)}" target="_blank" rel="noopener" class="btn" style="font-size:12px;padding:5px 12px;color:var(--gold)">🔗 查看原文</a></div>` : ''}
         <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-edit" onclick="editPost(${p.id})">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -1011,21 +1028,48 @@ function render() {
       </div>
     </div>`;
   }).join('');
+
+  // Pagination nav
+  let paginationHtml = '';
+  if (totalPages > 1) {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(`<button class="btn${i === currentPage ? ' btn-primary' : ''}" onclick="goPage(${i})" style="min-width:36px;padding:5px 10px;font-size:13px">${i}</button>`);
+    }
+    paginationHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
+      <button class="btn" onclick="goPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} style="padding:5px 10px;font-size:13px">‹ 上一頁</button>
+      ${pages.join('')}
+      <button class="btn" onclick="goPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} style="padding:5px 10px;font-size:13px">下一頁 ›</button>
+    </div>`;
+  }
+
+  g('post-list').innerHTML = cards + paginationHtml;
+}
+
+// ===== TOAST =====
+let _toastTimer = null;
+function showToast(msg) {
+  const el = g('toast-msg');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
 // ===== EXPORT CSV =====
 function exportCSV() {
   const data   = filtered();
-  const header = '業務,日期,類型,標題,觀看,按讚,留言,轉發收藏,回覆,轉發(Repost),引用,私訊,互動率%,引流,成交,入金金額,引流成交率%';
+  const header = '業務,日期,類型,標題,觀看,按讚,留言,轉發收藏,回覆,轉發(Repost),引用,私訊,互動率%,引流,成交,入金金額,引流成交率%,貼文連結';
   const rows   = data.map(p => {
     const er   = p.view ? (engRate(p)).toFixed(2) : 0;
-    const conv = p.lead ? ((p.deal / p.lead) * 100).toFixed(1) : 0;
+    const conv = p.lead ? ((p.deal / p.lead) * 100).toFixed(1) : '0.0';
     return [
       p.name, p.date, TYPE_MAP[p.type] || p.type,
       `"${p.title.replace(/"/g,'""')}"`,
       p.view, p.like, p.comment, p.share,
       p.replies||0, p.reposts||0, p.quotes||0, p.dms||0,
-      er, p.lead, p.deal, p.revenue, conv
+      er, p.lead, p.deal, p.revenue, conv,
+      p.post_url || '',
     ].join(',');
   });
   const csv = '﻿' + [header, ...rows].join('\n');
@@ -1033,6 +1077,7 @@ function exportCSV() {
   a.href    = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = `貼文績效_${activeTab || '全部'}.csv`;
   a.click();
+  showToast(`已匯出 ${data.length} 筆資料`);
 }
 
 // ===== EDIT POST =====
@@ -1056,6 +1101,7 @@ function editPost(postId) {
   g('a-lead').value    = p.lead;
   g('a-deal').value    = p.deal;
   g('a-rev').value     = p.revenue;
+  g('a-url').value     = p.post_url || '';
   g('panel-title').textContent = '編輯貼文紀錄';
   g('save-btn').textContent    = '更新紀錄';
   g('add-msg').textContent     = '';
@@ -1132,9 +1178,9 @@ function renderGoalsSection() {
     const color = rate >= 100 ? 'var(--green)' : rate < 60 ? 'var(--danger)' : 'var(--gold)';
     const w = Math.min(rate, 100);
     return `<div class="achieve-card" style="color:${color}">
-      <div class="stat-label" style="color:var(--text-muted)">${label} 達成率</div>
-      <div class="stat-val" style="color:${color};font-family:var(--font-display);font-size:22px;font-weight:700">${rate}%</div>
-      <div class="stat-sub" style="color:var(--text-muted)">${actual.toLocaleString()} / ${t.toLocaleString()}</div>
+      <div class="stat-label" style="color:var(--text-muted)">${label}</div>
+      <div class="stat-val" style="color:${color};font-family:var(--font-display);font-size:22px;font-weight:700">${actual.toLocaleString()} / ${t.toLocaleString()}</div>
+      <div class="stat-sub" style="color:${color};font-weight:600">達成率 ${rate}%</div>
       <div class="achieve-bar" style="width:${w}%;background:${color}"></div>
     </div>`;
   }
@@ -1377,9 +1423,9 @@ function renderWeeklySection() {
     </div>`;
   }
 
-  // DMs from weekly_stats entry (manual input); falls back to null if no entry
-  const thisDms = thisWS.total_dms != null ? Number(thisWS.total_dms) : null;
-  const lastDms = lastWS.total_dms != null ? Number(lastWS.total_dms) : null;
+  // DMs from weekly_stats entry (manual input); 0 if not recorded yet
+  const thisDms = Number(thisWS.total_dms || 0);
+  const lastDms = Number(lastWS.total_dms || 0);
 
   g('weekly-cmp-grid').innerHTML = [
     cmpCard('本週觀看數',  sumViews(thisPosts), sumViews(lastPosts)),
@@ -1415,7 +1461,7 @@ function renderWeeklySection() {
 
   wkCh.er = new Chart(g('ch-wk-er'), { type:'line',
     data:{ labels: wk.labels, datasets:[{ data: wk.avgEr, borderColor:'#D4A843', backgroundColor:'rgba(212,168,67,.1)', fill:true, pointBackgroundColor:'#D4A843', tension:0.3, pointRadius:3 }] },
-    options:{ ...B, plugins:{tooltip:{...TT, callbacks:{label:ctx=>ctx.raw+'%'}}, legend:NN}, scales:{x:LS, y:sc({ticks:{color:'#6A6460', font:{size:10}, callback:v=>v+'%'}})} } });
+    options:{ ...B, plugins:{tooltip:{...TT, callbacks:{label:ctx=>parseFloat(Number(ctx.raw).toFixed(2))+'%'}}, legend:NN}, scales:{x:LS, y:sc({ticks:{color:'#6A6460', font:{size:10}, callback:v=>parseFloat(Number(v).toFixed(2))+'%'}})} } });
 
   wkCh.deals = new Chart(g('ch-wk-deals'), { type:'bar',
     data:{ labels: wk.labels, datasets:[{ data: wk.deals, backgroundColor:'rgba(196,79,43,.7)', borderRadius:4 }] },
@@ -1442,7 +1488,7 @@ function renderWeeklySection() {
 
   wkCh.dayEr = new Chart(g('ch-day-er'), { type:'bar',
     data:{ labels:DOW_LABELS, datasets:[{ data:dowAvgEr, backgroundColor:dowErCol, borderRadius:4 }] },
-    options:{ ...B, plugins:{tooltip:{...TT, callbacks:{label:ctx=>ctx.raw+'%'}}, legend:NN}, scales:{x:LS, y:sc({ticks:{color:'#6A6460',font:{size:10},callback:v=>v+'%'}})} } });
+    options:{ ...B, plugins:{tooltip:{...TT, callbacks:{label:ctx=>parseFloat(Number(ctx.raw).toFixed(2))+'%'}}, legend:NN}, scales:{x:LS, y:sc({ticks:{color:'#6A6460',font:{size:10},callback:v=>parseFloat(Number(v).toFixed(2))+'%'}})} } });
 
   // Daily followers section
   renderDailyFollowersDropdown();
@@ -1608,6 +1654,7 @@ function renderMonthCompare() {
 function clearDateFilter() {
   g('filter-from').value = '';
   g('filter-to').value   = '';
+  currentPage = 1;
   render();
 }
 
@@ -1650,7 +1697,7 @@ function renderRankingSection() {
       return `<div class="rank-row rank-row-base${isBottom ? ' rank-row-bad' : ''}">
         <span class="rank-num ${nc}">${pos}</span>
         <span class="rank-ttl" title="${esc(p.title)}">${esc(p.title)}</span>
-        <span class="rank-sname">${esc(p.name)}</span>
+        <span class="rank-sname">${esc(p.name || '—')}</span>
         <span class="rank-date">${p.date}</span>
         ${valHtml}
       </div>`;
@@ -1711,11 +1758,11 @@ function renderDailyFollowersChart() {
     const m = {};
     src.forEach(r => { m[r.date] = (m[r.date] || 0) + Number(r.followers || 0); });
     const keys = Object.keys(m).sort().slice(-60);
-    labels = keys.map(d => d.slice(5).replace('-','/'));
+    labels = keys.map(d => d.slice(0,10).slice(5).replace('-','/'));
     data   = keys.map(k => m[k]);
   } else {
     const sorted = [...src].sort((a,b) => a.date.localeCompare(b.date)).slice(-60);
-    labels = sorted.map(r => (r.date||'').slice(5).replace('-','/'));
+    labels = sorted.map(r => (r.date||'').slice(0,10).slice(5).replace('-','/'));
     data   = sorted.map(r => Number(r.followers || 0));
   }
   if (!labels.length) return;

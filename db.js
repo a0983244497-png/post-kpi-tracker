@@ -35,6 +35,7 @@ export async function initDb() {
   for (const col of ['replies','reposts','quotes','dms']) {
     await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS ${col} INTEGER DEFAULT 0`);
   }
+  await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS post_url VARCHAR(500) DEFAULT ''`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS staff (
       id         SERIAL PRIMARY KEY,
