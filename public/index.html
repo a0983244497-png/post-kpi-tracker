@@ -343,6 +343,16 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
 .attend-bar-wrap { width:70px; background:var(--charcoal-4); border-radius:3px; height:5px; overflow:hidden; flex-shrink:0; }
 .attend-bar-fill { height:100%; background:var(--gold); border-radius:3px; }
 .chart-h-sm2 { height:220px; }
+/* 17:30 Snapshot block */
+.snapshot-block { margin-top:14px; background:rgba(212,168,67,.06); border:1px solid rgba(212,168,67,.2); border-radius:var(--radius-sm); padding:12px 14px; }
+.snapshot-hd { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+.snapshot-title { font-size:12px; font-weight:700; color:var(--gold); letter-spacing:.04em; }
+.snapshot-desc { font-size:11px; color:var(--text-muted); }
+.snapshot-time { font-size:11px; color:var(--text-muted); margin-left:auto; }
+.snapshot-data { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:8px; }
+.snapshot-metric { background:var(--charcoal-3); border-radius:var(--radius-sm); padding:8px 10px; }
+.snapshot-metric-lbl { font-size:10px; color:var(--text-muted); margin-bottom:2px; }
+.snapshot-metric-val { font-size:16px; font-weight:700; color:var(--gold); font-family:var(--font-display); }
 /* Identity overlay */
 .identity-overlay { position:fixed; inset:0; background:var(--charcoal); z-index:9000; display:flex; align-items:center; justify-content:center; }
 .identity-card { background:var(--charcoal-2); border:1px solid var(--border-strong); border-radius:16px; padding:2.5rem 2rem; width:min(420px,94vw); text-align:center; }
@@ -876,6 +886,7 @@ let rankingActiveTab = '';
 let editingId        = null;
 let currentSection   = 'posts';
 let currentPage      = 1;
+let editingSnapIds   = new Set();
 let dailyFollowers   = [];
 let staffGoals       = [];
 let dfCh             = null;
@@ -1109,8 +1120,12 @@ async function deletePost(id) {
 
 // ===== TOGGLE CARD =====
 function toggleCard(id) {
-  if (openIds.has(id)) openIds.delete(id);
-  else openIds.add(id);
+  if (openIds.has(id)) {
+    openIds.delete(id);
+    editingSnapIds.delete(id);
+  } else {
+    openIds.add(id);
+  }
   render();
 }
 
@@ -1213,6 +1228,7 @@ function render() {
           ${p.dms ? `<div class="metric-box"><div class="metric-box-label">私訊數 (DM)</div><div class="metric-box-val">${p.dms}</div></div>` : ''}
           ${p.revenue ? `<div class="metric-box"><div class="metric-box-label">入金金額</div><div class="metric-box-val">$${p.revenue.toLocaleString()}</div></div>` : ''}
         </div>
+        ${renderSnapshotBlock(p)}
         ${p.post_url ? `<div style="margin-top:10px"><a href="${esc(p.post_url)}" target="_blank" rel="noopener" class="btn" style="font-size:12px;padding:5px 12px;color:var(--gold)">🔗 查看原文</a></div>` : ''}
         <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-edit" onclick="editPost(${p.id})">
@@ -1243,6 +1259,98 @@ function render() {
   }
 
   g('post-list').innerHTML = cards + paginationHtml;
+}
+
+// ===== 17:30 SNAPSHOT =====
+function renderSnapshotBlock(p) {
+  const hasSnap = p.snap_at !== null;
+  const inEdit  = editingSnapIds.has(p.id);
+
+  const timeLabel = hasSnap ? (() => {
+    const d = new Date(p.snap_at);
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mn = String(d.getMinutes()).padStart(2,'0');
+    return `${mm}/${dd} ${hh}:${mn} 記錄`;
+  })() : '';
+
+  if (hasSnap && !inEdit) {
+    // Display mode
+    return `<div class="snapshot-block">
+      <div class="snapshot-hd">
+        <span class="snapshot-title">⏱ 17:30 快照</span>
+        <span class="snapshot-desc">13:30 發文 → 17:30 記錄初期數據，追蹤黃金4小時表現</span>
+        <span class="snapshot-time">${timeLabel}</span>
+      </div>
+      <div class="snapshot-data">
+        <div class="snapshot-metric"><div class="snapshot-metric-lbl">觀看數</div><div class="snapshot-metric-val">${(p.snap_views||0).toLocaleString()}</div></div>
+        <div class="snapshot-metric"><div class="snapshot-metric-lbl">讚數</div><div class="snapshot-metric-val">${p.snap_likes||0}</div></div>
+        <div class="snapshot-metric"><div class="snapshot-metric-lbl">回覆數</div><div class="snapshot-metric-val">${p.snap_replies||0}</div></div>
+        <div class="snapshot-metric"><div class="snapshot-metric-lbl">轉發數</div><div class="snapshot-metric-val">${p.snap_reposts||0}</div></div>
+      </div>
+      <button class="btn" onclick="editSnapshot(${p.id})" style="font-size:12px;padding:4px 12px">編輯</button>
+    </div>`;
+  }
+
+  // Input mode (new or editing)
+  return `<div class="snapshot-block">
+    <div class="snapshot-hd">
+      <span class="snapshot-title">⏱ 17:30 快照</span>
+      <span class="snapshot-desc">13:30 發文 → 17:30 記錄初期數據，追蹤黃金4小時表現</span>
+      ${hasSnap ? `<span class="snapshot-time">${timeLabel}</span>` : ''}
+    </div>
+    <div class="form-grid c4" style="margin-bottom:10px">
+      <div class="form-field" style="margin:0"><label style="font-size:11px">觀看數</label>
+        <input type="number" id="snap-v-${p.id}" min="0" placeholder="0" value="${p.snap_views??''}" style="padding:5px 8px;font-size:13px"></div>
+      <div class="form-field" style="margin:0"><label style="font-size:11px">讚數</label>
+        <input type="number" id="snap-l-${p.id}" min="0" placeholder="0" value="${p.snap_likes??''}" style="padding:5px 8px;font-size:13px"></div>
+      <div class="form-field" style="margin:0"><label style="font-size:11px">回覆數</label>
+        <input type="number" id="snap-r-${p.id}" min="0" placeholder="0" value="${p.snap_replies??''}" style="padding:5px 8px;font-size:13px"></div>
+      <div class="form-field" style="margin:0"><label style="font-size:11px">轉發數</label>
+        <input type="number" id="snap-rp-${p.id}" min="0" placeholder="0" value="${p.snap_reposts??''}" style="padding:5px 8px;font-size:13px"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-primary" id="snap-btn-${p.id}" onclick="saveSnapshot(${p.id})" style="font-size:12px;padding:5px 14px">儲存快照</button>
+      ${inEdit ? `<button class="btn" onclick="cancelSnapshot(${p.id})" style="font-size:12px;padding:5px 12px">取消</button>` : ''}
+      <span class="form-msg" id="snap-msg-${p.id}" style="font-size:12px"></span>
+    </div>
+  </div>`;
+}
+
+async function saveSnapshot(postId) {
+  const views   = parseInt(g(`snap-v-${postId}`)?.value) || 0;
+  const likes   = parseInt(g(`snap-l-${postId}`)?.value) || 0;
+  const replies = parseInt(g(`snap-r-${postId}`)?.value) || 0;
+  const reposts = parseInt(g(`snap-rp-${postId}`)?.value) || 0;
+  const btn = g(`snap-btn-${postId}`);
+  if (btn) { btn.disabled = true; btn.textContent = '儲存中…'; }
+  try {
+    const updated = await apiFetch(`/api/posts/${postId}/snapshot`, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ views, likes, replies, reposts }),
+    });
+    const idx = posts.findIndex(p => p.id === postId);
+    if (idx !== -1) posts[idx] = updated;
+    editingSnapIds.delete(postId);
+    showToast('17:30 快照已儲存');
+    render();
+  } catch (e) {
+    const msgEl = g(`snap-msg-${postId}`);
+    if (msgEl) msgEl.textContent = '儲存失敗：' + e.message;
+    if (btn) { btn.disabled = false; btn.textContent = '儲存快照'; }
+  }
+}
+
+function editSnapshot(postId) {
+  editingSnapIds.add(postId);
+  if (!openIds.has(postId)) openIds.add(postId);
+  render();
+}
+
+function cancelSnapshot(postId) {
+  editingSnapIds.delete(postId);
+  render();
 }
 
 // ===== TOAST =====

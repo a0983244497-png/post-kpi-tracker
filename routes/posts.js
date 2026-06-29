@@ -26,7 +26,16 @@ function toClient(row) {
     lead:     row.leads    || 0,
     deal:     row.deals    || 0,
     revenue:  row.revenue  || 0,
-    post_url: row.post_url || '',
+    post_url:    row.post_url || '',
+    snap_views:  row.snapshot_1730_views  ?? null,
+    snap_likes:  row.snapshot_1730_likes  ?? null,
+    snap_replies:row.snapshot_1730_replies ?? null,
+    snap_reposts:row.snapshot_1730_reposts ?? null,
+    snap_at:     row.snapshot_1730_recorded_at
+                   ? (row.snapshot_1730_recorded_at instanceof Date
+                       ? row.snapshot_1730_recorded_at.toISOString()
+                       : String(row.snapshot_1730_recorded_at))
+                   : null,
   };
 }
 
@@ -114,6 +123,28 @@ router.delete('/posts/:id', async (req, res) => {
   } catch (e) {
     console.error('[DB] DELETE posts:', e.message);
     res.status(500).json({ error: '刪除失敗' });
+  }
+});
+
+// PUT /api/posts/:id/snapshot — 儲存 17:30 快照
+router.put('/posts/:id/snapshot', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
+  const { views = 0, likes = 0, replies = 0, reposts = 0 } = req.body;
+  try {
+    const { rows } = await pool.query(
+      `UPDATE posts SET
+         snapshot_1730_views=$1, snapshot_1730_likes=$2,
+         snapshot_1730_replies=$3, snapshot_1730_reposts=$4,
+         snapshot_1730_recorded_at=NOW()
+       WHERE id=$5 RETURNING *`,
+      [views, likes, replies, reposts, id]
+    );
+    if (!rows.length) return res.status(404).json({ error: '找不到此筆資料' });
+    res.json(toClient(rows[0]));
+  } catch (e) {
+    console.error('[DB] PUT snapshot:', e.message);
+    res.status(500).json({ error: '儲存失敗' });
   }
 });
 

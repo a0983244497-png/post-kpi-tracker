@@ -36,6 +36,10 @@ export async function initDb() {
     await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS ${col} INTEGER DEFAULT 0`);
   }
   await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS post_url VARCHAR(500) DEFAULT ''`);
+  for (const col of ['snapshot_1730_views','snapshot_1730_likes','snapshot_1730_replies','snapshot_1730_reposts']) {
+    await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS ${col} INTEGER DEFAULT NULL`);
+  }
+  await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS snapshot_1730_recorded_at TIMESTAMPTZ DEFAULT NULL`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS staff (
       id         SERIAL PRIMARY KEY,
