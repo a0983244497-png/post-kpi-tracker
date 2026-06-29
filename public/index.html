@@ -226,6 +226,27 @@ select option { background: var(--charcoal-2); }
 .month-selector label { font-size: 12px; color: var(--text-muted); }
 .month-selector input { width: 140px; }
 
+/* ===== RANKING ===== */
+.rank-row-base { display: grid; grid-template-columns: 44px 1fr 72px 92px 76px; gap: 10px; align-items: center; padding: 9px 14px; }
+.rank-hd { font-size: 11px; font-weight: 700; color: var(--text-muted); letter-spacing: .06em; text-transform: uppercase; padding-bottom: 2px; }
+.rank-row { background: var(--charcoal-2); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 5px; transition: border-color .15s; }
+.rank-row:hover { border-color: var(--border-strong); }
+.rank-num { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--charcoal-4); }
+.rank-num.r1 { color: var(--gold); }
+.rank-num.r2 { color: var(--text-secondary); }
+.rank-num.r3 { color: var(--text-muted); }
+.rank-ttl { font-size: 13px; color: var(--text-primary); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rank-sname { font-size: 12px; color: var(--text-secondary); }
+.rank-date { font-size: 11px; color: var(--text-muted); }
+.rank-val { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--gold); text-align: right; }
+/* Date range filter */
+.date-range-wrap { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.date-range-wrap input { width: 118px; }
+.date-sep { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+/* Footer */
+.site-footer { background: #F5F5F5; border-top: 1px solid #E0E0E0; padding: 18px 2rem; }
+.footer-inner { max-width: 960px; margin: 0 auto; font-size: 12px; color: #333333; text-align: center; font-family: var(--font-body); }
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 640px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -239,6 +260,8 @@ select option { background: var(--charcoal-2); }
   .ptab { padding: 10px 14px; font-size: 12px; }
   .ntab { padding: 10px 16px; font-size: 11px; }
   .chart-r2, .chart-r3 { grid-template-columns: 1fr; }
+  .rank-row-base { grid-template-columns: 36px 1fr 56px 76px 60px; gap: 6px; }
+  .date-range-wrap input { width: 98px; }
 }
 </style>
 </head>
@@ -259,6 +282,7 @@ select option { background: var(--charcoal-2); }
     <button class="ntab active" onclick="switchSection('posts')">貼文記錄</button>
     <button class="ntab" onclick="switchSection('weekly')">每週統計</button>
     <button class="ntab" onclick="switchSection('monthly')">月度總覽</button>
+    <button class="ntab" onclick="switchSection('ranking')">排名</button>
   </div>
 
   <!-- =====================================================
@@ -300,6 +324,14 @@ select option { background: var(--charcoal-2); }
       <div class="search-wrap">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input type="text" id="search" placeholder="搜尋標題…" oninput="render()">
+      </div>
+      <div class="date-range-wrap">
+        <input type="date" id="filter-from" onchange="render()" title="開始日期">
+        <span class="date-sep">~</span>
+        <input type="date" id="filter-to" onchange="render()" title="結束日期">
+        <button class="btn" style="padding:6px 9px" onclick="clearDateFilter()" title="清除日期篩選">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
       <select id="filter-type" onchange="render()">
         <option value="">全部類型</option>
@@ -438,6 +470,29 @@ select option { background: var(--charcoal-2); }
       <div class="chart-card"><p class="chart-card-title">週成交數</p><div class="chart-h"><canvas id="ch-wk-deals"></canvas></div></div>
     </div>
 
+    <!-- 每日粉絲紀錄 -->
+    <div class="section-hd" style="margin-top:1.75rem">
+      <div class="section-hd-title">每日粉絲紀錄</div>
+      <div class="section-hd-sub">逐日記錄粉絲數，追蹤長期成長曲線</div>
+    </div>
+    <div class="weekly-entry">
+      <div class="weekly-entry-title">新增每日紀錄</div>
+      <div class="form-grid c3">
+        <div class="form-field"><label>業務姓名</label><select id="df-name"><option value="">選擇業務</option></select></div>
+        <div class="form-field"><label>日期</label><input type="date" id="df-date"></div>
+        <div class="form-field"><label>當日粉絲數</label><input type="number" id="df-count" placeholder="0" min="0"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveDailyFollowers()">儲存</button>
+        <span class="form-msg" id="df-msg"></span>
+        <span class="form-err" id="df-err"></span>
+      </div>
+    </div>
+    <div class="chart-card" style="margin-top:12px">
+      <p class="chart-card-title">每日粉絲趨勢（近 60 筆）</p>
+      <div style="position:relative;height:220px"><canvas id="ch-daily-f"></canvas></div>
+    </div>
+
   </div><!-- /section-weekly -->
 
   <!-- =====================================================
@@ -465,6 +520,35 @@ select option { background: var(--charcoal-2); }
 
   </div><!-- /section-monthly -->
 
+  <!-- =====================================================
+       SECTION: 排名
+  ====================================================== -->
+  <div id="section-ranking" style="display:none">
+
+    <div class="person-tabs" id="ranking-person-tabs"></div>
+
+    <!-- 流量排名 -->
+    <div class="section-hd">
+      <div class="section-hd-title">貼文流量排名</div>
+      <div class="section-hd-sub" id="ranking-view-sub">依觀看數由高到低</div>
+    </div>
+    <div class="rank-hd rank-row-base">
+      <span>排名</span><span>標題</span><span>業務</span><span>日期</span><span style="text-align:right">觀看數</span>
+    </div>
+    <div id="ranking-view-list"></div>
+
+    <!-- 互動率排名 -->
+    <div class="section-hd" style="margin-top:2rem">
+      <div class="section-hd-title">互動率排名</div>
+      <div class="section-hd-sub" id="ranking-er-sub">（讚＋回覆＋轉發＋引用）÷ 觀看數 × 100%</div>
+    </div>
+    <div class="rank-hd rank-row-base">
+      <span>排名</span><span>標題</span><span>業務</span><span>日期</span><span style="text-align:right">互動率</span>
+    </div>
+    <div id="ranking-er-list"></div>
+
+  </div><!-- /section-ranking -->
+
   <!-- 管理業務 Modal -->
   <div class="modal-overlay" id="staff-modal" onclick="if(event.target===this)closeStaffModal()">
     <div class="modal">
@@ -482,6 +566,10 @@ select option { background: var(--charcoal-2); }
   </div>
 
 </main>
+
+<footer class="site-footer">
+  <div class="footer-inner">水軍貼文統計 · 績效素材庫</div>
+</footer>
 
 <script>
 // ===== CONSTANTS =====
@@ -501,8 +589,11 @@ let weeklyStats = [];
 let openIds          = new Set();
 let activeTab        = '';
 let weeklyActiveTab  = '';
+let rankingActiveTab = '';
 let editingId        = null;
 let currentSection   = 'posts';
+let dailyFollowers   = [];
+let dfCh             = null;
 
 // ===== DOM HELPERS =====
 function g(id) { return document.getElementById(id); }
@@ -537,14 +628,15 @@ async function apiFetch(path, opts = {}) {
 // ===== SECTION SWITCHING =====
 function switchSection(name) {
   currentSection = name;
-  ['posts','weekly','monthly'].forEach(s => {
+  ['posts','weekly','monthly','ranking'].forEach(s => {
     g(`section-${s}`).style.display = s === name ? '' : 'none';
   });
   document.querySelectorAll('.ntab').forEach((t, i) => {
-    t.classList.toggle('active', ['posts','weekly','monthly'][i] === name);
+    t.classList.toggle('active', ['posts','weekly','monthly','ranking'][i] === name);
   });
   if (name === 'weekly')  renderWeeklySection();
   if (name === 'monthly') renderMonthlySection();
+  if (name === 'ranking') renderRankingSection();
 }
 
 // ===== PERSON TABS =====
@@ -686,13 +778,17 @@ function toggleCard(id) {
 
 // ===== FILTERED DATA =====
 function filtered() {
-  const q  = g('search').value.toLowerCase();
-  const ft = g('filter-type').value;
-  const sb = g('sort-by').value;
+  const q    = g('search').value.toLowerCase();
+  const ft   = g('filter-type').value;
+  const sb   = g('sort-by').value;
+  const from = g('filter-from').value;
+  const to   = g('filter-to').value;
   let data = posts.filter(p => {
     if (activeTab && p.name !== activeTab) return false;
     if (ft && p.type !== ft) return false;
     if (q && !p.title.toLowerCase().includes(q)) return false;
+    if (from && p.date < from) return false;
+    if (to   && p.date > to)   return false;
     return true;
   });
   data.sort((a, b) => {
@@ -865,7 +961,7 @@ async function addStaff() {
     const s = await apiFetch('/api/staff', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name}) });
     staff.push(s);
     g('new-staff-name').value = '';
-    renderStaffList(); renderNameDropdown(); renderWeeklyNameDropdown(); refreshAll();
+    renderStaffList(); renderNameDropdown(); renderWeeklyNameDropdown(); renderDailyFollowersDropdown(); refreshAll();
   } catch (e) { g('staff-err').textContent = e.message; }
 }
 async function deleteStaff(id) {
@@ -879,7 +975,7 @@ async function deleteStaff(id) {
   try {
     await apiFetch(`/api/staff/${id}`, { method:'DELETE' });
     staff = staff.filter(s => s.id !== id);
-    renderStaffList(); renderNameDropdown(); renderWeeklyNameDropdown(); refreshAll();
+    renderStaffList(); renderNameDropdown(); renderWeeklyNameDropdown(); renderDailyFollowersDropdown(); refreshAll();
   } catch (e) { alert(`刪除失敗：${e.message}`); }
 }
 
@@ -1075,6 +1171,12 @@ function renderWeeklySection() {
   wkCh.deals = new Chart(g('ch-wk-deals'), { type:'bar',
     data:{ labels: wk.labels, datasets:[{ data: wk.deals, backgroundColor:'rgba(196,79,43,.7)', borderRadius:4 }] },
     options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:LS, y:sc()} } });
+
+  // Daily followers section
+  renderDailyFollowersDropdown();
+  g('df-name').value = weeklyActiveTab;
+  if (!g('df-date').value) g('df-date').value = new Date().toISOString().split('T')[0];
+  renderDailyFollowersChart();
 }
 
 async function saveWeeklyStats() {
@@ -1170,12 +1272,118 @@ function renderMonthlySection() {
   g('top-view-list').innerHTML = topList(byView, p => p.view.toLocaleString(), () => '');
 }
 
+// ===== DATE FILTER CLEAR =====
+function clearDateFilter() {
+  g('filter-from').value = '';
+  g('filter-to').value   = '';
+  render();
+}
+
+// ===== RANKING =====
+function renderRankingPersonTabs() {
+  const tabs = [{ label: '全部', key: '' }, ...staff.map(s => ({ label: s.name, key: s.name }))];
+  g('ranking-person-tabs').innerHTML = tabs.map(t =>
+    `<button class="ptab${rankingActiveTab === t.key ? ' active' : ''}" onclick="switchRankingTab('${esc(t.key)}')">${esc(t.label)}</button>`
+  ).join('');
+}
+
+function switchRankingTab(key) {
+  rankingActiveTab = key;
+  renderRankingSection();
+}
+
+function renderRankingSection() {
+  renderRankingPersonTabs();
+  const src   = rankingActiveTab ? posts.filter(p => p.name === rankingActiveTab) : posts;
+  const label = rankingActiveTab || '全部';
+  g('ranking-view-sub').textContent = `依觀看數由高到低（${label}，共 ${src.length} 筆）`;
+  g('ranking-er-sub').textContent   = `（讚＋回覆＋轉發＋引用）÷ 觀看數 × 100%（${label}）`;
+
+  const byView = [...src].sort((a,b) => b.view - a.view).slice(0, 30);
+  const byEr   = [...src].filter(p => p.view > 0).sort((a,b) => engRate(b) - engRate(a)).slice(0, 30);
+
+  function rankRow(p, i, val) {
+    const nc = i < 3 ? ['r1','r2','r3'][i] : '';
+    return `<div class="rank-row rank-row-base">
+      <span class="rank-num ${nc}">${i+1}</span>
+      <span class="rank-ttl" title="${esc(p.title)}">${esc(p.title)}</span>
+      <span class="rank-sname">${esc(p.name)}</span>
+      <span class="rank-date">${p.date}</span>
+      <span class="rank-val">${val}</span>
+    </div>`;
+  }
+
+  const empty = '<div class="empty" style="padding:1.5rem 0"><div class="empty-icon">📊</div>尚無資料</div>';
+  g('ranking-view-list').innerHTML = byView.length ? byView.map((p,i) => rankRow(p,i,p.view.toLocaleString())).join('') : empty;
+  g('ranking-er-list').innerHTML   = byEr.length   ? byEr.map((p,i)   => rankRow(p,i,engRate(p).toFixed(2)+'%')).join('') : empty;
+}
+
+// ===== DAILY FOLLOWERS =====
+function renderDailyFollowersDropdown() {
+  const sel = g('df-name');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">選擇業務</option>' +
+    staff.map(s => `<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');
+  if (cur) sel.value = cur;
+}
+
+async function saveDailyFollowers() {
+  const staff_name = g('df-name').value;
+  const date       = g('df-date').value;
+  const followers  = parseInt(g('df-count').value) || 0;
+  g('df-err').textContent = '';
+  if (!staff_name || !date) { g('df-err').textContent = '請選擇業務並填入日期'; return; }
+  try {
+    const saved = await apiFetch('/api/daily-followers', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ date, staff_name, followers }),
+    });
+    const key = d => d.date + '|' + d.staff_name;
+    const idx = dailyFollowers.findIndex(r => key(r) === key(saved));
+    if (idx !== -1) dailyFollowers[idx] = saved; else dailyFollowers.push(saved);
+    g('df-msg').textContent = '已儲存！';
+    setTimeout(() => { g('df-msg').textContent = ''; }, 2000);
+    renderDailyFollowersChart();
+  } catch (e) { g('df-err').textContent = `儲存失敗：${e.message}`; }
+}
+
+function renderDailyFollowersChart() {
+  if (dfCh) { dfCh.destroy(); dfCh = null; }
+  const canvas = g('ch-daily-f');
+  if (!canvas) return;
+  const name = weeklyActiveTab;
+  const src  = name ? dailyFollowers.filter(r => r.staff_name === name) : dailyFollowers;
+  let labels, data;
+  if (!name) {
+    // Team total: sum per date
+    const m = {};
+    src.forEach(r => { m[r.date] = (m[r.date] || 0) + Number(r.followers || 0); });
+    const keys = Object.keys(m).sort().slice(-60);
+    labels = keys.map(d => d.slice(5).replace('-','/'));
+    data   = keys.map(k => m[k]);
+  } else {
+    const sorted = [...src].sort((a,b) => a.date.localeCompare(b.date)).slice(-60);
+    labels = sorted.map(r => (r.date||'').slice(5).replace('-','/'));
+    data   = sorted.map(r => Number(r.followers || 0));
+  }
+  if (!labels.length) return;
+  const B  = {responsive:true, maintainAspectRatio:false, animation:{duration:300}};
+  const TT = {backgroundColor:'#2E2E2E', titleColor:'#F0EDE6', bodyColor:'#A09A8E', borderColor:'rgba(212,168,67,.2)', borderWidth:1};
+  const LS = sc({ticks:{color:'#6A6460', font:{size:10}, maxTicksLimit:12}});
+  dfCh = new Chart(canvas, { type:'line',
+    data:{ labels, datasets:[{ data, borderColor:'#7DC98A', backgroundColor:'rgba(125,201,138,.1)', fill:true, pointBackgroundColor:'#7DC98A', tension:0.3, pointRadius:3 }] },
+    options:{ ...B, plugins:{tooltip:TT, legend:{display:false}}, scales:{x:LS, y:sc()} }
+  });
+}
+
 // ===== REFRESH =====
 function refreshAll() {
   renderPersonTabs();
   renderStats();
   render();
   buildCharts();
+  if (currentSection === 'ranking') renderRankingSection();
 }
 
 // ===== INIT =====
@@ -1183,10 +1391,11 @@ async function init() {
   g('stats-grid').innerHTML = `<div class="stat-card" style="grid-column:span 3"><div class="loading"><div class="loading-spinner"></div>載入中…</div></div>`;
   g('post-list').innerHTML  = '';
   try {
-    [posts, staff, weeklyStats] = await Promise.all([
+    [posts, staff, weeklyStats, dailyFollowers] = await Promise.all([
       apiFetch('/api/posts'),
       apiFetch('/api/staff'),
       apiFetch('/api/weekly-stats'),
+      apiFetch('/api/daily-followers'),
     ]);
   } catch (e) {
     g('stats-grid').innerHTML = '';
@@ -1194,6 +1403,8 @@ async function init() {
     return;
   }
   renderNameDropdown();
+  renderWeeklyNameDropdown();
+  renderDailyFollowersDropdown();
   refreshAll();
 }
 

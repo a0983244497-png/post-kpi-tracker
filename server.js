@@ -4,7 +4,8 @@ import { dirname, join } from 'path';
 import { initDb } from './db.js';
 import postsRouter       from './routes/posts.js';
 import staffRouter      from './routes/staff.js';
-import weeklyStatsRouter from './routes/weekly_stats.js';
+import weeklyStatsRouter    from './routes/weekly_stats.js';
+import dailyFollowersRouter from './routes/daily_followers.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -34,6 +35,7 @@ app.use(express.json());
 app.use('/api', requireAuth, postsRouter);
 app.use('/api', requireAuth, staffRouter);
 app.use('/api', requireAuth, weeklyStatsRouter);
+app.use('/api', requireAuth, dailyFollowersRouter);
 
 // ─── 靜態頁面（受 Auth 保護）────────────────────────────
 app.use(requireAuth, express.static(join(__dirname, 'public')));

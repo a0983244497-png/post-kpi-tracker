@@ -66,6 +66,18 @@ export async function initDb() {
   await pool.query(`ALTER TABLE weekly_stats DROP CONSTRAINT IF EXISTS weekly_stats_week_start_date_key`);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS weekly_stats_week_name_uidx ON weekly_stats(week_start_date, name)`);
 
+  // Daily followers table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS daily_followers (
+      id         SERIAL PRIMARY KEY,
+      date       DATE NOT NULL,
+      staff_name VARCHAR(100) NOT NULL,
+      followers  INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(date, staff_name)
+    )
+  `);
+
   // Seed default staff (unconditional, skips if already exists)
   await pool.query(
     `INSERT INTO staff (name) VALUES ('Gino'),('Darren'),('Josh'),('Jenna'),('路克') ON CONFLICT (name) DO NOTHING`
