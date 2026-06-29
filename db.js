@@ -93,6 +93,54 @@ export async function initDb() {
     )
   `);
 
+  // Course tables
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS course_students (
+      id             SERIAL PRIMARY KEY,
+      name           VARCHAR(100) NOT NULL,
+      phone          VARCHAR(20)  DEFAULT '',
+      joined_date    DATE         NOT NULL,
+      assigned_staff VARCHAR(100) DEFAULT '',
+      status         VARCHAR(20)  DEFAULT 'active',
+      notes          TEXT         DEFAULT '',
+      created_at     TIMESTAMPTZ  DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS course_sessions (
+      id              SERIAL PRIMARY KEY,
+      session_date    DATE         NOT NULL,
+      session_title   VARCHAR(200) NOT NULL,
+      total_students  INTEGER      DEFAULT 0,
+      attended_count  INTEGER      DEFAULT 0,
+      notes           TEXT         DEFAULT '',
+      created_at      TIMESTAMPTZ  DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS course_funnel (
+      id                SERIAL PRIMARY KEY,
+      student_id        INTEGER REFERENCES course_students(id) ON DELETE CASCADE,
+      attended_sessions INTEGER   DEFAULT 0,
+      completed_course  BOOLEAN   DEFAULT FALSE,
+      completed_date    DATE,
+      dm_inquiry        BOOLEAN   DEFAULT FALSE,
+      dm_date           DATE,
+      opened_account    BOOLEAN   DEFAULT FALSE,
+      account_date      DATE,
+      deposited         BOOLEAN   DEFAULT FALSE,
+      deposit_amount    INTEGER   DEFAULT 0,
+      deposit_date      DATE,
+      converted         BOOLEAN   DEFAULT FALSE,
+      convert_date      DATE,
+      assigned_staff    VARCHAR(100) DEFAULT '',
+      created_at        TIMESTAMPTZ  DEFAULT NOW(),
+      UNIQUE(student_id)
+    )
+  `);
+
   // Seed default staff (unconditional, skips if already exists)
   await pool.query(
     `INSERT INTO staff (name) VALUES ('Gino'),('Darren'),('Josh'),('Jenna'),('路克') ON CONFLICT (name) DO NOTHING`

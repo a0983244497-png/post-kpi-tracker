@@ -2,11 +2,14 @@ import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { initDb } from './db.js';
-import postsRouter       from './routes/posts.js';
-import staffRouter      from './routes/staff.js';
+import postsRouter          from './routes/posts.js';
+import staffRouter          from './routes/staff.js';
 import weeklyStatsRouter    from './routes/weekly_stats.js';
 import dailyFollowersRouter from './routes/daily_followers.js';
 import staffGoalsRouter     from './routes/staff_goals.js';
+import studentsRouter       from './routes/students.js';
+import sessionsRouter       from './routes/sessions.js';
+import funnelRouter         from './routes/funnel.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -38,6 +41,9 @@ app.use('/api', requireAuth, staffRouter);
 app.use('/api', requireAuth, weeklyStatsRouter);
 app.use('/api', requireAuth, dailyFollowersRouter);
 app.use('/api', requireAuth, staffGoalsRouter);
+app.use('/api', requireAuth, studentsRouter);
+app.use('/api', requireAuth, sessionsRouter);
+app.use('/api', requireAuth, funnelRouter);
 
 // ─── 靜態頁面（受 Auth 保護）────────────────────────────
 app.use(requireAuth, express.static(join(__dirname, 'public')));
