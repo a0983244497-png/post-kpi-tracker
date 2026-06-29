@@ -244,8 +244,16 @@ select option { background: var(--charcoal-2); }
 .date-range-wrap input { width: 118px; }
 .date-sep { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
 /* Footer */
-.site-footer { background: #F5F5F5; border-top: 1px solid #E0E0E0; padding: 18px 2rem; }
-.footer-inner { max-width: 960px; margin: 0 auto; font-size: 12px; color: #333333; text-align: center; font-family: var(--font-body); }
+.site-footer { background-color: #F5F5F5 !important; border-top: 1px solid #E0E0E0; padding: 18px 2rem; color: #333333 !important; }
+.footer-inner { max-width: 960px; margin: 0 auto; font-size: 12px; color: #333333 !important; text-align: center; font-family: var(--font-body); }
+/* Ranking subsections */
+.rank-subsec-hd { font-size: 12px; font-weight: 700; padding: 10px 4px 4px; }
+.rank-top { color: var(--gold); }
+.rank-bot { color: #C44F2B; margin-top: 1rem; }
+.rank-row-bad { border-color: rgba(196,79,43,.25); }
+.rank-row-bad:hover { border-color: rgba(196,79,43,.5); }
+.rank-val-bad { color: #C44F2B !important; font-family: var(--font-display); font-size: 14px; font-weight: 700; text-align: right; }
+.rank-num.rb { color: #C44F2B; }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 640px) {
@@ -452,10 +460,6 @@ select option { background: var(--charcoal-2); }
         <div class="form-field"><label>週開始日期</label><input type="date" id="ws-date" readonly style="opacity:.6"></div>
         <div class="form-field"><label>私訊數（手動）</label><input type="number" id="ws-dms" placeholder="0" min="0"></div>
       </div>
-      <div class="form-grid c2" style="margin-top:10px">
-        <div class="form-field"><label>週初粉絲數</label><input type="number" id="ws-fstart" placeholder="0" min="0"></div>
-        <div class="form-field"><label>週末粉絲數</label><input type="number" id="ws-fend" placeholder="0" min="0"></div>
-      </div>
       <div class="form-actions">
         <button class="btn btn-primary" onclick="saveWeeklyStats()">儲存本週數據</button>
         <span class="form-msg" id="ws-msg"></span>
@@ -532,18 +536,12 @@ select option { background: var(--charcoal-2); }
       <div class="section-hd-title">貼文流量排名</div>
       <div class="section-hd-sub" id="ranking-view-sub">依觀看數由高到低</div>
     </div>
-    <div class="rank-hd rank-row-base">
-      <span>排名</span><span>標題</span><span>業務</span><span>日期</span><span style="text-align:right">觀看數</span>
-    </div>
     <div id="ranking-view-list"></div>
 
     <!-- 互動率排名 -->
     <div class="section-hd" style="margin-top:2rem">
       <div class="section-hd-title">互動率排名</div>
       <div class="section-hd-sub" id="ranking-er-sub">（讚＋回覆＋轉發＋引用）÷ 觀看數 × 100%</div>
-    </div>
-    <div class="rank-hd rank-row-base">
-      <span>排名</span><span>標題</span><span>業務</span><span>日期</span><span style="text-align:right">互動率</span>
     </div>
     <div id="ranking-er-list"></div>
 
@@ -618,6 +616,43 @@ function getWeekStart(offsetWeeks = 0) {
   return d.toISOString().slice(0, 10);
 }
 
+// ===== FOLLOWERS HELPERS =====
+function weekNetFollowers(weekStart, name) {
+  const wEnd = new Date(weekStart + 'T12:00:00'); wEnd.setDate(wEnd.getDate() + 6);
+  const wEndStr = wEnd.toISOString().slice(0,10);
+  const src = dailyFollowers.filter(r =>
+    (!name || r.staff_name === name) && r.date >= weekStart && r.date <= wEndStr
+  );
+  if (!src.length) return null;
+  const byP = {};
+  src.forEach(r => { if (!byP[r.staff_name]) byP[r.staff_name] = []; byP[r.staff_name].push(r); });
+  let net = 0, valid = false;
+  Object.values(byP).forEach(arr => {
+    const s = arr.sort((a,b) => a.date.localeCompare(b.date));
+    if (s.length >= 2) { net += Number(s[s.length-1].followers) - Number(s[0].followers); valid = true; }
+  });
+  return valid ? net : null;
+}
+
+function monthNetFollowers(ym, name) {
+  const [y, m] = ym.split('-').map(Number);
+  const from = ym + '-01';
+  const lastDay = new Date(y, m, 0).getDate();
+  const to = `${y}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  const src = dailyFollowers.filter(r =>
+    (!name || r.staff_name === name) && r.date >= from && r.date <= to
+  );
+  if (!src.length) return null;
+  const byP = {};
+  src.forEach(r => { if (!byP[r.staff_name]) byP[r.staff_name] = []; byP[r.staff_name].push(r); });
+  let net = 0, valid = false;
+  Object.values(byP).forEach(arr => {
+    const s = arr.sort((a,b) => a.date.localeCompare(b.date));
+    if (s.length >= 2) { net += Number(s[s.length-1].followers) - Number(s[0].followers); valid = true; }
+  });
+  return valid ? net : null;
+}
+
 // ===== API =====
 async function apiFetch(path, opts = {}) {
   const res = await fetch(path, opts);
@@ -668,13 +703,10 @@ function renderStats() {
     ? (src.reduce((s,p) => s + engRate(p), 0) / src.length).toFixed(2)
     : '0';
 
-  // This week net followers from weeklyStats
-  const thisWeek  = getWeekStart(0);
-  const thisWS    = weeklyStats.find(w => (w.week_start_date||'').slice(0,10) === thisWeek);
-  const netFollow = thisWS ? (thisWS.followers_end - thisWS.followers_start) : null;
-  const netFollowTxt = netFollow !== null
-    ? (netFollow >= 0 ? `+${netFollow}` : `${netFollow}`)
-    : '—';
+  // Net followers from daily_followers
+  const thisWeek     = getWeekStart(0);
+  const netFollow    = weekNetFollowers(thisWeek, activeTab || '');
+  const netFollowTxt = netFollow !== null ? (netFollow >= 0 ? `+${netFollow}` : `${netFollow}`) : '—';
 
   const label = activeTab || '全部';
   g('stats-grid').innerHTML = `
@@ -1137,11 +1169,9 @@ function renderWeeklySection() {
   ].join('');
 
   // Weekly entry form: always visible, pre-select name + pre-fill from matching entry
-  g('ws-name').value   = wsName;
-  g('ws-date').value   = thisWeek;
-  g('ws-dms').value    = thisWS.total_dms    != null ? thisWS.total_dms    : '';
-  g('ws-fstart').value = thisWS.followers_start != null ? thisWS.followers_start : '';
-  g('ws-fend').value   = thisWS.followers_end   != null ? thisWS.followers_end   : '';
+  g('ws-name').value = wsName;
+  g('ws-date').value = thisWeek;
+  g('ws-dms').value  = thisWS.total_dms != null ? thisWS.total_dms : '';
 
   // Build weekly charts
   Object.values(wkCh).forEach(c => c.destroy()); wkCh = {};
@@ -1151,14 +1181,13 @@ function renderWeeklySection() {
   const NN = {display:false};
   const LS = sc({ticks:{color:'#6A6460', font:{size:10}, maxTicksLimit:8}});
 
-  // Followers trend from weekly_stats, filtered by current name
-  const wsSorted    = [...weeklyStats].filter(w => (w.name||'') === wsName)
-                       .sort((a,b) => (a.week_start_date>b.week_start_date?1:-1)).slice(-12);
-  const wsLabels    = wsSorted.map(w => (w.week_start_date||'').slice(5,10).replace('-','/'));
-  const wsFollowers = wsSorted.map(w => (Number(w.followers_end||0) - Number(w.followers_start||0)));
+  // Followers chart from daily_followers (last 12 weeks)
+  const wks12      = Array.from({length:12}, (_,i) => getWeekStart(11-i));
+  const dfLabels   = wks12.map(w => w.slice(5).replace('-','/'));
+  const dfFollowers = wks12.map(w => weekNetFollowers(w, wsName) ?? 0);
 
   wkCh.followers = new Chart(g('ch-wk-followers'), { type:'line',
-    data:{ labels: wsLabels, datasets:[{ data: wsFollowers, borderColor:'#7DC98A', backgroundColor:'rgba(125,201,138,.1)', fill:true, pointBackgroundColor:'#7DC98A', tension:0.3, pointRadius:3 }] },
+    data:{ labels: dfLabels, datasets:[{ data: dfFollowers, borderColor:'#7DC98A', backgroundColor:'rgba(125,201,138,.1)', fill:true, pointBackgroundColor:'#7DC98A', tension:0.3, pointRadius:3 }] },
     options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:LS, y:sc()} } });
 
   // Engagement rate and deals from filtered posts by week (last 12 weeks)
@@ -1182,9 +1211,7 @@ function renderWeeklySection() {
 async function saveWeeklyStats() {
   const week_start_date = g('ws-date').value;
   const name            = g('ws-name').value;
-  const followers_start = parseInt(g('ws-fstart').value) || 0;
-  const followers_end   = parseInt(g('ws-fend').value)   || 0;
-  const total_dms       = parseInt(g('ws-dms').value)    || 0;
+  const total_dms = parseInt(g('ws-dms').value) || 0;
 
   g('ws-err').textContent = '';
   if (!week_start_date) { g('ws-err').textContent = '缺少週開始日期'; return; }
@@ -1204,10 +1231,8 @@ async function saveWeeklyStats() {
     total_reposts: wps.reduce((s,p) => s+(p.reposts||0), 0),
     total_quotes:  wps.reduce((s,p) => s+(p.quotes||0), 0),
     total_dms,
-    conversions:   wps.reduce((s,p) => s+p.deal, 0),
-    revenue:       wps.reduce((s,p) => s+p.revenue, 0),
-    followers_start,
-    followers_end,
+    conversions: wps.reduce((s,p) => s+p.deal, 0),
+    revenue:     wps.reduce((s,p) => s+p.revenue, 0),
   });
 
   try {
@@ -1238,10 +1263,9 @@ function renderMonthlySection() {
   const td   = monthPosts.reduce((s,p) => s+p.deal, 0);
   const trev = monthPosts.reduce((s,p) => s+p.revenue, 0);
 
-  // Net followers this month (sum from weekly_stats in this month)
-  const monthWS = weeklyStats.filter(w => (w.week_start_date||'').startsWith(ym));
-  const netFollowers = monthWS.reduce((s,w) => s + (Number(w.followers_end||0) - Number(w.followers_start||0)), 0);
-  const totalDms     = monthWS.reduce((s,w) => s + Number(w.total_dms||0), 0);
+  const monthWS    = weeklyStats.filter(w => (w.week_start_date||'').startsWith(ym));
+  const netFollowers = monthNetFollowers(ym, '') ?? 0;
+  const totalDms   = monthWS.reduce((s,w) => s + Number(w.total_dms||0), 0);
 
   g('monthly-stats-grid').innerHTML = `
     <div class="stat-card"><div class="stat-label">本月總觀看</div><div class="stat-val">${tv.toLocaleString()}</div></div>
@@ -1296,26 +1320,45 @@ function renderRankingSection() {
   renderRankingPersonTabs();
   const src   = rankingActiveTab ? posts.filter(p => p.name === rankingActiveTab) : posts;
   const label = rankingActiveTab || '全部';
-  g('ranking-view-sub').textContent = `依觀看數由高到低（${label}，共 ${src.length} 筆）`;
+  g('ranking-view-sub').textContent = `依觀看數（${label}，共 ${src.length} 筆）`;
   g('ranking-er-sub').textContent   = `（讚＋回覆＋轉發＋引用）÷ 觀看數 × 100%（${label}）`;
 
-  const byView = [...src].sort((a,b) => b.view - a.view).slice(0, 30);
-  const byEr   = [...src].filter(p => p.view > 0).sort((a,b) => engRate(b) - engRate(a)).slice(0, 30);
+  const byView = [...src].sort((a,b) => b.view - a.view);
+  const byEr   = [...src].filter(p => p.view > 0).sort((a,b) => engRate(b) - engRate(a));
 
-  function rankRow(p, i, val) {
-    const nc = i < 3 ? ['r1','r2','r3'][i] : '';
-    return `<div class="rank-row rank-row-base">
-      <span class="rank-num ${nc}">${i+1}</span>
-      <span class="rank-ttl" title="${esc(p.title)}">${esc(p.title)}</span>
-      <span class="rank-sname">${esc(p.name)}</span>
-      <span class="rank-date">${p.date}</span>
-      <span class="rank-val">${val}</span>
-    </div>`;
+  const HDR = `<div class="rank-hd rank-row-base"><span>排名</span><span>標題</span><span>業務</span><span>日期</span><span style="text-align:right">數值</span></div>`;
+  const EMPTY = '<div class="empty" style="padding:.75rem 0;font-size:13px;color:var(--text-muted)">尚無資料</div>';
+
+  function makeRows(arr, valFn, isBottom) {
+    if (!arr.length) return EMPTY;
+    const slice = isBottom ? [...arr].slice(-5).reverse() : arr.slice(0, 5);
+    const total = arr.length;
+    return slice.map((p, i) => {
+      const pos = isBottom ? (total - i) : (i + 1);
+      const nc  = isBottom ? 'rb' : (i < 3 ? ['r1','r2','r3'][i] : '');
+      const valHtml = isBottom
+        ? `<span class="rank-val-bad">${valFn(p)}</span>`
+        : `<span class="rank-val">${valFn(p)}</span>`;
+      return `<div class="rank-row rank-row-base${isBottom ? ' rank-row-bad' : ''}">
+        <span class="rank-num ${nc}">${pos}</span>
+        <span class="rank-ttl" title="${esc(p.title)}">${esc(p.title)}</span>
+        <span class="rank-sname">${esc(p.name)}</span>
+        <span class="rank-date">${p.date}</span>
+        ${valHtml}
+      </div>`;
+    }).join('');
   }
 
-  const empty = '<div class="empty" style="padding:1.5rem 0"><div class="empty-icon">📊</div>尚無資料</div>';
-  g('ranking-view-list').innerHTML = byView.length ? byView.map((p,i) => rankRow(p,i,p.view.toLocaleString())).join('') : empty;
-  g('ranking-er-list').innerHTML   = byEr.length   ? byEr.map((p,i)   => rankRow(p,i,engRate(p).toFixed(2)+'%')).join('') : empty;
+  function renderBlock(arr, valFn, listId) {
+    g(listId).innerHTML =
+      `<div class="rank-subsec-hd rank-top">🏆 TOP 5</div>` + HDR + makeRows(arr, valFn, false) +
+      (arr.length > 5
+        ? `<div class="rank-subsec-hd rank-bot">💀 後段班 5</div>` + HDR + makeRows(arr, valFn, true)
+        : '');
+  }
+
+  renderBlock(byView, p => p.view.toLocaleString(), 'ranking-view-list');
+  renderBlock(byEr,   p => engRate(p).toFixed(2)+'%', 'ranking-er-list');
 }
 
 // ===== DAILY FOLLOWERS =====
