@@ -163,6 +163,35 @@ export async function initDb() {
     )
   `);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS staff_goals_name_month_uidx ON staff_goals(staff_name, goal_month) WHERE goal_month IS NOT NULL`);
+  // Migration: staff_goals → date-range goals
+  await pool.query(`ALTER TABLE staff_goals ADD COLUMN IF NOT EXISTS start_date DATE`);
+  await pool.query(`ALTER TABLE staff_goals ADD COLUMN IF NOT EXISTS end_date DATE`);
+  // Populate start_date/end_date from existing goal_month
+  await pool.query(`
+    UPDATE staff_goals
+    SET
+      start_date = (goal_month || '-01')::DATE,
+      end_date   = ((goal_month || '-01')::DATE + INTERVAL '1 MONTH' - INTERVAL '1 DAY')::DATE
+    WHERE start_date IS NULL AND goal_month IS NOT NULL
+  `);
+  // Also populate from week_start_date for very old rows with no goal_month
+  await pool.query(`
+    UPDATE staff_goals
+    SET
+      start_date = week_start_date,
+      end_date   = week_start_date + 6
+    WHERE start_date IS NULL AND week_start_date IS NOT NULL
+  `);
+  // Dedup before adding range unique index
+  await pool.query(`
+    DELETE FROM staff_goals WHERE id IN (
+      SELECT id FROM (
+        SELECT id, ROW_NUMBER() OVER (PARTITION BY staff_name, start_date, end_date ORDER BY created_at DESC NULLS LAST) AS rn
+        FROM staff_goals WHERE start_date IS NOT NULL AND end_date IS NOT NULL
+      ) t WHERE rn > 1
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS staff_goals_range_uidx ON staff_goals(staff_name, start_date, end_date) WHERE start_date IS NOT NULL AND end_date IS NOT NULL`);
   // Migration: add notes to daily_followers
   await pool.query(`ALTER TABLE daily_followers ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT ''`);
 

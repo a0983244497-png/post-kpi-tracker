@@ -393,7 +393,9 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
     <div id="goals-section" style="display:none;margin-bottom:1.25rem">
       <div class="goals-hd">
         <div class="section-hd-title" style="margin:0">月度目標達成</div>
-        <input type="month" id="goal-month" onchange="renderGoalsSection()" style="background:var(--charcoal-3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:12px;padding:4px 8px;margin-left:12px">
+        <input type="date" id="goal-start" onchange="renderGoalsSection()" style="background:var(--charcoal-3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:12px;padding:4px 8px;margin-left:12px">
+        <span style="color:var(--text-muted);font-size:12px">~</span>
+        <input type="date" id="goal-end" onchange="renderGoalsSection()" style="background:var(--charcoal-3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:12px;padding:4px 8px">
         <button class="btn" style="padding:5px 12px;font-size:12px;margin-left:auto" onclick="openGoalsModal()">設定目標</button>
       </div>
       <div class="stats-grid" id="goals-grid" style="grid-template-columns:repeat(4,1fr)"></div>
@@ -600,9 +602,11 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
   ====================================================== -->
   <div id="section-monthly" style="display:none">
 
-    <div class="month-selector">
-      <label>選擇月份</label>
-      <input type="month" id="month-picker" onchange="renderMonthlySection()">
+    <div class="month-selector" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <label style="white-space:nowrap">日期範圍</label>
+      <input type="date" id="month-start" onchange="renderMonthlySection()" style="background:var(--charcoal-3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:13px;padding:5px 8px">
+      <span style="color:var(--text-muted);font-size:13px">~</span>
+      <input type="date" id="month-end" onchange="renderMonthlySection()" style="background:var(--charcoal-3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:13px;padding:5px 8px">
     </div>
 
     <div class="stats-grid" id="monthly-stats-grid"></div>
@@ -897,9 +901,12 @@ function engRate(p) {
   if (!p.view) return 0;
   return (p.like + (p.replies||0) + (p.reposts||0) + (p.quotes||0)) / p.view * 100;
 }
-function currentYm() {
+function currentMonthRange() {
   const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const y = now.getFullYear(), m = now.getMonth() + 1;
+  const start = `${y}-${String(m).padStart(2,'0')}-01`;
+  const end   = `${y}-${String(m).padStart(2,'0')}-${String(new Date(y, m, 0).getDate()).padStart(2,'0')}`;
+  return { start, end };
 }
 
 function getMon(s) {
@@ -939,6 +946,21 @@ function monthNetFollowers(ym, name) {
   const to = `${y}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
   const src = dailyFollowers.filter(r =>
     (!name || r.staff_name === name) && r.date >= from && r.date <= to
+  );
+  if (!src.length) return null;
+  const byP = {};
+  src.forEach(r => { if (!byP[r.staff_name]) byP[r.staff_name] = []; byP[r.staff_name].push(r); });
+  let net = 0, valid = false;
+  Object.values(byP).forEach(arr => {
+    const s = arr.sort((a,b) => a.date.localeCompare(b.date));
+    if (s.length >= 2) { net += Number(s[s.length-1].followers) - Number(s[0].followers); valid = true; }
+  });
+  return valid ? net : null;
+}
+
+function rangeNetFollowers(start, end, name) {
+  const src = dailyFollowers.filter(r =>
+    (!name || r.staff_name === name) && r.date >= start && r.date <= end
   );
   if (!src.length) return null;
   const byP = {};
@@ -1418,14 +1440,26 @@ function openWeeklyModal() { g('weekly-modal').style.display = 'flex'; }
 function closeWeeklyModal() { g('weekly-modal').style.display = 'none'; }
 
 // ===== GOALS MODAL =====
+function goalDates() {
+  const startEl = g('goal-start'), endEl = g('goal-end');
+  if (!startEl.value || !endEl.value) {
+    const { start, end } = currentMonthRange();
+    if (!startEl.value) startEl.value = start;
+    if (!endEl.value)   endEl.value   = end;
+  }
+  return { start: startEl.value, end: endEl.value };
+}
+
 function openGoalsModal() {
   const name = activeTab; if (!name) return;
-  const monthEl = g('goal-month');
-  if (!monthEl.value) monthEl.value = currentYm();
-  const month = monthEl.value;
-  const existing = staffGoals.find(sg => sg.staff_name === name && (sg.goal_month||'') === month) || {};
+  const { start, end } = goalDates();
+  const existing = staffGoals.find(sg =>
+    sg.staff_name === name &&
+    (sg.start_date||'').slice(0,10) === start &&
+    (sg.end_date||'').slice(0,10)   === end
+  ) || {};
   g('goals-modal-name').textContent = name;
-  g('goals-modal-period').textContent = `（${month}）`;
+  g('goals-modal-period').textContent = `（${start} ~ ${end}）`;
   g('g-views').value     = existing.target_views       || '';
   g('g-leads').value     = existing.target_leads       || '';
   g('g-convs').value     = existing.target_conversions || '';
@@ -1437,19 +1471,23 @@ function closeGoalsModal() { g('goals-modal').style.display = 'none'; }
 
 async function saveGoals() {
   const name = activeTab; if (!name) return;
-  const month = g('goal-month').value || currentYm();
+  const { start, end } = goalDates();
   try {
     const saved = await apiFetch('/api/staff-goals', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        staff_name: name, goal_month: month,
+        staff_name: name, start_date: start, end_date: end,
         target_views:       parseInt(g('g-views').value)     || 0,
         target_leads:       parseInt(g('g-leads').value)     || 0,
         target_conversions: parseInt(g('g-convs').value)     || 0,
         target_followers:   parseInt(g('g-followers').value) || 0,
       }),
     });
-    const idx = staffGoals.findIndex(sg => sg.staff_name === name && (sg.goal_month||'') === month);
+    const idx = staffGoals.findIndex(sg =>
+      sg.staff_name === name &&
+      (sg.start_date||'').slice(0,10) === start &&
+      (sg.end_date||'').slice(0,10)   === end
+    );
     if (idx !== -1) staffGoals[idx] = saved; else staffGoals.push(saved);
     g('g-msg').textContent = '已儲存！';
     setTimeout(() => { g('g-msg').textContent = ''; closeGoalsModal(); }, 1500);
@@ -1462,15 +1500,17 @@ function renderGoalsSection() {
   const div = g('goals-section');
   if (!activeTab) { div.style.display = 'none'; return; }
   div.style.display = '';
-  const monthEl = g('goal-month');
-  if (!monthEl.value) monthEl.value = currentYm();
-  const month = monthEl.value;
-  const goal = staffGoals.find(sg => sg.staff_name === activeTab && (sg.goal_month||'') === month) || {};
-  const src  = posts.filter(p => p.name === activeTab && p.date.startsWith(month));
+  const { start, end } = goalDates();
+  const goal = staffGoals.find(sg =>
+    sg.staff_name === activeTab &&
+    (sg.start_date||'').slice(0,10) === start &&
+    (sg.end_date||'').slice(0,10)   === end
+  ) || {};
+  const src  = posts.filter(p => p.name === activeTab && p.date >= start && p.date <= end);
   const tv = src.reduce((s,p) => s+p.view, 0);
   const tl = src.reduce((s,p) => s+p.lead, 0);
   const td = src.reduce((s,p) => s+p.deal, 0);
-  const netF = monthNetFollowers(month, activeTab) ?? 0;
+  const netF = rangeNetFollowers(start, end, activeTab) ?? 0;
 
   function achieveCard(label, actual, target) {
     const t = Number(target) || 0;
@@ -1807,7 +1847,7 @@ function renderWeeklySection() {
     const thisNetF = weekNetFollowers(thisWeek, wsName);
     const latestGoal = staffGoals
       .filter(sg => sg.staff_name === wsName && Number(sg.target_followers||0) > 0)
-      .sort((a,b) => (b.week_start_date||'').localeCompare(a.week_start_date||''))[0];
+      .sort((a,b) => (b.start_date||b.week_start_date||'').localeCompare(a.start_date||a.week_start_date||''))[0];
     if (latestGoal && Number(latestGoal.target_followers||0) > 0) {
       const actual = thisNetF ?? 0;
       const target = Number(latestGoal.target_followers);
@@ -1879,37 +1919,42 @@ async function saveWeeklyStats() {
 }
 
 // ===== MONTHLY SECTION =====
-function renderMonthlySection() {
-  const picker = g('month-picker');
-  if (!picker.value) {
-    const now = new Date();
-    picker.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+function monthlyDates() {
+  const startEl = g('month-start'), endEl = g('month-end');
+  if (!startEl.value || !endEl.value) {
+    const { start, end } = currentMonthRange();
+    if (!startEl.value) startEl.value = start;
+    if (!endEl.value)   endEl.value   = end;
   }
-  const ym = picker.value; // "2026-06"
+  return { start: startEl.value, end: endEl.value };
+}
 
-  const monthPosts = posts.filter(p => p.date.startsWith(ym));
-  const tv   = monthPosts.reduce((s,p) => s+p.view, 0);
-  const td   = monthPosts.reduce((s,p) => s+p.deal, 0);
-  const trev = monthPosts.reduce((s,p) => s+p.revenue, 0);
+function renderMonthlySection() {
+  const { start, end } = monthlyDates();
 
-  const monthWS    = weeklyStats.filter(w => (w.week_start_date||'').startsWith(ym));
-  const netFollowers = monthNetFollowers(ym, '') ?? 0;
-  const totalDms   = monthWS.reduce((s,w) => s + Number(w.total_dms||0), 0);
+  const rangePosts = posts.filter(p => p.date >= start && p.date <= end);
+  const tv   = rangePosts.reduce((s,p) => s+p.view, 0);
+  const td   = rangePosts.reduce((s,p) => s+p.deal, 0);
+  const trev = rangePosts.reduce((s,p) => s+p.revenue, 0);
+
+  const rangeWS      = weeklyStats.filter(w => (w.week_start_date||'') >= start && (w.week_start_date||'') <= end);
+  const netFollowers = rangeNetFollowers(start, end, '') ?? 0;
+  const totalDms     = rangeWS.reduce((s,w) => s + Number(w.total_dms||0), 0);
 
   g('monthly-stats-grid').innerHTML = `
-    <div class="stat-card"><div class="stat-label">本月總觀看</div><div class="stat-val">${tv.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="stat-label">本月淨增粉絲</div><div class="stat-val">${netFollowers >= 0 ? '+'+netFollowers : netFollowers}</div></div>
-    <div class="stat-card"><div class="stat-label">本月總私訊</div><div class="stat-val">${totalDms}</div></div>
-    <div class="stat-card"><div class="stat-label">本月成交數</div><div class="stat-val">${td}</div></div>
-    <div class="stat-card"><div class="stat-label">本月入金金額</div><div class="stat-val">$${trev.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="stat-label">本月貼文數</div><div class="stat-val">${monthPosts.length}</div></div>`;
+    <div class="stat-card"><div class="stat-label">區間總觀看</div><div class="stat-val">${tv.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">區間淨增粉絲</div><div class="stat-val">${netFollowers >= 0 ? '+'+netFollowers : netFollowers}</div></div>
+    <div class="stat-card"><div class="stat-label">區間總私訊</div><div class="stat-val">${totalDms}</div></div>
+    <div class="stat-card"><div class="stat-label">區間成交數</div><div class="stat-val">${td}</div></div>
+    <div class="stat-card"><div class="stat-label">區間入金金額</div><div class="stat-val">$${trev.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">區間貼文數</div><div class="stat-val">${rangePosts.length}</div></div>`;
 
   // Top 3 by engagement rate
-  const byEr   = [...monthPosts].filter(p => p.view > 0).sort((a,b) => engRate(b)-engRate(a)).slice(0,3);
-  const byView = [...monthPosts].sort((a,b) => b.view-a.view).slice(0,3);
+  const byEr   = [...rangePosts].filter(p => p.view > 0).sort((a,b) => engRate(b)-engRate(a)).slice(0,3);
+  const byView = [...rangePosts].sort((a,b) => b.view-a.view).slice(0,3);
 
   function topList(arr, valFn, unitFn) {
-    if (!arr.length) return '<div style="color:var(--text-muted);font-size:13px;padding:12px 0">本月無資料</div>';
+    if (!arr.length) return '<div style="color:var(--text-muted);font-size:13px;padding:12px 0">此區間無資料</div>';
     return arr.map((p, i) => `
       <div class="top-item">
         <span class="top-rank ${['r1','r2','r3'][i]}">${i+1}</span>
@@ -1924,8 +1969,8 @@ function renderMonthlySection() {
   g('top-er-list').innerHTML   = topList(byEr,   p => engRate(p).toFixed(2), () => '%');
   g('top-view-list').innerHTML = topList(byView, p => p.view.toLocaleString(), () => '');
 
-  // Monthly goals achievement
-  renderMonthlyGoals(ym);
+  // Goals achievement
+  renderMonthlyGoals(start, end);
 
   // Feature 5: default month pickers to last 2 months on first load
   if (!g('mc-m1').value && !g('mc-m2').value) {
@@ -1940,12 +1985,17 @@ function renderMonthlySection() {
 }
 
 // ===== MONTHLY GOALS =====
-function renderMonthlyGoals(ym) {
+function renderMonthlyGoals(start, end) {
   const el = g('monthly-goals-grid');
   if (!el) return;
-  const goalsForMonth = staffGoals.filter(sg => (sg.goal_month||'') === ym);
-  if (!goalsForMonth.length) {
-    el.innerHTML = `<p style="color:var(--text-muted);font-size:13px;grid-column:1/-1">本月尚無任何業務設定目標。在貼文記錄頁選擇業務後點「設定目標」即可新增。</p>`;
+  // Goals that overlap the selected range
+  const goalsInRange = staffGoals.filter(sg => {
+    const s = (sg.start_date||'').slice(0,10);
+    const e = (sg.end_date||'').slice(0,10);
+    return s && e && s <= end && e >= start;
+  });
+  if (!goalsInRange.length) {
+    el.innerHTML = `<p style="color:var(--text-muted);font-size:13px;grid-column:1/-1">此區間尚無任何業務設定目標。在貼文記錄頁選擇業務後點「設定目標」即可新增。</p>`;
     return;
   }
 
@@ -1966,21 +2016,24 @@ function renderMonthlyGoals(ym) {
     </div>`;
   }
 
-  el.innerHTML = goalsForMonth.map(goal => {
+  el.innerHTML = goalsInRange.map(goal => {
     const n = goal.staff_name;
-    const src = posts.filter(p => p.date.startsWith(ym) && p.name === n);
+    const gs = (goal.start_date||'').slice(0,10);
+    const ge = (goal.end_date||'').slice(0,10);
+    const src = posts.filter(p => p.date >= gs && p.date <= ge && p.name === n);
     const tv   = src.reduce((s,p) => s+p.view, 0);
     const tl   = src.reduce((s,p) => s+p.lead, 0);
     const td   = src.reduce((s,p) => s+p.deal, 0);
-    const netF = monthNetFollowers(ym, n) ?? 0;
+    const netF = rangeNetFollowers(gs, ge, n) ?? 0;
     const updAt = goal.updated_at
       ? `最後更新 ${new Date(goal.updated_at).toLocaleDateString('zh-TW')}`
       : '';
     return `<div class="weekly-entry" style="padding:14px 16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <span style="font-weight:700;font-size:14px;color:var(--text-primary)">${esc(n)}</span>
-        <button class="btn" style="font-size:11px;padding:3px 10px" onclick="openGoalsModalFor('${esc(n)}','${esc(ym)}')">編輯目標</button>
+        <button class="btn" style="font-size:11px;padding:3px 10px" onclick="openGoalsModalFor('${esc(n)}','${esc(gs)}','${esc(ge)}')">編輯目標</button>
       </div>
+      <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px">${gs} ~ ${ge}</div>
       ${miniAchieve('觀看數', tv, goal.target_views)}
       ${miniAchieve('引流數', tl, goal.target_leads)}
       ${miniAchieve('成交數', td, goal.target_conversions)}
@@ -1990,20 +2043,22 @@ function renderMonthlyGoals(ym) {
   }).join('');
 }
 
-function openGoalsModalFor(staffName, month) {
-  // Switch to posts section and the right staff tab first, then open modal
-  const existing = staffGoals.find(sg => sg.staff_name === staffName && (sg.goal_month||'') === month) || {};
+function openGoalsModalFor(staffName, start, end) {
+  const existing = staffGoals.find(sg =>
+    sg.staff_name === staffName &&
+    (sg.start_date||'').slice(0,10) === start &&
+    (sg.end_date||'').slice(0,10)   === end
+  ) || {};
   g('goals-modal-name').textContent = staffName;
-  g('goals-modal-period').textContent = `（${month}）`;
+  g('goals-modal-period').textContent = `（${start} ~ ${end}）`;
   g('g-views').value     = existing.target_views       || '';
   g('g-leads').value     = existing.target_leads       || '';
   g('g-convs').value     = existing.target_conversions || '';
   g('g-followers').value = existing.target_followers   || '';
   g('g-msg').textContent = ''; g('g-err').textContent = '';
-  // Temporarily override activeTab for saveGoals()
   activeTab = staffName;
-  const monthEl = g('goal-month');
-  if (monthEl) monthEl.value = month;
+  g('goal-start').value = start;
+  g('goal-end').value   = end;
   g('goals-modal').style.display = 'flex';
 }
 
