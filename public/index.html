@@ -353,19 +353,7 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
 .snapshot-metric { background:var(--charcoal-3); border-radius:var(--radius-sm); padding:8px 10px; }
 .snapshot-metric-lbl { font-size:10px; color:var(--text-muted); margin-bottom:2px; }
 .snapshot-metric-val { font-size:16px; font-weight:700; color:var(--gold); font-family:var(--font-display); }
-/* Identity overlay */
-.identity-overlay { position:fixed; inset:0; background:var(--charcoal); z-index:9000; display:flex; align-items:center; justify-content:center; }
-.identity-card { background:var(--charcoal-2); border:1px solid var(--border-strong); border-radius:16px; padding:2.5rem 2rem; width:min(420px,94vw); text-align:center; }
-.identity-logo-txt { font-family:var(--font-display); font-size:13px; font-weight:700; color:var(--gold); letter-spacing:.12em; text-transform:uppercase; margin-bottom:1.25rem; }
-.identity-title { font-size:20px; font-weight:700; color:var(--text-primary); margin-bottom:.4rem; }
-.identity-sub { font-size:13px; color:var(--text-muted); margin-bottom:1.75rem; line-height:1.6; }
-.identity-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-.identity-btn { padding:14px 8px; background:var(--charcoal-3); border:1px solid var(--border); border-radius:var(--radius); color:var(--text-primary); font-size:15px; font-weight:600; font-family:var(--font-body); cursor:pointer; transition:background .15s,border-color .15s; }
-.identity-btn:hover { background:var(--charcoal-4); border-color:var(--border-strong); }
-.identity-btn.gino-btn { grid-column:span 3; background:rgba(212,168,67,.12); border-color:var(--border-strong); color:var(--gold); font-size:16px; }
-.identity-btn.gino-btn:hover { background:rgba(212,168,67,.22); }
-.identity-chip { display:inline-flex; align-items:center; gap:6px; background:rgba(212,168,67,.12); border:1px solid var(--border-strong); border-radius:99px; padding:4px 12px; font-size:12px; color:var(--gold); font-weight:600; cursor:pointer; }
-.identity-chip:hover { background:rgba(212,168,67,.2); }
+
 </style>
 </head>
 <body>
@@ -378,21 +366,6 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
   <div class="header-right" id="header-count"></div>
 </header>
 
-<!-- ===== 身份選擇 Overlay ===== -->
-<div id="identity-overlay" class="identity-overlay" style="display:none">
-  <div class="identity-card">
-    <div class="identity-logo-txt">水軍貼文統計</div>
-    <div class="identity-title">請選擇你的身份</div>
-    <div class="identity-sub">使用同一組團隊密碼，選擇後資料視圖依身份自動篩選</div>
-    <div class="identity-grid">
-      <button class="identity-btn gino-btn" onclick="selectIdentity('Gino')">👑 Gino（管理員）</button>
-      <button class="identity-btn" onclick="selectIdentity('路克')">路克</button>
-      <button class="identity-btn" onclick="selectIdentity('Josh')">Josh</button>
-      <button class="identity-btn" onclick="selectIdentity('Darren')">Darren</button>
-      <button class="identity-btn" onclick="selectIdentity('Jenna')">Jenna</button>
-    </div>
-  </div>
-</div>
 
 <main class="container">
 
@@ -687,13 +660,6 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
   ====================================================== -->
   <div id="section-course" style="display:none">
 
-    <!-- 身份顯示 -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap">
-      <span style="font-size:12px;color:var(--text-muted)">目前身份：</span>
-      <span id="course-identity-chip" class="identity-chip" onclick="switchIdentity()" title="點擊切換身份"></span>
-      <span style="font-size:11px;color:var(--text-muted);margin-left:auto">Gino 可查看全部數據；其他業務僅看自己的學員</span>
-    </div>
-
     <!-- 子頁籤 -->
     <div class="course-subtabs" id="course-subtabs">
       <button class="ctab active" onclick="switchCourseTab('overview')">漏斗總覽</button>
@@ -898,7 +864,6 @@ let courseSessions   = [];
 let courseStats      = null;
 let courseLoaded     = false;
 let courseSubTab     = 'overview';
-let courseRole       = 'Gino';
 let courseExpandedId = null;
 let courseEditFunnel = {};
 let courseCh         = {};
@@ -2082,51 +2047,20 @@ function renderDailyFollowersChart() {
   });
 }
 
-// ===== IDENTITY (sessionStorage) =====
-
-function selectIdentity(name) {
-  sessionStorage.setItem('courseIdentity', name);
-  courseRole = name;
-  g('identity-overlay').style.display = 'none';
-  initApp();
-}
-
-function switchIdentity() {
-  sessionStorage.removeItem('courseIdentity');
-  courseLoaded = false;
-  courseStudents = []; courseSessions = []; courseStats = null;
-  g('identity-overlay').style.display = 'flex';
-}
-
-function checkIdentity() {
-  const id = sessionStorage.getItem('courseIdentity');
-  if (id) { courseRole = id; return true; }
-  g('identity-overlay').style.display = 'flex';
-  return false;
-}
-
-function updateIdentityChip() {
-  const chip = g('course-identity-chip');
-  if (!chip) return;
-  const isGino = courseRole === 'Gino';
-  chip.innerHTML = `${isGino ? '👑 ' : ''}${esc(courseRole)}${isGino ? '（全部）' : ''} <span style="font-size:10px;opacity:.6">切換</span>`;
-}
 
 // ===== COURSE SECTION =====
 
 async function renderCourseSection() {
-  updateIdentityChip();
   const today = new Date().toISOString().split('T')[0];
   if (!g('cs-sdate').value) g('cs-sdate').value = today;
   if (!g('cs-sess-date').value) g('cs-sess-date').value = today;
   if (!courseLoaded) {
     g('cs-stats-grid').innerHTML = `<div class="stat-card" style="grid-column:span 3"><div class="loading"><div class="loading-spinner"></div>載入中…</div></div>`;
     try {
-      const sp = courseRole !== 'Gino' ? `?staff=${encodeURIComponent(courseRole)}` : '';
       [courseStudents, courseSessions, courseStats] = await Promise.all([
-        apiFetch('/api/students' + sp),
+        apiFetch('/api/students'),
         apiFetch('/api/sessions'),
-        apiFetch('/api/funnel-stats' + sp),
+        apiFetch('/api/funnel-stats'),
       ]);
       courseLoaded = true;
     } catch (e) {
@@ -2163,7 +2097,6 @@ function renderCourseStaffDropdowns() {
   const sstaff = g('cs-sstaff');
   if (sstaff) {
     sstaff.innerHTML = '<option value="">選擇業務</option>' + staffOpts;
-    if (courseRole !== 'Gino') sstaff.value = courseRole;
   }
 }
 
@@ -2222,11 +2155,7 @@ function renderFunnelOverview() {
   });
   g('cs-funnel-vis').innerHTML = funnelHtml || '<div style="color:var(--text-muted);font-size:13px">尚無學員資料</div>';
 
-  // Staff ranking only visible to Gino
-  const rankSection = g('cs-staff-rank-section');
-  if (rankSection) rankSection.style.display = courseRole === 'Gino' ? '' : 'none';
-
-  if (!s.by_staff || !s.by_staff.length || courseRole !== 'Gino') return;
+  if (!s.by_staff || !s.by_staff.length) return;
   g('cs-staff-rank').innerHTML = `<table class="rank-table">
     <thead><tr><th>排名</th><th>業務</th><th>成交數</th><th>入金總額</th></tr></thead>
     <tbody>${s.by_staff.map((r, i) => `
@@ -2433,8 +2362,7 @@ async function addStudent() {
     renderStudentList();
     showToast(`學員「${saved.name}」已新增`);
     // refresh stats in background
-    const sp = courseRole !== 'Gino' ? `?staff=${encodeURIComponent(courseRole)}` : '';
-    apiFetch('/api/funnel-stats' + sp).then(s => { courseStats = s; if (courseSubTab === 'overview') renderFunnelOverview(); });
+    apiFetch('/api/funnel-stats').then(s => { courseStats = s; if (courseSubTab === 'overview') renderFunnelOverview(); });
   } catch (e) { g('cs-serr').textContent = '新增失敗：' + e.message; }
 }
 
@@ -2457,7 +2385,7 @@ async function saveFunnel() {
     courseEditFunnel = {};
     if (msgEl) msgEl.textContent = '已更新！';
     // refresh stats
-    apiFetch('/api/funnel-stats' + (courseRole !== 'Gino' ? `?staff=${encodeURIComponent(courseRole)}` : '')).then(st => { courseStats = st; });
+    apiFetch('/api/funnel-stats').then(st => { courseStats = st; });
     renderStudentList();
     showToast('學員狀態已更新');
   } catch (e) {
@@ -2589,12 +2517,10 @@ async function initApp() {
   renderNameDropdown();
   renderWeeklyNameDropdown();
   renderDailyFollowersDropdown();
-  updateIdentityChip();
   refreshAll();
 }
 
 function init() {
-  if (!checkIdentity()) return;
   initApp();
 }
 
