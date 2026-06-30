@@ -146,6 +146,7 @@ export async function initDb() {
   `);
 
   // Migration: staff_goals → monthly goals
+  await pool.query(`ALTER TABLE staff_goals ALTER COLUMN week_start_date DROP NOT NULL`);
   await pool.query(`ALTER TABLE staff_goals ADD COLUMN IF NOT EXISTS period_end DATE`);
   await pool.query(`ALTER TABLE staff_goals ADD COLUMN IF NOT EXISTS target_followers INTEGER DEFAULT 0`);
   await pool.query(`ALTER TABLE staff_goals ADD COLUMN IF NOT EXISTS goal_month VARCHAR(7)`);
