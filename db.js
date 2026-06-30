@@ -145,6 +145,9 @@ export async function initDb() {
     )
   `);
 
+  // Migration: add period_end to staff_goals
+  await pool.query(`ALTER TABLE staff_goals ADD COLUMN IF NOT EXISTS period_end DATE`);
+
   // Seed default staff (unconditional, skips if already exists)
   await pool.query(
     `INSERT INTO staff (name) VALUES ('Gino'),('Darren'),('Josh'),('Jenna'),('路克') ON CONFLICT (name) DO NOTHING`

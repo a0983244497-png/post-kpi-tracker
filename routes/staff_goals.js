@@ -24,6 +24,7 @@ router.post('/staff-goals', async (req, res) => {
   const {
     staff_name,
     week_start_date,
+    period_end         = null,
     target_views       = 0,
     target_leads       = 0,
     target_conversions = 0,
@@ -33,12 +34,12 @@ router.post('/staff-goals', async (req, res) => {
   }
   try {
     const { rows } = await pool.query(
-      `INSERT INTO staff_goals (staff_name, week_start_date, target_views, target_leads, target_conversions)
-       VALUES ($1,$2,$3,$4,$5)
+      `INSERT INTO staff_goals (staff_name, week_start_date, period_end, target_views, target_leads, target_conversions)
+       VALUES ($1,$2,$3,$4,$5,$6)
        ON CONFLICT (staff_name, week_start_date) DO UPDATE SET
-         target_views=$3, target_leads=$4, target_conversions=$5
+         period_end=$3, target_views=$4, target_leads=$5, target_conversions=$6
        RETURNING *`,
-      [staff_name, week_start_date, target_views, target_leads, target_conversions]
+      [staff_name, week_start_date, period_end, target_views, target_leads, target_conversions]
     );
     res.json(rows[0]);
   } catch (e) {

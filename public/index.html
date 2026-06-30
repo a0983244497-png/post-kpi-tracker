@@ -389,11 +389,16 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
     <!-- 統計列 (6 cards / 3 col × 2 row) -->
     <div class="stats-grid" id="stats-grid"></div>
 
-    <!-- 本週目標達成（個人頁籤才顯示） -->
+    <!-- 目標達成（個人頁籤才顯示） -->
     <div id="goals-section" style="display:none;margin-bottom:1.25rem">
       <div class="goals-hd">
-        <div class="section-hd-title" style="margin:0">本週目標達成</div>
-        <button class="btn" style="padding:5px 12px;font-size:12px" onclick="openGoalsModal()">設定目標</button>
+        <div class="section-hd-title" style="margin:0">目標達成</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-left:12px">
+          <input type="date" id="goal-from" onchange="renderGoalsSection()" style="background:var(--charcoal-3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:12px;padding:4px 8px">
+          <span style="color:var(--text-muted);font-size:12px">~</span>
+          <input type="date" id="goal-to" onchange="renderGoalsSection()" style="background:var(--charcoal-3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:12px;padding:4px 8px">
+        </div>
+        <button class="btn" style="padding:5px 12px;font-size:12px;margin-left:auto" onclick="openGoalsModal()">設定目標</button>
       </div>
       <div class="stats-grid" id="goals-grid" style="grid-template-columns:repeat(3,1fr)"></div>
     </div>
@@ -799,7 +804,7 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
   <div class="modal-overlay" id="goals-modal" style="display:none" onclick="if(event.target===this)closeGoalsModal()">
     <div class="modal" style="width:min(480px,94vw)">
       <div class="modal-hd">
-        <span class="modal-hd-title">本週目標設定 — <span id="goals-modal-name" style="color:var(--gold)"></span></span>
+        <span class="modal-hd-title">目標設定 — <span id="goals-modal-name" style="color:var(--gold)"></span><span id="goals-modal-period" style="font-size:12px;color:var(--text-muted);font-weight:400;margin-left:8px"></span></span>
         <button class="modal-close" onclick="closeGoalsModal()">✕</button>
       </div>
       <div class="form-grid c3" style="margin-bottom:1rem">
@@ -879,6 +884,24 @@ function engRate(p) {
   if (!p.view) return 0;
   return (p.like + (p.replies||0) + (p.reposts||0) + (p.quotes||0)) / p.view * 100;
 }
+function getMonthRange() {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  const from = `${y}-${String(m+1).padStart(2,'0')}-01`;
+  const lastDay = new Date(y, m+1, 0).getDate();
+  const to   = `${y}-${String(m+1).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  return { from, to };
+}
+function initGoalDates() {
+  const fromEl = g('goal-from'), toEl = g('goal-to');
+  if (!fromEl || !toEl) return;
+  if (!fromEl.value || !toEl.value) {
+    const { from, to } = getMonthRange();
+    fromEl.value = from;
+    toEl.value   = to;
+  }
+}
+
 function getMon(s) {
   const d = new Date(s + 'T12:00:00'), dow = d.getDay() || 7;
   d.setDate(d.getDate() - dow + 1);
@@ -1397,9 +1420,12 @@ function closeWeeklyModal() { g('weekly-modal').style.display = 'none'; }
 // ===== GOALS MODAL =====
 function openGoalsModal() {
   const name = activeTab; if (!name) return;
-  const thisWeek = getWeekStart(0);
-  const existing = staffGoals.find(sg => sg.staff_name === name && (sg.week_start_date||'').slice(0,10) === thisWeek) || {};
+  initGoalDates();
+  const from = g('goal-from').value;
+  const to   = g('goal-to').value;
+  const existing = staffGoals.find(sg => sg.staff_name === name && (sg.week_start_date||'').slice(0,10) === from) || {};
   g('goals-modal-name').textContent = name;
+  g('goals-modal-period').textContent = from && to ? `（${from} ~ ${to}）` : '';
   g('g-views').value = existing.target_views  || '';
   g('g-leads').value = existing.target_leads  || '';
   g('g-convs').value = existing.target_conversions || '';
@@ -1410,18 +1436,20 @@ function closeGoalsModal() { g('goals-modal').style.display = 'none'; }
 
 async function saveGoals() {
   const name = activeTab; if (!name) return;
-  const thisWeek = getWeekStart(0);
+  const from = g('goal-from').value;
+  const to   = g('goal-to').value;
+  if (!from) { g('g-err').textContent = '請先選擇開始日期'; return; }
   try {
     const saved = await apiFetch('/api/staff-goals', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        staff_name: name, week_start_date: thisWeek,
+        staff_name: name, week_start_date: from, period_end: to || null,
         target_views:       parseInt(g('g-views').value) || 0,
         target_leads:       parseInt(g('g-leads').value) || 0,
         target_conversions: parseInt(g('g-convs').value) || 0,
       }),
     });
-    const idx = staffGoals.findIndex(sg => sg.staff_name === name && (sg.week_start_date||'').slice(0,10) === thisWeek);
+    const idx = staffGoals.findIndex(sg => sg.staff_name === name && (sg.week_start_date||'').slice(0,10) === from);
     if (idx !== -1) staffGoals[idx] = saved; else staffGoals.push(saved);
     g('g-msg').textContent = '已儲存！';
     setTimeout(() => { g('g-msg').textContent = ''; closeGoalsModal(); }, 1500);
@@ -1433,9 +1461,11 @@ function renderGoalsSection() {
   const div = g('goals-section');
   if (!activeTab) { div.style.display = 'none'; return; }
   div.style.display = '';
-  const thisWeek = getWeekStart(0);
-  const src  = posts.filter(p => p.name === activeTab && getMon(p.date) === thisWeek);
-  const goal = staffGoals.find(sg => sg.staff_name === activeTab && (sg.week_start_date||'').slice(0,10) === thisWeek) || {};
+  initGoalDates();
+  const from = g('goal-from').value;
+  const to   = g('goal-to').value;
+  const src  = posts.filter(p => p.name === activeTab && p.date >= from && p.date <= to);
+  const goal = staffGoals.find(sg => sg.staff_name === activeTab && (sg.week_start_date||'').slice(0,10) === from) || {};
   const tv = src.reduce((s,p) => s+p.view, 0);
   const tl = src.reduce((s,p) => s+p.lead, 0);
   const td = src.reduce((s,p) => s+p.deal, 0);
