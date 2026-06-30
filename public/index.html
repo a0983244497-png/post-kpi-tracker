@@ -895,7 +895,17 @@ function getMonthRange() {
 function initGoalDates() {
   const fromEl = g('goal-from'), toEl = g('goal-to');
   if (!fromEl || !toEl) return;
-  if (!fromEl.value || !toEl.value) {
+  if (fromEl.value) return; // already initialised
+  // Use the most recent saved goal's period for this staff member
+  const existing = activeTab
+    ? staffGoals
+        .filter(sg => sg.staff_name === activeTab)
+        .sort((a, b) => (b.week_start_date || '').localeCompare(a.week_start_date || ''))[0]
+    : null;
+  if (existing) {
+    fromEl.value = (existing.week_start_date || '').slice(0, 10);
+    toEl.value   = existing.period_end ? String(existing.period_end).slice(0, 10) : '';
+  } else {
     const { from, to } = getMonthRange();
     fromEl.value = from;
     toEl.value   = to;
@@ -991,6 +1001,10 @@ function switchTab(key) {
   activeTab = key;
   currentPage = 1;
   openIds.clear();
+  // Reset goal date pickers so initGoalDates() re-picks the right period for this staff member
+  const gf = g('goal-from'), gt = g('goal-to');
+  if (gf) gf.value = '';
+  if (gt) gt.value = '';
   refreshAll();
 }
 
