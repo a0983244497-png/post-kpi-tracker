@@ -145,9 +145,23 @@ export async function initDb() {
     )
   `);
 
-  // Migration: add period_end and target_followers to staff_goals
+  // Migration: staff_goals → monthly goals
   await pool.query(`ALTER TABLE staff_goals ADD COLUMN IF NOT EXISTS period_end DATE`);
   await pool.query(`ALTER TABLE staff_goals ADD COLUMN IF NOT EXISTS target_followers INTEGER DEFAULT 0`);
+  await pool.query(`ALTER TABLE staff_goals ADD COLUMN IF NOT EXISTS goal_month VARCHAR(7)`);
+  await pool.query(`ALTER TABLE staff_goals ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ`);
+  // Populate goal_month from existing week_start_date
+  await pool.query(`UPDATE staff_goals SET goal_month = TO_CHAR(week_start_date, 'YYYY-MM') WHERE goal_month IS NULL AND week_start_date IS NOT NULL`);
+  // Dedup: keep latest row per (staff_name, goal_month) before adding unique index
+  await pool.query(`
+    DELETE FROM staff_goals WHERE id IN (
+      SELECT id FROM (
+        SELECT id, ROW_NUMBER() OVER (PARTITION BY staff_name, goal_month ORDER BY created_at DESC NULLS LAST) AS rn
+        FROM staff_goals WHERE goal_month IS NOT NULL
+      ) t WHERE rn > 1
+    )
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS staff_goals_name_month_uidx ON staff_goals(staff_name, goal_month) WHERE goal_month IS NOT NULL`);
   // Migration: add notes to daily_followers
   await pool.query(`ALTER TABLE daily_followers ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT ''`);
 

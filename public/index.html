@@ -389,18 +389,14 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
     <!-- 統計列 (6 cards / 3 col × 2 row) -->
     <div class="stats-grid" id="stats-grid"></div>
 
-    <!-- 目標達成（個人頁籤才顯示） -->
+    <!-- 月度目標達成（個人頁籤才顯示） -->
     <div id="goals-section" style="display:none;margin-bottom:1.25rem">
       <div class="goals-hd">
-        <div class="section-hd-title" style="margin:0">目標達成</div>
-        <div style="display:flex;align-items:center;gap:6px;margin-left:12px">
-          <input type="date" id="goal-from" onchange="renderGoalsSection()" style="background:var(--charcoal-3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:12px;padding:4px 8px">
-          <span style="color:var(--text-muted);font-size:12px">~</span>
-          <input type="date" id="goal-to" onchange="renderGoalsSection()" style="background:var(--charcoal-3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:12px;padding:4px 8px">
-        </div>
+        <div class="section-hd-title" style="margin:0">月度目標達成</div>
+        <input type="month" id="goal-month" onchange="renderGoalsSection()" style="background:var(--charcoal-3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:12px;padding:4px 8px;margin-left:12px">
         <button class="btn" style="padding:5px 12px;font-size:12px;margin-left:auto" onclick="openGoalsModal()">設定目標</button>
       </div>
-      <div class="stats-grid" id="goals-grid" style="grid-template-columns:repeat(3,1fr)"></div>
+      <div class="stats-grid" id="goals-grid" style="grid-template-columns:repeat(4,1fr)"></div>
     </div>
 
     <!-- 數據分析 -->
@@ -622,6 +618,13 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
       </div>
     </div>
 
+    <!-- 本月目標達成 -->
+    <div class="section-hd" style="margin-top:1.75rem">
+      <div class="section-hd-title">本月目標達成</div>
+      <div class="section-hd-sub">各業務本月累計數據 vs 設定目標</div>
+    </div>
+    <div id="monthly-goals-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:1.5rem"></div>
+
     <!-- 功能5: 跨月比較 -->
     <div class="section-hd" style="margin-top:1.75rem">
       <div class="section-hd-title">跨月趨勢比較</div>
@@ -811,7 +814,7 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
   <div class="modal-overlay" id="goals-modal" style="display:none" onclick="if(event.target===this)closeGoalsModal()">
     <div class="modal" style="width:min(480px,94vw)">
       <div class="modal-hd">
-        <span class="modal-hd-title">目標設定 — <span id="goals-modal-name" style="color:var(--gold)"></span><span id="goals-modal-period" style="font-size:12px;color:var(--text-muted);font-weight:400;margin-left:8px"></span></span>
+        <span class="modal-hd-title">月度目標設定 — <span id="goals-modal-name" style="color:var(--gold)"></span><span id="goals-modal-period" style="font-size:12px;color:var(--text-muted);font-weight:400;margin-left:8px"></span></span>
         <button class="modal-close" onclick="closeGoalsModal()">✕</button>
       </div>
       <div class="form-grid c2" style="margin-bottom:1rem">
@@ -894,32 +897,9 @@ function engRate(p) {
   if (!p.view) return 0;
   return (p.like + (p.replies||0) + (p.reposts||0) + (p.quotes||0)) / p.view * 100;
 }
-function getMonthRange() {
+function currentYm() {
   const now = new Date();
-  const y = now.getFullYear(), m = now.getMonth();
-  const from = `${y}-${String(m+1).padStart(2,'0')}-01`;
-  const lastDay = new Date(y, m+1, 0).getDate();
-  const to   = `${y}-${String(m+1).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
-  return { from, to };
-}
-function initGoalDates() {
-  const fromEl = g('goal-from'), toEl = g('goal-to');
-  if (!fromEl || !toEl) return;
-  if (fromEl.value) return; // already initialised
-  // Use the most recent saved goal's period for this staff member
-  const existing = activeTab
-    ? staffGoals
-        .filter(sg => sg.staff_name === activeTab)
-        .sort((a, b) => (b.week_start_date || '').localeCompare(a.week_start_date || ''))[0]
-    : null;
-  if (existing) {
-    fromEl.value = (existing.week_start_date || '').slice(0, 10);
-    toEl.value   = existing.period_end ? String(existing.period_end).slice(0, 10) : '';
-  } else {
-    const { from, to } = getMonthRange();
-    fromEl.value = from;
-    toEl.value   = to;
-  }
+  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
 }
 
 function getMon(s) {
@@ -1011,10 +991,6 @@ function switchTab(key) {
   activeTab = key;
   currentPage = 1;
   openIds.clear();
-  // Reset goal date pickers so initGoalDates() re-picks the right period for this staff member
-  const gf = g('goal-from'), gt = g('goal-to');
-  if (gf) gf.value = '';
-  if (gt) gt.value = '';
   refreshAll();
 }
 
@@ -1444,12 +1420,12 @@ function closeWeeklyModal() { g('weekly-modal').style.display = 'none'; }
 // ===== GOALS MODAL =====
 function openGoalsModal() {
   const name = activeTab; if (!name) return;
-  initGoalDates();
-  const from = g('goal-from').value;
-  const to   = g('goal-to').value;
-  const existing = staffGoals.find(sg => sg.staff_name === name && (sg.week_start_date||'').slice(0,10) === from) || {};
+  const monthEl = g('goal-month');
+  if (!monthEl.value) monthEl.value = currentYm();
+  const month = monthEl.value;
+  const existing = staffGoals.find(sg => sg.staff_name === name && (sg.goal_month||'') === month) || {};
   g('goals-modal-name').textContent = name;
-  g('goals-modal-period').textContent = from && to ? `（${from} ~ ${to}）` : '';
+  g('goals-modal-period').textContent = `（${month}）`;
   g('g-views').value     = existing.target_views       || '';
   g('g-leads').value     = existing.target_leads       || '';
   g('g-convs').value     = existing.target_conversions || '';
@@ -1461,25 +1437,24 @@ function closeGoalsModal() { g('goals-modal').style.display = 'none'; }
 
 async function saveGoals() {
   const name = activeTab; if (!name) return;
-  const from = g('goal-from').value;
-  const to   = g('goal-to').value;
-  if (!from) { g('g-err').textContent = '請先選擇開始日期'; return; }
+  const month = g('goal-month').value || currentYm();
   try {
     const saved = await apiFetch('/api/staff-goals', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        staff_name: name, week_start_date: from, period_end: to || null,
+        staff_name: name, goal_month: month,
         target_views:       parseInt(g('g-views').value)     || 0,
         target_leads:       parseInt(g('g-leads').value)     || 0,
         target_conversions: parseInt(g('g-convs').value)     || 0,
         target_followers:   parseInt(g('g-followers').value) || 0,
       }),
     });
-    const idx = staffGoals.findIndex(sg => sg.staff_name === name && (sg.week_start_date||'').slice(0,10) === from);
+    const idx = staffGoals.findIndex(sg => sg.staff_name === name && (sg.goal_month||'') === month);
     if (idx !== -1) staffGoals[idx] = saved; else staffGoals.push(saved);
     g('g-msg').textContent = '已儲存！';
     setTimeout(() => { g('g-msg').textContent = ''; closeGoalsModal(); }, 1500);
-    renderStats();
+    renderGoalsSection();
+    if (currentSection === 'monthly') renderMonthlySection();
   } catch (e) { g('g-err').textContent = `儲存失敗：${e.message}`; }
 }
 
@@ -1487,14 +1462,15 @@ function renderGoalsSection() {
   const div = g('goals-section');
   if (!activeTab) { div.style.display = 'none'; return; }
   div.style.display = '';
-  initGoalDates();
-  const from = g('goal-from').value;
-  const to   = g('goal-to').value;
-  const src  = posts.filter(p => p.name === activeTab && p.date >= from && p.date <= to);
-  const goal = staffGoals.find(sg => sg.staff_name === activeTab && (sg.week_start_date||'').slice(0,10) === from) || {};
+  const monthEl = g('goal-month');
+  if (!monthEl.value) monthEl.value = currentYm();
+  const month = monthEl.value;
+  const goal = staffGoals.find(sg => sg.staff_name === activeTab && (sg.goal_month||'') === month) || {};
+  const src  = posts.filter(p => p.name === activeTab && p.date.startsWith(month));
   const tv = src.reduce((s,p) => s+p.view, 0);
   const tl = src.reduce((s,p) => s+p.lead, 0);
   const td = src.reduce((s,p) => s+p.deal, 0);
+  const netF = monthNetFollowers(month, activeTab) ?? 0;
 
   function achieveCard(label, actual, target) {
     const t = Number(target) || 0;
@@ -1513,11 +1489,16 @@ function renderGoalsSection() {
     </div>`;
   }
 
+  const updAt = goal.updated_at
+    ? `最後更新 ${new Date(goal.updated_at).toLocaleDateString('zh-TW')}`
+    : '';
+
   g('goals-grid').innerHTML = [
     achieveCard('觀看數', tv, goal.target_views),
     achieveCard('引流數', tl, goal.target_leads),
     achieveCard('成交數', td, goal.target_conversions),
-  ].join('');
+    achieveCard('增粉數', netF, goal.target_followers),
+  ].join('') + (updAt ? `<div style="grid-column:span 4;font-size:11px;color:var(--text-muted);text-align:right;margin-top:4px">${updAt}</div>` : '');
 }
 function renderStaffList() {
   if (!staff.length) {
@@ -1943,6 +1924,9 @@ function renderMonthlySection() {
   g('top-er-list').innerHTML   = topList(byEr,   p => engRate(p).toFixed(2), () => '%');
   g('top-view-list').innerHTML = topList(byView, p => p.view.toLocaleString(), () => '');
 
+  // Monthly goals achievement
+  renderMonthlyGoals(ym);
+
   // Feature 5: default month pickers to last 2 months on first load
   if (!g('mc-m1').value && !g('mc-m2').value) {
     const now = new Date();
@@ -1953,6 +1937,74 @@ function renderMonthlySection() {
     g('mc-m2').value = curYm;
   }
   renderMonthCompare();
+}
+
+// ===== MONTHLY GOALS =====
+function renderMonthlyGoals(ym) {
+  const el = g('monthly-goals-grid');
+  if (!el) return;
+  const goalsForMonth = staffGoals.filter(sg => (sg.goal_month||'') === ym);
+  if (!goalsForMonth.length) {
+    el.innerHTML = `<p style="color:var(--text-muted);font-size:13px;grid-column:1/-1">本月尚無任何業務設定目標。在貼文記錄頁選擇業務後點「設定目標」即可新增。</p>`;
+    return;
+  }
+
+  function miniAchieve(label, actual, target) {
+    const t = Number(target) || 0;
+    if (!t) return `<div style="margin-bottom:8px"><div style="font-size:11px;color:var(--text-muted)">${label}</div><div style="font-size:13px;color:var(--text-muted)">未設定</div></div>`;
+    const rate  = Math.min(Math.round(actual / t * 100), 999);
+    const color = rate >= 100 ? 'var(--green)' : rate < 60 ? 'var(--danger)' : 'var(--gold)';
+    const w     = Math.min(rate, 100);
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+        <span style="color:var(--text-muted)">${label}</span>
+        <span style="color:${color};font-weight:600">${actual.toLocaleString()} / ${t.toLocaleString()} · ${rate}%</span>
+      </div>
+      <div style="background:var(--charcoal-3);border-radius:99px;height:5px">
+        <div style="width:${w}%;height:5px;border-radius:99px;background:${color}"></div>
+      </div>
+    </div>`;
+  }
+
+  el.innerHTML = goalsForMonth.map(goal => {
+    const n = goal.staff_name;
+    const src = posts.filter(p => p.date.startsWith(ym) && p.name === n);
+    const tv   = src.reduce((s,p) => s+p.view, 0);
+    const tl   = src.reduce((s,p) => s+p.lead, 0);
+    const td   = src.reduce((s,p) => s+p.deal, 0);
+    const netF = monthNetFollowers(ym, n) ?? 0;
+    const updAt = goal.updated_at
+      ? `最後更新 ${new Date(goal.updated_at).toLocaleDateString('zh-TW')}`
+      : '';
+    return `<div class="weekly-entry" style="padding:14px 16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-weight:700;font-size:14px;color:var(--text-primary)">${esc(n)}</span>
+        <button class="btn" style="font-size:11px;padding:3px 10px" onclick="openGoalsModalFor('${esc(n)}','${esc(ym)}')">編輯目標</button>
+      </div>
+      ${miniAchieve('觀看數', tv, goal.target_views)}
+      ${miniAchieve('引流數', tl, goal.target_leads)}
+      ${miniAchieve('成交數', td, goal.target_conversions)}
+      ${miniAchieve('增粉數', netF, goal.target_followers)}
+      ${updAt ? `<div style="font-size:10px;color:var(--text-muted);text-align:right;margin-top:4px">${updAt}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function openGoalsModalFor(staffName, month) {
+  // Switch to posts section and the right staff tab first, then open modal
+  const existing = staffGoals.find(sg => sg.staff_name === staffName && (sg.goal_month||'') === month) || {};
+  g('goals-modal-name').textContent = staffName;
+  g('goals-modal-period').textContent = `（${month}）`;
+  g('g-views').value     = existing.target_views       || '';
+  g('g-leads').value     = existing.target_leads       || '';
+  g('g-convs').value     = existing.target_conversions || '';
+  g('g-followers').value = existing.target_followers   || '';
+  g('g-msg').textContent = ''; g('g-err').textContent = '';
+  // Temporarily override activeTab for saveGoals()
+  activeTab = staffName;
+  const monthEl = g('goal-month');
+  if (monthEl) monthEl.value = month;
+  g('goals-modal').style.display = 'flex';
 }
 
 // ===== FEATURE 5: CROSS-MONTH COMPARE =====
