@@ -550,6 +550,9 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
     </div>
     <div class="cmp-grid" id="weekly-cmp-grid"></div>
 
+    <!-- 粉絲增長目標達成（個人頁籤才顯示） -->
+    <div id="weekly-follower-goal" style="display:none;margin-bottom:1.25rem"></div>
+
     <!-- 趨勢圖 -->
     <div class="chart-row chart-r3">
       <div class="chart-card"><p class="chart-card-title">週淨增粉絲</p><div class="chart-h"><canvas id="ch-wk-followers"></canvas></div></div>
@@ -572,23 +575,27 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
       <div class="section-hd-title">每日粉絲紀錄</div>
       <div class="section-hd-sub">逐日記錄粉絲數，追蹤長期成長曲線</div>
     </div>
+    <div class="person-tabs" id="df-staff-tabs" style="margin-bottom:10px"></div>
     <div class="chart-card" style="margin-bottom:14px">
-      <p class="chart-card-title">每日粉絲趨勢（近 60 筆）</p>
-      <div style="position:relative;height:220px"><canvas id="ch-daily-f"></canvas></div>
+      <p class="chart-card-title">每日粉絲趨勢（近 60 天）</p>
+      <div style="position:relative;height:240px"><canvas id="ch-daily-f"></canvas></div>
     </div>
     <div class="weekly-entry">
-      <div class="weekly-entry-title">新增每日紀錄</div>
-      <div class="form-grid c3">
+      <div class="weekly-entry-title" id="df-form-title">新增每日紀錄</div>
+      <div class="form-grid c2">
         <div class="form-field"><label>業務姓名</label><select id="df-name"><option value="">選擇業務</option></select></div>
         <div class="form-field"><label>日期</label><input type="date" id="df-date"></div>
         <div class="form-field"><label>當日粉絲數</label><input type="number" id="df-count" placeholder="0" min="0"></div>
+        <div class="form-field"><label>備註（選填）</label><input type="text" id="df-notes" placeholder="例：今日直播暴增"></div>
       </div>
       <div class="form-actions">
         <button class="btn btn-primary" onclick="saveDailyFollowers()">儲存</button>
+        <button class="btn" id="df-cancel-btn" style="display:none" onclick="cancelDfEdit()">取消</button>
         <span class="form-msg" id="df-msg"></span>
         <span class="form-err" id="df-err"></span>
       </div>
     </div>
+    <div id="df-list" style="margin-top:14px"></div>
 
   </div><!-- /section-weekly -->
 
@@ -807,10 +814,11 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
         <span class="modal-hd-title">目標設定 — <span id="goals-modal-name" style="color:var(--gold)"></span><span id="goals-modal-period" style="font-size:12px;color:var(--text-muted);font-weight:400;margin-left:8px"></span></span>
         <button class="modal-close" onclick="closeGoalsModal()">✕</button>
       </div>
-      <div class="form-grid c3" style="margin-bottom:1rem">
+      <div class="form-grid c2" style="margin-bottom:1rem">
         <div class="form-field"><label>目標觀看數</label><input type="number" id="g-views" placeholder="0" min="0"></div>
         <div class="form-field"><label>目標引流數</label><input type="number" id="g-leads" placeholder="0" min="0"></div>
         <div class="form-field"><label>目標成交數</label><input type="number" id="g-convs" placeholder="0" min="0"></div>
+        <div class="form-field"><label>週目標增粉數</label><input type="number" id="g-followers" placeholder="0" min="0"></div>
       </div>
       <div class="form-actions">
         <button class="btn btn-primary" onclick="saveGoals()">儲存目標</button>
@@ -859,6 +867,8 @@ let currentSection   = 'posts';
 let currentPage      = 1;
 let editingSnapIds   = new Set();
 let dailyFollowers   = [];
+let dfFilterStaff    = '';
+let dfEditingId      = null;
 let staffGoals       = [];
 let dfCh             = null;
 let mcCh             = null;
@@ -1440,9 +1450,10 @@ function openGoalsModal() {
   const existing = staffGoals.find(sg => sg.staff_name === name && (sg.week_start_date||'').slice(0,10) === from) || {};
   g('goals-modal-name').textContent = name;
   g('goals-modal-period').textContent = from && to ? `（${from} ~ ${to}）` : '';
-  g('g-views').value = existing.target_views  || '';
-  g('g-leads').value = existing.target_leads  || '';
-  g('g-convs').value = existing.target_conversions || '';
+  g('g-views').value     = existing.target_views       || '';
+  g('g-leads').value     = existing.target_leads       || '';
+  g('g-convs').value     = existing.target_conversions || '';
+  g('g-followers').value = existing.target_followers   || '';
   g('g-msg').textContent = ''; g('g-err').textContent = '';
   g('goals-modal').style.display = 'flex';
 }
@@ -1458,9 +1469,10 @@ async function saveGoals() {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         staff_name: name, week_start_date: from, period_end: to || null,
-        target_views:       parseInt(g('g-views').value) || 0,
-        target_leads:       parseInt(g('g-leads').value) || 0,
-        target_conversions: parseInt(g('g-convs').value) || 0,
+        target_views:       parseInt(g('g-views').value)     || 0,
+        target_leads:       parseInt(g('g-leads').value)     || 0,
+        target_conversions: parseInt(g('g-convs').value)     || 0,
+        target_followers:   parseInt(g('g-followers').value) || 0,
       }),
     });
     const idx = staffGoals.findIndex(sg => sg.staff_name === name && (sg.week_start_date||'').slice(0,10) === from);
@@ -1690,6 +1702,8 @@ function renderWeeklyPersonTabs() {
 
 function switchWeeklyTab(key) {
   weeklyActiveTab = key;
+  dfFilterStaff = key; // mirror the weekly tab selection into the follower chart filter
+  cancelDfEdit();
   renderWeeklySection();
 }
 
@@ -1806,11 +1820,40 @@ function renderWeeklySection() {
     data:{ labels:DOW_LABELS, datasets:[{ data:dowAvgEr, backgroundColor:dowErCol, borderRadius:4 }] },
     options:{ ...B, plugins:{tooltip:{...TT, callbacks:{label:ctx=>parseFloat(Number(ctx.raw).toFixed(2))+'%'}}, legend:NN}, scales:{x:LS, y:sc({ticks:{color:'#6A6460',font:{size:10},callback:v=>parseFloat(Number(v).toFixed(2))+'%'}})} } });
 
+  // Follower goal progress (personal tab only)
+  const fgEl = g('weekly-follower-goal');
+  if (wsName && fgEl) {
+    const thisNetF = weekNetFollowers(thisWeek, wsName);
+    const latestGoal = staffGoals
+      .filter(sg => sg.staff_name === wsName && Number(sg.target_followers||0) > 0)
+      .sort((a,b) => (b.week_start_date||'').localeCompare(a.week_start_date||''))[0];
+    if (latestGoal && Number(latestGoal.target_followers||0) > 0) {
+      const actual = thisNetF ?? 0;
+      const target = Number(latestGoal.target_followers);
+      const rate   = Math.min(Math.round(actual / target * 100), 999);
+      const color  = rate >= 100 ? 'var(--green)' : rate < 60 ? 'var(--danger)' : 'var(--gold)';
+      const w      = Math.min(rate, 100);
+      fgEl.style.display = '';
+      fgEl.innerHTML = `<div class="achieve-card" style="color:${color}">
+        <div class="stat-label" style="color:var(--text-muted)">本週增粉目標</div>
+        <div class="stat-val" style="color:${color};font-family:var(--font-display);font-size:22px;font-weight:700">${actual.toLocaleString()} / ${target.toLocaleString()}</div>
+        <div class="stat-sub" style="color:${color};font-weight:600">達成率 ${rate}%</div>
+        <div class="achieve-bar" style="width:${w}%;background:${color}"></div>
+      </div>`;
+    } else {
+      fgEl.style.display = 'none';
+    }
+  } else if (fgEl) {
+    fgEl.style.display = 'none';
+  }
+
   // Daily followers section
   renderDailyFollowersDropdown();
-  g('df-name').value = weeklyActiveTab;
+  renderDfStaffTabs();
+  if (!g('df-name').value) g('df-name').value = weeklyActiveTab;
   if (!g('df-date').value) g('df-date').value = new Date().toISOString().split('T')[0];
   renderDailyFollowersChart();
+  renderDailyFollowersList();
 }
 
 async function saveWeeklyStats() {
@@ -2042,52 +2085,197 @@ function renderDailyFollowersDropdown() {
   if (cur) sel.value = cur;
 }
 
+const DF_COLORS = ['#D4A843','#4A9EBF','#7DC98A','#C44F2B','#9B59B6','#E67E22','#1ABC9C'];
+
+function renderDfStaffTabs() {
+  const el = g('df-staff-tabs');
+  if (!el) return;
+  const tabs = [{ key:'', label:'全部' }, ...staff.map(s => ({ key: s.name, label: s.name }))];
+  el.innerHTML = tabs.map(t =>
+    `<button class="ptab${dfFilterStaff === t.key ? ' active' : ''}" onclick="switchDfStaff('${esc(t.key)}')">${esc(t.label)}</button>`
+  ).join('');
+}
+
+function switchDfStaff(name) {
+  dfFilterStaff = name;
+  renderDailyFollowersChart();
+  renderDailyFollowersList();
+  renderDfStaffTabs();
+}
+
+function computeDfDeltas() {
+  const byStaff = {};
+  dailyFollowers.forEach(r => {
+    const n = r.staff_name;
+    if (!byStaff[n]) byStaff[n] = [];
+    byStaff[n].push(r);
+  });
+  const deltas = {};
+  Object.values(byStaff).forEach(arr => {
+    arr.sort((a, b) => (a.date||'').localeCompare(b.date||''));
+    arr.forEach((r, i) => {
+      deltas[r.id] = i > 0 ? Number(r.followers||0) - Number(arr[i-1].followers||0) : null;
+    });
+  });
+  return deltas;
+}
+
 async function saveDailyFollowers() {
   const staff_name = g('df-name').value;
   const date       = g('df-date').value;
   const followers  = parseInt(g('df-count').value) || 0;
+  const notes      = g('df-notes').value.trim();
   g('df-err').textContent = '';
   if (!staff_name || !date) { g('df-err').textContent = '請選擇業務並填入日期'; return; }
   try {
-    const saved = await apiFetch('/api/daily-followers', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ date, staff_name, followers }),
-    });
-    const key = d => d.date + '|' + d.staff_name;
-    const idx = dailyFollowers.findIndex(r => key(r) === key(saved));
-    if (idx !== -1) dailyFollowers[idx] = saved; else dailyFollowers.push(saved);
-    g('df-msg').textContent = '已儲存！';
+    let saved;
+    if (dfEditingId !== null) {
+      saved = await apiFetch(`/api/daily-followers/${dfEditingId}`, {
+        method: 'PUT', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ date, staff_name, followers, notes }),
+      });
+      const idx = dailyFollowers.findIndex(r => r.id === dfEditingId);
+      if (idx !== -1) dailyFollowers[idx] = saved; else dailyFollowers.push(saved);
+      cancelDfEdit();
+      g('df-msg').textContent = '已更新！';
+    } else {
+      saved = await apiFetch('/api/daily-followers', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ date, staff_name, followers, notes }),
+      });
+      const idx = dailyFollowers.findIndex(r => r.id === saved.id || (r.date === saved.date && r.staff_name === saved.staff_name));
+      if (idx !== -1) dailyFollowers[idx] = saved; else dailyFollowers.push(saved);
+      g('df-msg').textContent = '已儲存！';
+    }
     setTimeout(() => { g('df-msg').textContent = ''; }, 2000);
     renderDailyFollowersChart();
+    renderDailyFollowersList();
   } catch (e) { g('df-err').textContent = `儲存失敗：${e.message}`; }
+}
+
+function editDailyFollower(id) {
+  const r = dailyFollowers.find(x => x.id === id);
+  if (!r) return;
+  dfEditingId = id;
+  g('df-form-title').textContent = '編輯紀錄';
+  g('df-name').value  = r.staff_name || '';
+  g('df-date').value  = (r.date||'').slice(0,10);
+  g('df-count').value = r.followers || '';
+  g('df-notes').value = r.notes || '';
+  g('df-cancel-btn').style.display = '';
+  g('df-err').textContent = '';
+  g('df-msg').textContent = '';
+  g('df-form-title').scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+async function deleteDailyFollower(id) {
+  if (!confirm('確定刪除這筆粉絲紀錄？')) return;
+  try {
+    await apiFetch(`/api/daily-followers/${id}`, { method:'DELETE' });
+    dailyFollowers = dailyFollowers.filter(r => r.id !== id);
+    if (dfEditingId === id) cancelDfEdit();
+    renderDailyFollowersChart();
+    renderDailyFollowersList();
+    showToast('紀錄已刪除');
+  } catch (e) { showToast(`刪除失敗：${e.message}`); }
+}
+
+function cancelDfEdit() {
+  dfEditingId = null;
+  g('df-form-title').textContent = '新增每日紀錄';
+  g('df-name').value = weeklyActiveTab;
+  g('df-date').value = new Date().toISOString().split('T')[0];
+  g('df-count').value = '';
+  g('df-notes').value = '';
+  g('df-cancel-btn').style.display = 'none';
+}
+
+function renderDailyFollowersList() {
+  const el = g('df-list');
+  if (!el) return;
+  const deltas = computeDfDeltas();
+  const src = dfFilterStaff
+    ? dailyFollowers.filter(r => r.staff_name === dfFilterStaff)
+    : dailyFollowers;
+  const sorted = [...src].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  if (!sorted.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:13px;padding:8px 0">尚無粉絲紀錄</p>'; return; }
+  const colorMap = {};
+  staff.forEach((s,i) => { colorMap[s.name] = DF_COLORS[i % DF_COLORS.length]; });
+  el.innerHTML = sorted.map(r => {
+    const delta = deltas[r.id];
+    let deltaHtml = '';
+    if (delta !== null && delta !== undefined) {
+      const cls = delta > 0 ? 'var(--green)' : delta < 0 ? 'var(--danger)' : 'var(--text-muted)';
+      const sign = delta > 0 ? '+' : '';
+      deltaHtml = `<span style="color:${cls};font-size:12px;font-weight:600;margin-left:6px">${sign}${delta.toLocaleString()}</span>`;
+    }
+    const color = colorMap[r.staff_name] || '#ccc';
+    const isEditing = dfEditingId === r.id;
+    return `<div class="weekly-entry" style="margin-bottom:8px;padding:10px 14px;${isEditing ? 'border-color:var(--gold)' : ''}">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block"></span>
+        <span style="font-weight:600;font-size:13px;color:var(--text-primary)">${esc(r.staff_name)}</span>
+        <span style="font-size:12px;color:var(--text-muted)">${(r.date||'').slice(0,10)}</span>
+        <span style="font-size:16px;font-weight:700;color:var(--gold);font-family:var(--font-display)">${Number(r.followers||0).toLocaleString()}</span>
+        ${deltaHtml}
+        ${r.notes ? `<span style="font-size:11px;color:var(--text-muted);margin-left:4px">📝 ${esc(r.notes)}</span>` : ''}
+        <div style="margin-left:auto;display:flex;gap:6px">
+          <button class="btn" style="padding:3px 10px;font-size:12px" onclick="editDailyFollower(${r.id})">編輯</button>
+          <button class="btn btn-danger" style="padding:3px 10px;font-size:12px" onclick="deleteDailyFollower(${r.id})">刪除</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function renderDailyFollowersChart() {
   if (dfCh) { dfCh.destroy(); dfCh = null; }
   const canvas = g('ch-daily-f');
   if (!canvas) return;
-  const name = weeklyActiveTab;
-  const src  = name ? dailyFollowers.filter(r => r.staff_name === name) : dailyFollowers;
-  let labels, data;
-  if (!name) {
-    // Team total: sum per date
-    const m = {};
-    src.forEach(r => { m[r.date] = (m[r.date] || 0) + Number(r.followers || 0); });
-    const keys = Object.keys(m).sort().slice(-60);
-    labels = keys.map(d => d.slice(0,10).slice(5).replace('-','/'));
-    data   = keys.map(k => m[k]);
-  } else {
-    const sorted = [...src].sort((a,b) => a.date.localeCompare(b.date)).slice(-60);
-    labels = sorted.map(r => (r.date||'').slice(0,10).slice(5).replace('-','/'));
-    data   = sorted.map(r => Number(r.followers || 0));
-  }
-  if (!labels.length) return;
+  const filterName = dfFilterStaff;
+
+  // Collect all unique dates (last 60 days with data)
+  const allDates = [...new Set(dailyFollowers.map(r => (r.date||'').slice(0,10)))]
+    .filter(Boolean).sort().slice(-60);
+  if (!allDates.length) return;
+
+  const labels = allDates.map(d => d.slice(5).replace('-', '/'));
+  const staffList = filterName ? [filterName] : staff.map(s => s.name);
+  const colorMap = {};
+  staff.forEach((s, i) => { colorMap[s.name] = DF_COLORS[i % DF_COLORS.length]; });
+
+  const datasets = staffList.map(name => {
+    const byDate = {};
+    dailyFollowers.filter(r => r.staff_name === name)
+      .forEach(r => { byDate[(r.date||'').slice(0,10)] = Number(r.followers||0); });
+    const hasAny = allDates.some(d => byDate[d] !== undefined);
+    if (!hasAny) return null;
+    const color = colorMap[name] || '#ccc';
+    return {
+      label: name,
+      data: allDates.map(d => byDate[d] ?? null),
+      borderColor: color,
+      backgroundColor: 'transparent',
+      fill: false,
+      tension: 0.3,
+      pointRadius: 3,
+      pointBackgroundColor: color,
+      spanGaps: true,
+    };
+  }).filter(Boolean);
+
+  if (!datasets.length) return;
   const B  = {responsive:true, maintainAspectRatio:false, animation:{duration:300}};
   const TT = {backgroundColor:'#2E2E2E', titleColor:'#F0EDE6', bodyColor:'#A09A8E', borderColor:'rgba(212,168,67,.2)', borderWidth:1};
-  const LS = sc({ticks:{color:'#6A6460', font:{size:10}, maxTicksLimit:12}});
-  dfCh = new Chart(canvas, { type:'line',
-    data:{ labels, datasets:[{ data, borderColor:'#7DC98A', backgroundColor:'rgba(125,201,138,.1)', fill:true, pointBackgroundColor:'#7DC98A', tension:0.3, pointRadius:3 }] },
-    options:{ ...B, plugins:{tooltip:TT, legend:{display:false}}, scales:{x:LS, y:sc()} }
+  const LS = sc({ticks:{color:'#6A6460', font:{size:10}, maxTicksLimit:15}});
+  const showLegend = staffList.length > 1;
+  dfCh = new Chart(canvas, {
+    type:'line',
+    data:{ labels, datasets },
+    options:{ ...B,
+      plugins:{ tooltip:TT, legend:{ display:showLegend, labels:{color:'#A09A8E', font:{size:11}, boxWidth:12} } },
+      scales:{ x:LS, y:sc() }
+    }
   });
 }
 

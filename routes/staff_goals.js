@@ -24,22 +24,23 @@ router.post('/staff-goals', async (req, res) => {
   const {
     staff_name,
     week_start_date,
-    period_end         = null,
-    target_views       = 0,
-    target_leads       = 0,
-    target_conversions = 0,
+    period_end          = null,
+    target_views        = 0,
+    target_leads        = 0,
+    target_conversions  = 0,
+    target_followers    = 0,
   } = req.body;
   if (!staff_name || !week_start_date) {
     return res.status(400).json({ error: '缺少 staff_name 或 week_start_date' });
   }
   try {
     const { rows } = await pool.query(
-      `INSERT INTO staff_goals (staff_name, week_start_date, period_end, target_views, target_leads, target_conversions)
-       VALUES ($1,$2,$3,$4,$5,$6)
+      `INSERT INTO staff_goals (staff_name, week_start_date, period_end, target_views, target_leads, target_conversions, target_followers)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
        ON CONFLICT (staff_name, week_start_date) DO UPDATE SET
-         period_end=$3, target_views=$4, target_leads=$5, target_conversions=$6
+         period_end=$3, target_views=$4, target_leads=$5, target_conversions=$6, target_followers=$7
        RETURNING *`,
-      [staff_name, week_start_date, period_end, target_views, target_leads, target_conversions]
+      [staff_name, week_start_date, period_end, target_views, target_leads, target_conversions, target_followers]
     );
     res.json(rows[0]);
   } catch (e) {

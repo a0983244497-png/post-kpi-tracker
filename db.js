@@ -145,8 +145,11 @@ export async function initDb() {
     )
   `);
 
-  // Migration: add period_end to staff_goals
+  // Migration: add period_end and target_followers to staff_goals
   await pool.query(`ALTER TABLE staff_goals ADD COLUMN IF NOT EXISTS period_end DATE`);
+  await pool.query(`ALTER TABLE staff_goals ADD COLUMN IF NOT EXISTS target_followers INTEGER DEFAULT 0`);
+  // Migration: add notes to daily_followers
+  await pool.query(`ALTER TABLE daily_followers ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT ''`);
 
   // Seed default staff (unconditional, skips if already exists)
   await pool.query(
