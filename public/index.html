@@ -389,6 +389,9 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
     <!-- 統計列 (6 cards / 3 col × 2 row) -->
     <div class="stats-grid" id="stats-grid"></div>
 
+    <!-- 個人 Tab 本週核心指標 -->
+    <div id="personal-kpi-cards" style="display:none;margin-bottom:1.25rem"></div>
+
     <!-- 月度目標達成（個人頁籤才顯示） -->
     <div id="goals-section" style="display:none;margin-bottom:1.25rem">
       <div class="goals-hd">
@@ -405,26 +408,29 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
     <div class="chart-section" id="chart-section">
       <div class="chart-section-hd">
         <span class="chart-section-hd-label">數據分析</span>
-        <button class="chart-toggle-btn" id="chart-toggle-btn" onclick="toggleCharts(this)">收起</button>
+        <button class="chart-toggle-btn" id="chart-toggle-btn" onclick="toggleCharts(this)">展開詳細分析</button>
       </div>
-      <div id="charts-body">
+      <div id="charts-body" style="display:none">
         <div class="chart-row chart-r2">
+          <div class="chart-card"><p class="chart-card-title">每週觀看數趨勢</p><div class="chart-h"><canvas id="ch-wv"></canvas></div></div>
           <div class="chart-card"><p class="chart-card-title">業務貼文占比</p><div class="chart-h"><canvas id="ch-pp"></canvas></div></div>
-          <div class="chart-card"><p class="chart-card-title">貼文類型分布</p><div class="chart-h"><canvas id="ch-tp"></canvas></div></div>
         </div>
-        <div class="chart-row chart-r3">
-          <div class="chart-card"><p class="chart-card-title">各業務平均觀看數</p><div class="chart-h-sm"><canvas id="ch-av"></canvas></div></div>
+        <div class="chart-row chart-r2">
           <div class="chart-card"><p class="chart-card-title">各業務引流轉化率</p><div class="chart-h-sm"><canvas id="ch-lr"></canvas></div></div>
           <div class="chart-card"><p class="chart-card-title">各業務總入金金額</p><div class="chart-h-sm"><canvas id="ch-rv"></canvas></div></div>
         </div>
-        <div class="chart-row chart-r2">
-          <div class="chart-card"><p class="chart-card-title">每週貼文數趨勢</p><div class="chart-h"><canvas id="ch-wp"></canvas></div></div>
-          <div class="chart-card"><p class="chart-card-title">每週觀看數趨勢</p><div class="chart-h"><canvas id="ch-wv"></canvas></div></div>
+        <div class="chart-row chart-r2" style="margin-top:12px">
+          <div class="chart-card"><p class="chart-card-title">各類型平均留言率</p><div class="chart-h-sm"><canvas id="ch-comment-rate"></canvas></div></div>
+          <div class="chart-card"><p class="chart-card-title">各類型平均私訊數</p><div class="chart-h-sm"><canvas id="ch-dm-type"></canvas></div></div>
         </div>
-        <!-- 功能3: 貼文類型平均績效 -->
         <div class="chart-row chart-r2" style="margin-top:12px">
           <div class="chart-card"><p class="chart-card-title">貼文類型 — 平均觀看數</p><div class="chart-h-sm"><canvas id="ch-type-views"></canvas></div></div>
           <div class="chart-card"><p class="chart-card-title">貼文類型 — 互動率 / 引流率 %</p><div class="chart-h-sm"><canvas id="ch-type-er"></canvas></div></div>
+        </div>
+        <!-- 互動率熱力圖 -->
+        <div class="chart-card" style="margin-top:12px">
+          <p class="chart-card-title">各星期互動率熱力圖（前 2 名金色標示）</p>
+          <div id="day-heatmap" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;padding:8px 0"></div>
         </div>
       </div>
     </div>
@@ -1042,6 +1048,7 @@ function renderStats() {
     <div class="stat-card"><div class="stat-label">引流 → 成交</div><div class="stat-val">${pct(td,tl)}%</div></div>
     <div class="stat-card"><div class="stat-label">本週淨增粉絲</div><div class="stat-val">${netFollowTxt}</div></div>`;
   renderGoalsSection();
+  renderPersonalKpiCards();
 }
 
 // ===== ADD PANEL =====
@@ -1206,6 +1213,7 @@ function render() {
             <div class="mini-stat">引流 <strong>${p.lead}</strong></div>
             <div class="mini-stat">成交 <strong>${p.deal}</strong></div>
             ${p.view ? `<span class="mini-er">互動率 ${er}%</span>` : ''}
+            ${p.view && p.comment ? `<span class="mini-er" style="color:var(--green)">留言率 ${commentRate(p).toFixed(2)}%</span>` : ''}
             ${p.revenue ? `<div class="mini-stat">入金 <strong>$${p.revenue.toLocaleString()}</strong></div>` : ''}
           </div>
         </div>
@@ -1606,29 +1614,68 @@ function weeklyData(src) {
   };
 }
 
+function commentRate(p) {
+  if (!p.view) return 0;
+  return p.comment / p.view * 100;
+}
+
+function renderDayHeatmap(src) {
+  const el = g('day-heatmap');
+  if (!el) return;
+  const DOW = ['一','二','三','四','五','六','日'];
+  const byDow = Array.from({length:7}, () => []);
+  src.forEach(p => {
+    if (!p.date) return;
+    const d = new Date(p.date + 'T00:00:00');
+    const dow = (d.getDay() + 6) % 7; // 0=Mon
+    byDow[dow].push(p);
+  });
+  const avgs = byDow.map(arr => {
+    const valid = arr.filter(p => p.view > 0);
+    return valid.length ? valid.reduce((s,p) => s + engRate(p), 0) / valid.length : 0;
+  });
+  const maxAvg = Math.max(...avgs, 0.001);
+  const top2 = [...avgs.map((v,i) => ({v,i}))].sort((a,b) => b.v - a.v).slice(0,2).map(x => x.i);
+  el.innerHTML = DOW.map((d, i) => {
+    const v = avgs[i];
+    const intensity = v / maxAvg;
+    const isTop = top2.includes(i) && v > 0;
+    const bg = isTop
+      ? `rgba(212,168,67,${(0.25 + intensity * 0.65).toFixed(2)})`
+      : `rgba(74,158,191,${(0.08 + intensity * 0.55).toFixed(2)})`;
+    const border = isTop ? '2px solid rgba(212,168,67,.7)' : '1px solid rgba(255,255,255,.06)';
+    return `<div style="text-align:center;border-radius:8px;padding:12px 4px;background:${bg};border:${border}">
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:5px">週${d}</div>
+      <div style="font-size:13px;font-weight:700;color:${isTop?'var(--gold)':'var(--text-primary)'};">${v > 0 ? v.toFixed(2)+'%' : '—'}</div>
+      ${isTop ? '<div style="font-size:9px;color:var(--gold);margin-top:3px;letter-spacing:.05em">TOP</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
 function buildCharts() {
   Object.values(ch).forEach(c => c.destroy()); ch = {};
+  // 分析區預設收合，只在展開時才需要建圖表
+  if (g('charts-body').style.display === 'none') return;
+
   const src = activeTab ? posts.filter(p => p.name === activeTab) : posts;
   const pc  = pColors();
-  const tk  = Object.keys(TYPE_MAP);
   const wk  = weeklyData(src);
   const B   = {responsive:true, maintainAspectRatio:false, animation:{duration:300}};
   const TT  = {backgroundColor:'#2E2E2E', titleColor:'#F0EDE6', bodyColor:'#A09A8E', borderColor:'rgba(212,168,67,.2)', borderWidth:1};
   const LL  = {position:'bottom', labels:{color:'#A09A8E', font:{size:11}, padding:10, boxWidth:12}};
   const NN  = {display:false};
   const sn  = staff.map(s => s.name);
+  const LS  = sc({ticks:{color:'#6A6460', font:{size:10}, maxTicksLimit:8}});
+  const tkAll      = Object.keys(TYPE_MAP);
+  const typeLabels = tkAll.map(k => TYPE_MAP[k]);
+
+  ch.wv = new Chart(g('ch-wv'), { type:'line',
+    data:{ labels:wk.labels, datasets:[{ data:wk.views, borderColor:'#4A9EBF', backgroundColor:'rgba(74,158,191,.1)', fill:true, pointBackgroundColor:'#4A9EBF', tension:0.3, pointRadius:3 }] },
+    options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:LS, y:sc({ticks:{color:'#6A6460', font:{size:10}}})} } });
 
   ch.pp = new Chart(g('ch-pp'), { type:'pie',
     data:{ labels:sn, datasets:[{ data:sn.map(n=>posts.filter(p=>p.name===n).length), backgroundColor:pc, borderColor:'#242424', borderWidth:2 }] },
     options:{ ...B, plugins:{tooltip:TT, legend:LL} } });
-
-  ch.tp = new Chart(g('ch-tp'), { type:'pie',
-    data:{ labels:tk.map(k=>TYPE_MAP[k]), datasets:[{ data:tk.map(k=>src.filter(p=>p.type===k).length), backgroundColor:TYPE_COLORS, borderColor:'#242424', borderWidth:2 }] },
-    options:{ ...B, plugins:{tooltip:TT, legend:LL} } });
-
-  ch.av = new Chart(g('ch-av'), { type:'bar',
-    data:{ labels:sn, datasets:[{ data:sn.map(n=>{ const pp=posts.filter(p=>p.name===n); return pp.length?Math.round(pp.reduce((a,p)=>a+p.view,0)/pp.length):0; }), backgroundColor:pc, borderRadius:4 }] },
-    options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:sc(), y:sc()} } });
 
   ch.lr = new Chart(g('ch-lr'), { type:'bar',
     data:{ labels:sn, datasets:[{ data:sn.map(n=>{ const pp=posts.filter(p=>p.name===n),tv=pp.reduce((a,p)=>a+p.view,0),tl=pp.reduce((a,p)=>a+p.lead,0); return tv?parseFloat((tl/tv*100).toFixed(2)):0; }), backgroundColor:pc, borderRadius:4 }] },
@@ -1638,21 +1685,34 @@ function buildCharts() {
     data:{ labels:sn, datasets:[{ data:sn.map(n=>posts.filter(p=>p.name===n).reduce((a,p)=>a+p.revenue,0)), backgroundColor:pc, borderRadius:4 }] },
     options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:sc(), y:sc()} } });
 
-  const LS = sc({ticks:{color:'#6A6460', font:{size:10}, maxTicksLimit:8}});
-  ch.wp = new Chart(g('ch-wp'), { type:'line',
-    data:{ labels:wk.labels, datasets:[{ data:wk.counts, borderColor:'#D4A843', backgroundColor:'rgba(212,168,67,.1)', fill:true, pointBackgroundColor:'#D4A843', tension:0.3, pointRadius:3 }] },
-    options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:LS, y:sc({ticks:{color:'#6A6460', font:{size:10}}})} } });
+  const typeCmtRate = tkAll.map(k => {
+    const pp = src.filter(p => p.type === k && p.view > 0);
+    return pp.length ? parseFloat((pp.reduce((a,p) => a + commentRate(p), 0) / pp.length).toFixed(3)) : 0;
+  });
+  const typeDms = tkAll.map(k => {
+    const pp = src.filter(p => p.type === k);
+    return pp.length ? parseFloat((pp.reduce((a,p) => a + (p.dms||0), 0) / pp.length).toFixed(2)) : 0;
+  });
 
-  ch.wv = new Chart(g('ch-wv'), { type:'line',
-    data:{ labels:wk.labels, datasets:[{ data:wk.views, borderColor:'#4A9EBF', backgroundColor:'rgba(74,158,191,.1)', fill:true, pointBackgroundColor:'#4A9EBF', tension:0.3, pointRadius:3 }] },
-    options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:LS, y:sc({ticks:{color:'#6A6460', font:{size:10}}})} } });
+  ch.commentRate = new Chart(g('ch-comment-rate'), { type:'bar',
+    data:{ labels:typeLabels, datasets:[{ data:typeCmtRate, backgroundColor:'rgba(156,137,184,.8)', borderRadius:4 }] },
+    options:{ ...B, indexAxis:'y',
+      plugins:{ tooltip:{...TT, callbacks:{label:ctx=>ctx.raw.toFixed(3)+'%'}}, legend:NN },
+      scales:{ x:sc({ticks:{color:'#6A6460',font:{size:10},callback:v=>v+'%'}}), y:sc({ticks:{color:'#6A6460',font:{size:10}}}) }
+    }
+  });
 
-  // Feature 3: type performance
-  const tkAll = Object.keys(TYPE_MAP);
-  const typeLabels = tkAll.map(k => TYPE_MAP[k]);
-  const typeViews  = tkAll.map(k => { const pp=src.filter(p=>p.type===k); return pp.length ? Math.round(pp.reduce((a,p)=>a+p.view,0)/pp.length) : 0; });
-  const typeEr     = tkAll.map(k => { const pp=src.filter(p=>p.type===k&&p.view>0); return pp.length ? parseFloat((pp.reduce((a,p)=>a+engRate(p),0)/pp.length).toFixed(2)) : 0; });
-  const typeLead   = tkAll.map(k => { const pp=src.filter(p=>p.type===k); const tv=pp.reduce((a,p)=>a+p.view,0),tl=pp.reduce((a,p)=>a+p.lead,0); return tv ? parseFloat((tl/tv*100).toFixed(2)) : 0; });
+  ch.dmType = new Chart(g('ch-dm-type'), { type:'bar',
+    data:{ labels:typeLabels, datasets:[{ data:typeDms, backgroundColor:'rgba(212,168,67,.75)', borderRadius:4 }] },
+    options:{ ...B, indexAxis:'y',
+      plugins:{ tooltip:TT, legend:NN },
+      scales:{ x:sc({ticks:{color:'#6A6460',font:{size:10}}}), y:sc({ticks:{color:'#6A6460',font:{size:10}}}) }
+    }
+  });
+
+  const typeViews = tkAll.map(k => { const pp=src.filter(p=>p.type===k); return pp.length ? Math.round(pp.reduce((a,p)=>a+p.view,0)/pp.length) : 0; });
+  const typeEr    = tkAll.map(k => { const pp=src.filter(p=>p.type===k&&p.view>0); return pp.length ? parseFloat((pp.reduce((a,p)=>a+engRate(p),0)/pp.length).toFixed(2)) : 0; });
+  const typeLead  = tkAll.map(k => { const pp=src.filter(p=>p.type===k); const tv=pp.reduce((a,p)=>a+p.view,0),tl=pp.reduce((a,p)=>a+p.lead,0); return tv ? parseFloat((tl/tv*100).toFixed(2)) : 0; });
 
   ch.typeViews = new Chart(g('ch-type-views'), { type:'bar',
     data:{ labels:typeLabels, datasets:[{ data:typeViews, backgroundColor:TYPE_COLORS, borderRadius:4 }] },
@@ -1660,20 +1720,70 @@ function buildCharts() {
 
   ch.typeEr = new Chart(g('ch-type-er'), { type:'bar',
     data:{ labels:typeLabels, datasets:[
-      { label:'互動率%', data:typeEr,   backgroundColor:'rgba(212,168,67,.75)', borderRadius:3 },
-      { label:'引流率%', data:typeLead, backgroundColor:'rgba(74,158,191,.75)',  borderRadius:3 },
+      { label:'互動率%', data:typeEr,  backgroundColor:'rgba(212,168,67,.75)', borderRadius:3 },
+      { label:'引流率%', data:typeLead,backgroundColor:'rgba(74,158,191,.75)',  borderRadius:3 },
     ]},
     options:{ ...B, indexAxis:'y',
       plugins:{ tooltip:{...TT, callbacks:{label:ctx=>ctx.raw.toFixed(2)+'%'}}, legend:{...LL, position:'top'} },
       scales:{ x:sc({ticks:{color:'#6A6460',font:{size:10},callback:v=>v+'%'}}), y:sc({ticks:{color:'#6A6460',font:{size:10}}}) }
     }
   });
+
+  renderDayHeatmap(src);
 }
 
 function toggleCharts(btn) {
   const body = g('charts-body'), hidden = body.style.display === 'none';
   body.style.display = hidden ? '' : 'none';
-  btn.textContent = hidden ? '收起' : '展開';
+  btn.textContent = hidden ? '收起分析' : '展開詳細分析';
+  if (hidden) buildCharts(); // 展開時才建圖表
+}
+
+function renderPersonalKpiCards() {
+  const el = g('personal-kpi-cards');
+  if (!el) return;
+  if (!activeTab) { el.style.display = 'none'; return; }
+  const thisWeek  = getWeekStart(0);
+  const thisPosts = posts.filter(p => p.name === activeTab && getMon(p.date) === thisWeek);
+
+  // KPI 1: 本週留言率最高的貼文
+  const validCmt = thisPosts.filter(p => p.view > 0).sort((a,b) => commentRate(b) - commentRate(a));
+  const topCmt   = validCmt[0];
+  const kpi1Html = topCmt
+    ? `<div style="font-size:12px;color:var(--text-primary);margin:4px 0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(topCmt.title.slice(0,22))}${topCmt.title.length>22?'…':''}</div>
+       <div class="stat-val" style="font-size:20px;color:var(--green)">${commentRate(topCmt).toFixed(2)}%</div>`
+    : `<div class="stat-val" style="color:var(--text-muted);font-size:16px">本週無資料</div>`;
+
+  // KPI 2: 本週互動率最高的貼文類型
+  const typeErMap = {};
+  Object.keys(TYPE_MAP).forEach(k => {
+    const pp = thisPosts.filter(p => p.type === k && p.view > 0);
+    if (pp.length) typeErMap[k] = pp.reduce((s,p) => s + engRate(p), 0) / pp.length;
+  });
+  const topTypeKey = Object.keys(typeErMap).sort((a,b) => typeErMap[b] - typeErMap[a])[0];
+  const kpi2Html = topTypeKey
+    ? `<div style="font-size:12px;color:var(--text-primary);margin:4px 0;font-weight:600">${TYPE_MAP[topTypeKey]}</div>
+       <div class="stat-val" style="font-size:20px;color:var(--gold)">${typeErMap[topTypeKey].toFixed(2)}%</div>`
+    : `<div class="stat-val" style="color:var(--text-muted);font-size:16px">本週無資料</div>`;
+
+  // KPI 3: 本週私訊數
+  const weekDms = thisPosts.reduce((s,p) => s + (p.dms||0), 0);
+
+  el.style.display = '';
+  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+    <div class="stat-card" style="border-color:rgba(125,201,138,.3)">
+      <div class="stat-label">本週留言率最高</div>
+      ${kpi1Html}
+    </div>
+    <div class="stat-card" style="border-color:rgba(212,168,67,.3)">
+      <div class="stat-label">本週互動率最高類型</div>
+      ${kpi2Html}
+    </div>
+    <div class="stat-card" style="border-color:rgba(74,158,191,.3)">
+      <div class="stat-label">本週私訊數</div>
+      <div class="stat-val" style="font-size:28px;color:var(--text-primary)">${weekDms}</div>
+    </div>
+  </div>`;
 }
 
 // ===== WEEKLY NAME DROPDOWN =====
