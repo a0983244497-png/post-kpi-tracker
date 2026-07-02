@@ -415,17 +415,33 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
           <div class="chart-card"><p class="chart-card-title">每週觀看數趨勢</p><div class="chart-h"><canvas id="ch-wv"></canvas></div></div>
           <div class="chart-card"><p class="chart-card-title">業務貼文占比</p><div class="chart-h"><canvas id="ch-pp"></canvas></div></div>
         </div>
-        <div class="chart-row chart-r2">
-          <div class="chart-card"><p class="chart-card-title">各業務引流轉化率</p><div class="chart-h-sm"><canvas id="ch-lr"></canvas></div></div>
-          <div class="chart-card"><p class="chart-card-title">各業務總入金金額</p><div class="chart-h-sm"><canvas id="ch-rv"></canvas></div></div>
-        </div>
         <div class="chart-row chart-r2" style="margin-top:12px">
+          <div class="chart-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <p class="chart-card-title" style="margin:0">各業務比較</p>
+              <select id="staff-chart-metric" onchange="switchStaffChart()" style="font-size:11px;background:var(--charcoal-3);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);padding:3px 8px;cursor:pointer">
+                <option value="lead">引流轉化率 %</option>
+                <option value="revenue">入金金額</option>
+                <option value="views">平均觀看數</option>
+              </select>
+            </div>
+            <div class="chart-h-sm"><canvas id="ch-staff-merged"></canvas></div>
+          </div>
           <div class="chart-card"><p class="chart-card-title">各類型平均留言率</p><div class="chart-h-sm"><canvas id="ch-comment-rate"></canvas></div></div>
-          <div class="chart-card"><p class="chart-card-title">各類型平均私訊數</p><div class="chart-h-sm"><canvas id="ch-dm-type"></canvas></div></div>
         </div>
         <div class="chart-row chart-r2" style="margin-top:12px">
-          <div class="chart-card"><p class="chart-card-title">貼文類型 — 平均觀看數</p><div class="chart-h-sm"><canvas id="ch-type-views"></canvas></div></div>
-          <div class="chart-card"><p class="chart-card-title">貼文類型 — 互動率 / 引流率 %</p><div class="chart-h-sm"><canvas id="ch-type-er"></canvas></div></div>
+          <div class="chart-card"><p class="chart-card-title">各類型平均私訊數</p><div class="chart-h-sm"><canvas id="ch-dm-type"></canvas></div></div>
+          <div class="chart-card">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+              <span class="chart-card-title" style="margin:0;flex-shrink:0">貼文類型分析</span>
+              <div id="type-chart-tabs" style="display:flex;gap:0;margin-left:auto">
+                <button onclick="switchTypeChart('views')" style="font-size:10px;padding:2px 9px;background:var(--gold);color:#1A1A1A;border:none;border-radius:4px 0 0 4px;cursor:pointer;font-weight:700">觀看</button>
+                <button onclick="switchTypeChart('er')" style="font-size:10px;padding:2px 9px;background:var(--charcoal-3);color:var(--text-muted);border:1px solid var(--border);border-left:none;border-right:none;cursor:pointer">互動率</button>
+                <button onclick="switchTypeChart('lead')" style="font-size:10px;padding:2px 9px;background:var(--charcoal-3);color:var(--text-muted);border:1px solid var(--border);border-radius:0 4px 4px 0;cursor:pointer">引流率</button>
+              </div>
+            </div>
+            <div class="chart-h-sm"><canvas id="ch-type-merged"></canvas></div>
+          </div>
         </div>
         <!-- 互動率熱力圖 -->
         <div class="chart-card" style="margin-top:12px">
@@ -517,7 +533,7 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
         <div class="form-field"><label>回覆數</label><input type="number" id="a-replies" placeholder="0" min="0"></div>
         <div class="form-field"><label>轉發數 (Repost)</label><input type="number" id="a-reposts" placeholder="0" min="0"></div>
         <div class="form-field"><label>引用數 (Quote)</label><input type="number" id="a-quotes" placeholder="0" min="0"></div>
-        <div class="form-field"><label>私訊數 (DM)</label><input type="number" id="a-dms" placeholder="0" min="0"></div>
+        <div class="form-field"><label>私訊數 (DM) <span title="DM = 因此篇貼文主動私訊的人數，與引流人數不同" style="cursor:help;font-style:normal">ℹ️</span></label><input type="number" id="a-dms" placeholder="0" min="0"></div>
       </div>
       <div class="form-grid c3" style="margin-top:10px">
         <div class="form-field"><label>引流人數</label><input type="number" id="a-lead" placeholder="0" min="0"></div>
@@ -841,6 +857,21 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
     </div>
   </div>
 
+  <!-- CSV 確認 Modal -->
+  <div class="modal-overlay" id="csv-modal" style="display:none" onclick="if(event.target===this)g('csv-modal').style.display='none'">
+    <div class="modal-box" style="max-width:360px">
+      <div class="modal-hd">
+        <span class="modal-hd-title">確認匯出 CSV</span>
+        <button class="modal-close" onclick="g('csv-modal').style.display='none'">✕</button>
+      </div>
+      <p id="csv-modal-msg" style="color:var(--text-secondary);font-size:13px;margin-bottom:1.25rem;line-height:1.6"></p>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="doExportCSV()">確認匯出</button>
+        <button class="btn" onclick="g('csv-modal').style.display='none'">取消</button>
+      </div>
+    </div>
+  </div>
+
   <!-- FAB — 週報登記（僅每週統計分頁顯示） -->
   <button id="weekly-fab" class="weekly-fab" onclick="openWeeklyModal()" title="週報登記" aria-label="週報登記">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -1008,9 +1039,10 @@ function switchSection(name) {
 function renderPersonTabs() {
   const tabs = [{ label: '全部', key: '' }, ...staff.map(s => ({ label: s.name, key: s.name }))];
   g('person-tabs').innerHTML = tabs.map(t => {
-    const cnt = t.key ? posts.filter(p => p.name === t.key).length : posts.length;
-    return `<button class="ptab${activeTab === t.key ? ' active' : ''}" onclick="switchTab('${esc(t.key)}')">
-      ${esc(t.label)}<span class="ptab-count">${cnt}</span>
+    const cnt    = t.key ? posts.filter(p => p.name === t.key).length : posts.length;
+    const noData = t.key && cnt === 0;
+    return `<button class="ptab${activeTab === t.key ? ' active' : ''}${noData ? ' ptab-nodata' : ''}" onclick="switchTab('${esc(t.key)}')">
+      ${esc(t.label)}<span class="ptab-count">${cnt}</span>${noData ? '<span style="font-size:9px;color:var(--text-muted);margin-left:3px">無資料</span>' : ''}
     </button>`;
   }).join('');
 }
@@ -1186,7 +1218,9 @@ function render() {
   g('list-meta').textContent = `${esc(tabLabel)}：共 ${total} 筆`;
   g('header-count').textContent = `${posts.length} 筆 / ${staff.length} 位業務`;
   if (!total) {
-    g('post-list').innerHTML = `<div class="empty"><div class="empty-icon">📋</div>尚無紀錄，按「新增貼文」開始記錄</div>`;
+    g('post-list').innerHTML = activeTab
+      ? `<div class="empty"><div class="empty-icon">📋</div>${esc(activeTab)} 尚無貼文記錄</div>`
+      : `<div class="empty"><div class="empty-icon">📋</div>尚無紀錄，按「新增貼文」開始記錄</div>`;
     return;
   }
   const maxView = Math.max(...data.map(p => p.view), 1);
@@ -1204,7 +1238,7 @@ function render() {
             <span class="post-name">${esc(p.name)}</span>
             <span class="post-date">${p.date}</span>
           </div>
-          <div class="post-title">${esc(p.title)}</div>
+          <div class="post-title">${esc(displayTitle(p))}</div>
           <div class="post-mini-stats">
             <div class="mini-stat">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -1217,7 +1251,10 @@ function render() {
             ${p.revenue ? `<div class="mini-stat">入金 <strong>$${p.revenue.toLocaleString()}</strong></div>` : ''}
           </div>
         </div>
-        <svg class="chevron ${isOpen?'open':''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:1px;flex-shrink:0;color:var(--text-muted)">
+          <svg class="chevron ${isOpen?'open':''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          <span style="font-size:9px;letter-spacing:.04em">${isOpen?'收起':'展開'}</span>
+        </div>
       </div>
       <div class="post-card-body ${isOpen?'open':''}">
         ${p.content ? `<div class="post-content-text">${esc(p.content)}</div>` : ''}
@@ -1293,13 +1330,16 @@ function renderSnapshotBlock(p) {
     return `${mm}/${dd} ${hh}:${mn} 記錄`;
   })() : '';
 
+  const snapDesc = hasSnap
+    ? `發文日期：${p.date} → 快照記錄於：${timeLabel}`
+    : `發文日期：${p.date}，尚未記錄快照`;
+
   if (hasSnap && !inEdit) {
     // Display mode
     return `<div class="snapshot-block">
       <div class="snapshot-hd">
         <span class="snapshot-title">⏱ 17:30 快照</span>
-        <span class="snapshot-desc">13:30 發文 → 17:30 記錄初期數據，追蹤黃金4小時表現</span>
-        <span class="snapshot-time">${timeLabel}</span>
+        <span class="snapshot-desc">${snapDesc}</span>
       </div>
       <div class="snapshot-data">
         <div class="snapshot-metric"><div class="snapshot-metric-lbl">觀看數</div><div class="snapshot-metric-val">${(p.snap_views||0).toLocaleString()}</div></div>
@@ -1315,8 +1355,7 @@ function renderSnapshotBlock(p) {
   return `<div class="snapshot-block">
     <div class="snapshot-hd">
       <span class="snapshot-title">⏱ 17:30 快照</span>
-      <span class="snapshot-desc">13:30 發文 → 17:30 記錄初期數據，追蹤黃金4小時表現</span>
-      ${hasSnap ? `<span class="snapshot-time">${timeLabel}</span>` : ''}
+      <span class="snapshot-desc">${snapDesc}</span>
     </div>
     <div class="form-grid c4" style="margin-bottom:10px">
       <div class="form-field" style="margin:0"><label style="font-size:11px">觀看數</label>
@@ -1383,6 +1422,12 @@ function showToast(msg) {
 
 // ===== EXPORT CSV =====
 function exportCSV() {
+  const data = filtered();
+  g('csv-modal-msg').textContent = `即將匯出 ${data.length} 筆資料（目前篩選：${activeTab || '全部'}）`;
+  g('csv-modal').style.display = 'flex';
+}
+function doExportCSV() {
+  g('csv-modal').style.display = 'none';
   const data   = filtered();
   const header = '業務,日期,類型,標題,觀看,按讚,留言,轉發收藏,回覆,轉發(Repost),引用,私訊,互動率%,引流,成交,入金金額,引流成交率%,貼文連結';
   const rows   = data.map(p => {
@@ -1390,7 +1435,7 @@ function exportCSV() {
     const conv = p.lead ? ((p.deal / p.lead) * 100).toFixed(1) : '0.0';
     return [
       p.name, p.date, TYPE_MAP[p.type] || p.type,
-      `"${p.title.replace(/"/g,'""')}"`,
+      `"${displayTitle(p).replace(/"/g,'""')}"`,
       p.view, p.like, p.comment, p.share,
       p.replies||0, p.reposts||0, p.quotes||0, p.dms||0,
       er, p.lead, p.deal, p.revenue, conv,
@@ -1527,7 +1572,7 @@ function renderGoalsSection() {
       <div class="stat-val" style="color:var(--text-muted)">未設定</div>
       <div class="stat-sub">實際 ${actual.toLocaleString()}</div></div>`;
     const rate = Math.min(Math.round(actual / t * 100), 999);
-    const color = rate >= 100 ? 'var(--green)' : rate < 60 ? 'var(--danger)' : 'var(--gold)';
+    const color = rate >= 80 ? 'var(--green)' : rate >= 50 ? 'var(--gold)' : 'var(--danger)';
     const w = Math.min(rate, 100);
     return `<div class="achieve-card" style="color:${color}">
       <div class="stat-label" style="color:var(--text-muted)">${label}</div>
@@ -1590,6 +1635,20 @@ const PERSON_COLORS = ['#D4A843','#4A9EBF','#7FB069','#C98AB8','#E07A5A','#90A0E
 const TYPE_COLORS   = ['#7AACE0','#7DC98A','#E07A5A','#EAC96A','#A0C4FF','#C98AB8','#90A0E0'];
 let ch = {};
 let wkCh = {};
+let staffChartMode = 'lead';
+let typeChartMode  = 'views';
+
+// Module-level chart theme constants (reused by switch functions)
+const CH_B  = {responsive:true, maintainAspectRatio:false, animation:{duration:200}};
+const CH_TT = {backgroundColor:'#2E2E2E', titleColor:'#F0EDE6', bodyColor:'#A09A8E', borderColor:'rgba(212,168,67,.2)', borderWidth:1};
+const CH_LL = {position:'bottom', labels:{color:'#A09A8E', font:{size:11}, padding:10, boxWidth:12}};
+const CH_NN = {display:false};
+
+function displayTitle(p) {
+  if (p.title) return p.title;
+  if (p.content) return p.content.slice(0,20) + (p.content.length > 20 ? '…' : '');
+  return '（無標題）';
+}
 
 function sc(o) {
   return Object.assign({ grid:{color:'rgba(255,255,255,0.04)'}, border:{color:'rgba(255,255,255,0.08)'}, ticks:{color:'#6A6460',font:{size:11}} }, o || {});
@@ -1677,13 +1736,7 @@ function buildCharts() {
     data:{ labels:sn, datasets:[{ data:sn.map(n=>posts.filter(p=>p.name===n).length), backgroundColor:pc, borderColor:'#242424', borderWidth:2 }] },
     options:{ ...B, plugins:{tooltip:TT, legend:LL} } });
 
-  ch.lr = new Chart(g('ch-lr'), { type:'bar',
-    data:{ labels:sn, datasets:[{ data:sn.map(n=>{ const pp=posts.filter(p=>p.name===n),tv=pp.reduce((a,p)=>a+p.view,0),tl=pp.reduce((a,p)=>a+p.lead,0); return tv?parseFloat((tl/tv*100).toFixed(2)):0; }), backgroundColor:pc, borderRadius:4 }] },
-    options:{ ...B, plugins:{tooltip:{...TT, callbacks:{label:ctx=>ctx.raw.toFixed(2)+'%'}}, legend:NN}, scales:{x:sc(), y:sc({ticks:{color:'#6A6460', font:{size:11}, callback:v=>v+'%'}})} } });
-
-  ch.rv = new Chart(g('ch-rv'), { type:'bar',
-    data:{ labels:sn, datasets:[{ data:sn.map(n=>posts.filter(p=>p.name===n).reduce((a,p)=>a+p.revenue,0)), backgroundColor:pc, borderRadius:4 }] },
-    options:{ ...B, plugins:{tooltip:TT, legend:NN}, scales:{x:sc(), y:sc()} } });
+  buildStaffMergedChart(src, sn, pc);
 
   const typeCmtRate = tkAll.map(k => {
     const pp = src.filter(p => p.type === k && p.view > 0);
@@ -1714,22 +1767,94 @@ function buildCharts() {
   const typeEr    = tkAll.map(k => { const pp=src.filter(p=>p.type===k&&p.view>0); return pp.length ? parseFloat((pp.reduce((a,p)=>a+engRate(p),0)/pp.length).toFixed(2)) : 0; });
   const typeLead  = tkAll.map(k => { const pp=src.filter(p=>p.type===k); const tv=pp.reduce((a,p)=>a+p.view,0),tl=pp.reduce((a,p)=>a+p.lead,0); return tv ? parseFloat((tl/tv*100).toFixed(2)) : 0; });
 
-  ch.typeViews = new Chart(g('ch-type-views'), { type:'bar',
-    data:{ labels:typeLabels, datasets:[{ data:typeViews, backgroundColor:TYPE_COLORS, borderRadius:4 }] },
-    options:{ ...B, indexAxis:'y', plugins:{tooltip:TT, legend:NN}, scales:{x:sc(), y:sc({ticks:{color:'#6A6460',font:{size:10}}})} } });
-
-  ch.typeEr = new Chart(g('ch-type-er'), { type:'bar',
-    data:{ labels:typeLabels, datasets:[
-      { label:'互動率%', data:typeEr,  backgroundColor:'rgba(212,168,67,.75)', borderRadius:3 },
-      { label:'引流率%', data:typeLead,backgroundColor:'rgba(74,158,191,.75)',  borderRadius:3 },
-    ]},
-    options:{ ...B, indexAxis:'y',
-      plugins:{ tooltip:{...TT, callbacks:{label:ctx=>ctx.raw.toFixed(2)+'%'}}, legend:{...LL, position:'top'} },
-      scales:{ x:sc({ticks:{color:'#6A6460',font:{size:10},callback:v=>v+'%'}}), y:sc({ticks:{color:'#6A6460',font:{size:10}}}) }
-    }
-  });
+  buildTypeMergedChart(typeLabels, typeViews, typeEr, typeLead);
 
   renderDayHeatmap(src);
+}
+
+function buildStaffMergedChart(src, sn, pc) {
+  if (ch.staffMerged) { ch.staffMerged.destroy(); ch.staffMerged = null; }
+  staffChartMode = g('staff-chart-metric')?.value || 'lead';
+  const { data, yFmt, tooltipFmt } = staffChartData(src, sn, staffChartMode);
+  ch.staffMerged = new Chart(g('ch-staff-merged'), { type:'bar',
+    data:{ labels:sn, datasets:[{ data, backgroundColor: pc || pColors(), borderRadius:4 }] },
+    options:{ ...CH_B, plugins:{tooltip:{...CH_TT, callbacks: tooltipFmt ? {label:tooltipFmt} : undefined}, legend:CH_NN},
+      scales:{ x:sc(), y:sc({ticks:{color:'#6A6460',font:{size:11}, callback: yFmt || undefined}}) }
+    }
+  });
+}
+function staffChartData(src, sn, mode) {
+  const allPosts = sn ? null : posts; // if sn not provided use all
+  const pp = n => (src || posts).filter(p => p.name === n);
+  if (mode === 'lead') {
+    return {
+      data: sn.map(n => { const arr=pp(n), tv=arr.reduce((a,p)=>a+p.view,0), tl=arr.reduce((a,p)=>a+p.lead,0); return tv ? parseFloat((tl/tv*100).toFixed(2)) : 0; }),
+      yFmt: v => v+'%', tooltipFmt: ctx => ctx.raw.toFixed(2)+'%',
+    };
+  } else if (mode === 'revenue') {
+    return { data: sn.map(n => pp(n).reduce((a,p) => a+p.revenue, 0)), yFmt: null, tooltipFmt: null };
+  } else {
+    return { data: sn.map(n => { const arr=pp(n); return arr.length ? Math.round(arr.reduce((a,p)=>a+p.view,0)/arr.length) : 0; }), yFmt: null, tooltipFmt: null };
+  }
+}
+function switchStaffChart() {
+  if (!ch.staffMerged) return;
+  const mode = g('staff-chart-metric')?.value || 'lead';
+  staffChartMode = mode;
+  const src  = activeTab ? posts.filter(p => p.name === activeTab) : posts;
+  const sn   = staff.map(s => s.name);
+  const { data, yFmt, tooltipFmt } = staffChartData(src, sn, mode);
+  ch.staffMerged.data.datasets[0].data = data;
+  ch.staffMerged.options.scales.y.ticks.callback = yFmt || undefined;
+  if (ch.staffMerged.options.plugins.tooltip.callbacks) {
+    ch.staffMerged.options.plugins.tooltip.callbacks.label = tooltipFmt || undefined;
+  } else if (tooltipFmt) {
+    ch.staffMerged.options.plugins.tooltip.callbacks = { label: tooltipFmt };
+  }
+  ch.staffMerged.update();
+}
+
+// Type data helpers
+let _typeLabels = [], _typeViews = [], _typeEr = [], _typeLead = [];
+function buildTypeMergedChart(typeLabels, typeViews, typeEr, typeLead) {
+  _typeLabels = typeLabels; _typeViews = typeViews; _typeEr = typeEr; _typeLead = typeLead;
+  if (ch.typeMerged) { ch.typeMerged.destroy(); ch.typeMerged = null; }
+  typeChartMode = 'views';
+  updateTypeChartTabs();
+  const { data, cbk } = typeMergedData();
+  ch.typeMerged = new Chart(g('ch-type-merged'), { type:'bar',
+    data:{ labels:typeLabels, datasets:[{ data, backgroundColor:TYPE_COLORS, borderRadius:4 }] },
+    options:{ ...CH_B, indexAxis:'y',
+      plugins:{ tooltip:{...CH_TT, callbacks: cbk ? {label:cbk} : {}}, legend:CH_NN },
+      scales:{ x:sc({ticks:{color:'#6A6460',font:{size:10}}}), y:sc({ticks:{color:'#6A6460',font:{size:10}}}) }
+    }
+  });
+}
+function typeMergedData() {
+  if (typeChartMode === 'er')   return { data: _typeEr,    cbk: ctx => ctx.raw.toFixed(2)+'%' };
+  if (typeChartMode === 'lead') return { data: _typeLead,  cbk: ctx => ctx.raw.toFixed(2)+'%' };
+  return                               { data: _typeViews, cbk: null };
+}
+function updateTypeChartTabs() {
+  const tabs = g('type-chart-tabs');
+  if (!tabs) return;
+  const btns = tabs.querySelectorAll('button');
+  const modes = ['views','er','lead'];
+  btns.forEach((btn, i) => {
+    const active = modes[i] === typeChartMode;
+    btn.style.background = active ? 'var(--gold)' : 'var(--charcoal-3)';
+    btn.style.color = active ? '#1A1A1A' : 'var(--text-muted)';
+    btn.style.fontWeight = active ? '700' : 'normal';
+  });
+}
+function switchTypeChart(mode) {
+  typeChartMode = mode;
+  updateTypeChartTabs();
+  if (!ch.typeMerged) return;
+  const { data, cbk } = typeMergedData();
+  ch.typeMerged.data.datasets[0].data = data;
+  ch.typeMerged.options.plugins.tooltip.callbacks = cbk ? {label:cbk} : {};
+  ch.typeMerged.update();
 }
 
 function toggleCharts(btn) {
@@ -1812,23 +1937,27 @@ function renderWeeklyPersonTabs() {
   }
   const ws0 = weekStats(w0), ws1 = weekStats(w1);
 
-  function hasWarning(name) {
-    if (!name) return false;
+  function warningReason(name) {
+    if (!name) return null;
     const check = (w, ws) => {
-      if (!ws.total) return false; // no team data → no warning
+      if (!ws.total) return false;
       const pp = posts.filter(p => p.name === name && getMon(p.date) === w);
       const v  = pp.reduce((s,p) => s+p.view, 0);
       const d  = pp.reduce((s,p) => s+p.deal, 0);
       return v < ws.avgV || d < ws.avgD;
     };
-    return check(w0, ws0) && check(w1, ws1); // consecutive 2 weeks
+    const noReport = !weeklyStats.some(w => (w.week_start_date||'').slice(0,10) === w0 && (w.name||'') === name);
+    if (noReport) return '本週尚未登記週報';
+    if (check(w0, ws0) && check(w1, ws1)) return '連續 2 週低於全隊平均觀看數或成交數';
+    return null;
   }
 
-  g('weekly-person-tabs').innerHTML = tabs.map(t =>
-    `<button class="ptab${weeklyActiveTab === t.key ? ' active' : ''}" onclick="switchWeeklyTab('${esc(t.key)}')">
-      ${esc(t.label)}${t.key && hasWarning(t.key) ? ' ⚠️' : ''}
-    </button>`
-  ).join('');
+  g('weekly-person-tabs').innerHTML = tabs.map(t => {
+    const warn = warningReason(t.key);
+    return `<button class="ptab${weeklyActiveTab === t.key ? ' active' : ''}" onclick="switchWeeklyTab('${esc(t.key)}')"${warn ? ` title="${esc(warn)}"` : ''}>
+      ${esc(t.label)}${warn ? ' ⚠️' : ''}
+    </button>`;
+  }).join('');
 }
 
 function switchWeeklyTab(key) {
@@ -1962,7 +2091,7 @@ function renderWeeklySection() {
       const actual = thisNetF ?? 0;
       const target = Number(latestGoal.target_followers);
       const rate   = Math.min(Math.round(actual / target * 100), 999);
-      const color  = rate >= 100 ? 'var(--green)' : rate < 60 ? 'var(--danger)' : 'var(--gold)';
+      const color  = rate >= 80 ? 'var(--green)' : rate >= 50 ? 'var(--gold)' : 'var(--danger)';
       const w      = Math.min(rate, 100);
       fgEl.style.display = '';
       fgEl.innerHTML = `<div class="achieve-card" style="color:${color}">
@@ -2113,7 +2242,7 @@ function renderMonthlyGoals(start, end) {
     const t = Number(target) || 0;
     if (!t) return `<div style="margin-bottom:8px"><div style="font-size:11px;color:var(--text-muted)">${label}</div><div style="font-size:13px;color:var(--text-muted)">未設定</div></div>`;
     const rate  = Math.min(Math.round(actual / t * 100), 999);
-    const color = rate >= 100 ? 'var(--green)' : rate < 60 ? 'var(--danger)' : 'var(--gold)';
+    const color = rate >= 80 ? 'var(--green)' : rate >= 50 ? 'var(--gold)' : 'var(--danger)';
     const w     = Math.min(rate, 100);
     return `<div style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
@@ -2272,7 +2401,7 @@ function renderRankingSection() {
         : `<span class="rank-val">${valFn(p)}</span>`;
       return `<div class="rank-row rank-row-base${isBottom ? ' rank-row-bad' : ''}">
         <span class="rank-num ${nc}">${pos}</span>
-        <span class="rank-ttl" title="${esc(p.title)}">${esc(p.title)}</span>
+        <span class="rank-ttl" title="${esc(displayTitle(p))}">${esc(displayTitle(p))}</span>
         <span class="rank-sname">${esc(p.name || '—')}</span>
         <span class="rank-date">${p.date}</span>
         ${valHtml}
