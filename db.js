@@ -195,6 +195,10 @@ export async function initDb() {
   // Migration: add notes to daily_followers
   await pool.query(`ALTER TABLE daily_followers ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT ''`);
 
+  // Migration: add contact and source to course_students
+  await pool.query(`ALTER TABLE course_students ADD COLUMN IF NOT EXISTS contact VARCHAR(100) DEFAULT ''`);
+  await pool.query(`ALTER TABLE course_students ADD COLUMN IF NOT EXISTS source  VARCHAR(100) DEFAULT ''`);
+
   // Seed default staff (unconditional, skips if already exists)
   await pool.query(
     `INSERT INTO staff (name) VALUES ('Gino'),('Darren'),('Josh'),('Jenna'),('路克') ON CONFLICT (name) DO NOTHING`

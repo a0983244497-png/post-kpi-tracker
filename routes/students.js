@@ -12,11 +12,13 @@ function toClient(row) {
   return {
     id:              row.id,
     name:            row.name,
-    phone:           row.phone || '',
+    phone:           row.phone   || '',
+    contact:         row.contact || '',
+    source:          row.source  || '',
     joined_date:     dateStr(row.joined_date),
     assigned_staff:  row.assigned_staff || '',
     status:          row.status || 'active',
-    notes:           row.notes || '',
+    notes:           row.notes  || '',
     funnel_id:       row.funnel_id || null,
     attended_sessions: Number(row.attended_sessions) || 0,
     completed_course:  row.completed_course || false,
@@ -63,15 +65,15 @@ router.get('/students', async (req, res) => {
 });
 
 router.post('/students', async (req, res) => {
-  const { name, phone = '', joined_date, assigned_staff = '', notes = '' } = req.body;
+  const { name, phone = '', contact = '', source = '', joined_date, assigned_staff = '', notes = '' } = req.body;
   if (!name || !joined_date) return res.status(400).json({ error: '姓名和加入日期為必填' });
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const { rows: srows } = await client.query(
-      `INSERT INTO course_students (name, phone, joined_date, assigned_staff, status, notes)
-       VALUES ($1,$2,$3,$4,'active',$5) RETURNING *`,
-      [name, phone, joined_date, assigned_staff, notes]
+      `INSERT INTO course_students (name, phone, contact, source, joined_date, assigned_staff, status, notes)
+       VALUES ($1,$2,$3,$4,$5,$6,'active',$7) RETURNING *`,
+      [name, phone, contact, source, joined_date, assigned_staff, notes]
     );
     const student = srows[0];
     const { rows: frows } = await client.query(
@@ -111,6 +113,89 @@ router.put('/students/:id', async (req, res) => {
     console.error('[DB] PUT students:', e.message);
     res.status(500).json({ error: '更新失敗' });
   }
+});
+
+// ─── Batch Import ────────────────────────────────────────────
+
+router.post('/students/import', async (req, res) => {
+  const { rows } = req.body;
+  if (!Array.isArray(rows) || !rows.length) {
+    return res.status(400).json({ error: '無匯入資料' });
+  }
+
+  // Valid staff names
+  const { rows: staffRows } = await pool.query('SELECT name FROM staff');
+  const validStaff = new Set(staffRows.map(r => r.name));
+
+  // Existing students for duplicate detection (name + contact)
+  const { rows: existingRows } = await pool.query(
+    'SELECT name, contact FROM course_students'
+  );
+  const existingSet = new Set(existingRows.map(r => `${r.name}|${r.contact || ''}`));
+
+  let success = 0, skipped = 0;
+  const details = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const name          = (row.name          || '').trim();
+    const contact       = (row.contact       || '').trim();
+    const joined_date   = (row.joined_date   || '').trim();
+    const assigned_staff = (row.assigned_staff || '').trim();
+    const source        = (row.source        || '').trim();
+    const notes         = (row.notes         || '').trim();
+    const rowNum        = i + 2; // CSV row number (1-indexed + header)
+
+    // Required field validation
+    const errors = [];
+    if (!name)           errors.push('姓名為空');
+    if (!contact)        errors.push('聯絡方式為空');
+    if (!joined_date)    errors.push('加入日期為空');
+    if (!assigned_staff) errors.push('負責業務為空');
+    if (joined_date && !/^\d{4}-\d{2}-\d{2}$/.test(joined_date)) {
+      errors.push('日期格式錯誤（需 YYYY-MM-DD）');
+    }
+    if (assigned_staff && !validStaff.has(assigned_staff)) {
+      errors.push(`業務「${assigned_staff}」不存在`);
+    }
+    if (errors.length) {
+      details.push({ row: rowNum, name: name || `第${rowNum}行`, reason: errors.join('；') });
+      continue;
+    }
+
+    // Duplicate check: name + contact
+    const dupKey = `${name}|${contact}`;
+    if (existingSet.has(dupKey)) {
+      skipped++;
+      continue;
+    }
+
+    // Insert student + funnel
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows: srows } = await client.query(
+        `INSERT INTO course_students (name, contact, source, joined_date, assigned_staff, status, notes)
+         VALUES ($1,$2,$3,$4,$5,'active',$6) RETURNING *`,
+        [name, contact, source, joined_date, assigned_staff, notes]
+      );
+      await client.query(
+        `INSERT INTO course_funnel (student_id, assigned_staff) VALUES ($1,$2)`,
+        [srows[0].id, assigned_staff]
+      );
+      await client.query('COMMIT');
+      existingSet.add(dupKey); // prevent intra-batch duplicates
+      success++;
+    } catch (e) {
+      await client.query('ROLLBACK');
+      console.error('[DB] import row:', e.message);
+      details.push({ row: rowNum, name, reason: `資料庫錯誤：${e.message}` });
+    } finally {
+      client.release();
+    }
+  }
+
+  res.json({ success, skipped, failed: details.length, details });
 });
 
 export default router;

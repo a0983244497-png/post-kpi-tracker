@@ -761,6 +761,7 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
           <option value="dropped">已退出</option>
         </select>
         <span id="cs-student-count" style="font-size:12px;color:var(--text-muted);padding:0 4px"></span>
+        <button class="btn" onclick="openImportModal()" style="margin-left:auto;font-size:12px;padding:5px 12px;white-space:nowrap">📥 匯入名單</button>
       </div>
       <div id="cs-student-list"></div>
     </div>
@@ -865,6 +866,34 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
         <span class="form-msg" id="g-msg"></span>
         <span class="form-err" id="g-err"></span>
       </div>
+    </div>
+  </div>
+
+  <!-- 批次匯入學員 Modal -->
+  <div class="modal-overlay" id="import-modal" style="display:none" onclick="if(event.target===this)closeImportModal()">
+    <div class="modal" style="width:min(700px,96vw);max-height:90vh">
+      <div class="modal-hd">
+        <span class="modal-hd-title">📥 批次匯入學員名單</span>
+        <button class="modal-close" onclick="closeImportModal()">✕</button>
+      </div>
+      <div style="margin-bottom:14px">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;line-height:1.6">
+          上傳 CSV 檔案批次新增學員。必填欄位：姓名、聯絡方式、加入日期、負責業務。<br>
+          姓名＋聯絡方式相同的學員視為重複，自動跳過。
+        </p>
+        <button class="btn" onclick="downloadImportTemplate()" style="font-size:12px;padding:5px 12px">⬇ 下載 CSV 範本</button>
+      </div>
+      <div class="form-field" style="margin-bottom:14px">
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px">選擇 CSV 檔案</label>
+        <input type="file" id="import-file" accept=".csv,text/csv" onchange="handleImportFile()"
+          style="color:var(--text-primary);font-size:13px;width:100%">
+      </div>
+      <div id="import-preview" style="display:none;margin-bottom:14px"></div>
+      <div id="import-actions" style="display:none;gap:10px;align-items:center;flex-wrap:wrap">
+        <button id="import-confirm-btn" class="btn btn-primary" onclick="importStudents()" style="font-size:13px">確認匯入</button>
+        <span style="font-size:11px;color:var(--text-muted)">確認後無法撤銷</span>
+      </div>
+      <div id="import-result"></div>
     </div>
   </div>
 
@@ -2914,7 +2943,7 @@ function renderStudentList() {
             <span class="status-badge status-${s.status}">${STATUS_LABEL[s.status]||s.status}</span>
             ${s.assigned_staff ? `<span style="font-size:11px;color:var(--text-muted)">${esc(s.assigned_staff)}</span>` : ''}
           </div>
-          <div class="student-meta">${s.joined_date}${s.notes ? ' · '+esc(s.notes) : ''}</div>
+          <div class="student-meta">${s.joined_date}${s.contact ? ' · '+esc(s.contact) : ''}${s.source ? ' · '+esc(s.source) : ''}${s.notes ? ' · '+esc(s.notes) : ''}</div>
         </div>
         <div class="fdots">${dots}</div>
         <svg class="chevron ${isOpen?'open':''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
@@ -2983,6 +3012,202 @@ async function saveFunnel() {
     showToast('學員狀態已更新');
   } catch (e) {
     if (errEl) errEl.textContent = '更新失敗：' + e.message;
+  }
+}
+
+// ─── Batch Import ────────────────────────────────────────────
+
+let importParsedRows = [];
+
+function openImportModal() {
+  importParsedRows = [];
+  const fileEl = g('import-file');
+  if (fileEl) fileEl.value = '';
+  g('import-preview').style.display  = 'none';
+  g('import-actions').style.display  = 'none';
+  g('import-result').innerHTML = '';
+  const btn = g('import-confirm-btn');
+  if (btn) { btn.disabled = false; btn.textContent = '確認匯入'; }
+  g('import-modal').style.display = 'flex';
+}
+
+function closeImportModal() {
+  g('import-modal').style.display = 'none';
+}
+
+function downloadImportTemplate() {
+  const today = new Date().toISOString().split('T')[0];
+  const header = '姓名,聯絡方式,加入日期,負責業務,來源,備註';
+  const ex1    = `王小明,0912345678,${today},Darren,Instagram,`;
+  const ex2    = `林美華,line:abc123,${today},Josh,朋友介紹,有興趣入金`;
+  const csv    = [header, ex1, ex2].join('\r\n');
+  const blob   = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const url    = URL.createObjectURL(blob);
+  const a      = document.createElement('a');
+  a.href = url; a.download = '學員名單範本.csv';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function _parseCSVLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"' && !inQ)                          { inQ = true; continue; }
+    if (c === '"' && inQ && line[i+1] === '"')      { cur += '"'; i++; continue; }
+    if (c === '"' && inQ)                           { inQ = false; continue; }
+    if (c === ',' && !inQ)                          { result.push(cur); cur = ''; continue; }
+    cur += c;
+  }
+  result.push(cur);
+  return result;
+}
+
+function parseCSVText(text) {
+  text = text.replace(/^﻿/, ''); // strip BOM
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const FIELD_MAP = {
+    '姓名': 'name', '聯絡方式': 'contact', '加入日期': 'joined_date',
+    '負責業務': 'assigned_staff', '來源': 'source', '備註': 'notes',
+  };
+  const headers   = _parseCSVLine(lines[0]).map(h => h.trim());
+  const fieldKeys = headers.map(h => FIELD_MAP[h] || null);
+  return lines.slice(1).map((line, idx) => {
+    const cols = _parseCSVLine(line);
+    const obj  = { _rowNum: idx + 2 };
+    fieldKeys.forEach((key, i) => { if (key) obj[key] = (cols[i] || '').trim(); });
+    return obj;
+  }).filter(obj => obj.name || obj.contact); // skip fully empty lines
+}
+
+function _validateImportRow(row) {
+  const errors = [];
+  const staffNames = staff.map(s => s.name);
+  if (!row.name)            errors.push('姓名為空');
+  if (!row.contact)         errors.push('聯絡方式為空');
+  if (!row.joined_date)     errors.push('加入日期為空');
+  if (!row.assigned_staff)  errors.push('負責業務為空');
+  if (row.joined_date && !/^\d{4}-\d{2}-\d{2}$/.test(row.joined_date))
+    errors.push('日期格式錯誤（需 YYYY-MM-DD）');
+  if (row.assigned_staff && staffNames.length && !staffNames.includes(row.assigned_staff))
+    errors.push(`業務「${esc(row.assigned_staff)}」不在現有名單`);
+  return errors;
+}
+
+function handleImportFile() {
+  const file = g('import-file').files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    importParsedRows = parseCSVText(e.target.result);
+    _renderImportPreview();
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function _renderImportPreview() {
+  const previewEl = g('import-preview');
+  const actionsEl = g('import-actions');
+  const total     = importParsedRows.length;
+  g('import-result').innerHTML = '';
+
+  if (!total) {
+    previewEl.innerHTML = '<div style="color:var(--danger);font-size:13px">CSV 解析失敗或無資料，請確認標題行格式</div>';
+    previewEl.style.display = 'block';
+    actionsEl.style.display = 'none';
+    return;
+  }
+
+  const first5    = importParsedRows.slice(0, 5);
+  let   hasError  = false;
+
+  const rowsHtml = first5.map(row => {
+    const errs = _validateImportRow(row);
+    if (errs.length) hasError = true;
+    const validCell = errs.length
+      ? `<td style="color:var(--danger);font-size:11px;min-width:100px">${errs.join('；')}</td>`
+      : `<td style="color:#4CAF50;font-size:11px">✓</td>`;
+    return `<tr style="border-bottom:1px solid rgba(255,255,255,.05)">
+      <td style="padding:5px 8px">${esc(row.name||'')}</td>
+      <td style="padding:5px 8px">${esc(row.contact||'')}</td>
+      <td style="padding:5px 8px;white-space:nowrap">${esc(row.joined_date||'')}</td>
+      <td style="padding:5px 8px">${esc(row.assigned_staff||'')}</td>
+      <td style="padding:5px 8px">${esc(row.source||'')}</td>
+      <td style="padding:5px 8px;color:var(--text-muted)">${esc(row.notes||'')}</td>
+      ${validCell}
+    </tr>`;
+  }).join('');
+
+  previewEl.innerHTML = `
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">
+      共 <b style="color:var(--text-primary)">${total}</b> 筆，預覽前 ${Math.min(5,total)} 筆：
+    </div>
+    <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="color:var(--text-muted);background:rgba(255,255,255,.03)">
+            <th style="text-align:left;padding:6px 8px;font-weight:600">姓名</th>
+            <th style="text-align:left;padding:6px 8px;font-weight:600">聯絡方式</th>
+            <th style="text-align:left;padding:6px 8px;font-weight:600">加入日期</th>
+            <th style="text-align:left;padding:6px 8px;font-weight:600">負責業務</th>
+            <th style="text-align:left;padding:6px 8px;font-weight:600">來源</th>
+            <th style="text-align:left;padding:6px 8px;font-weight:600">備註</th>
+            <th style="text-align:left;padding:6px 8px;font-weight:600">驗證</th>
+          </tr>
+        </thead>
+        <tbody style="color:var(--text-primary)">${rowsHtml}</tbody>
+      </table>
+    </div>
+    ${hasError ? '<div style="color:var(--danger);font-size:12px;margin-top:8px">⚠ 有驗證錯誤，請修正 CSV 後重新上傳</div>' : ''}
+  `;
+  previewEl.style.display = 'block';
+  actionsEl.style.display = 'flex';
+
+  const btn = g('import-confirm-btn');
+  if (btn) {
+    btn.disabled = hasError;
+    btn.title    = hasError ? '請先修正 CSV 中的錯誤' : '';
+  }
+}
+
+async function importStudents() {
+  if (!importParsedRows.length) return;
+  const btn      = g('import-confirm-btn');
+  const resultEl = g('import-result');
+  btn.disabled   = true;
+  btn.textContent = '匯入中…';
+  resultEl.innerHTML = '';
+  try {
+    const res = await apiFetch('/api/students/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rows: importParsedRows }),
+    });
+    const detailHtml = (res.details || []).length
+      ? '<div style="margin-top:8px;font-size:11px;color:var(--text-muted);line-height:1.7">' +
+          res.details.map(d => `<div>第 ${d.row} 行「${esc(d.name)}」：${esc(d.reason)}</div>`).join('') +
+        '</div>'
+      : '';
+    resultEl.innerHTML = `
+      <div style="margin-top:14px;padding:12px 16px;background:rgba(255,255,255,.04);border-radius:8px;font-size:13px;line-height:2">
+        <div style="font-weight:600;margin-bottom:4px">匯入完成</div>
+        <div style="color:#4CAF50">✅ 成功：${res.success} 筆</div>
+        <div style="color:var(--text-muted)">⏭ 跳過（重複）：${res.skipped} 筆</div>
+        ${res.failed > 0 ? `<div style="color:var(--danger)">❌ 失敗：${res.failed} 筆</div>` : ''}
+        ${detailHtml}
+      </div>`;
+    if (res.success > 0) {
+      courseLoaded = false;
+      renderCourseSection();
+      showToast(`已成功匯入 ${res.success} 位學員`);
+    }
+    btn.textContent = '匯入完成';
+  } catch (e) {
+    resultEl.innerHTML = `<div style="color:var(--danger);margin-top:10px;font-size:13px">匯入失敗：${esc(e.message)}</div>`;
+    btn.disabled = false;
+    btn.textContent = '確認匯入';
   }
 }
 
