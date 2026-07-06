@@ -17,6 +17,7 @@ function toClient(row) {
     source:          row.source  || '',
     joined_date:     dateStr(row.joined_date),
     assigned_staff:  row.assigned_staff || '',
+    assigned_session_id: row.assigned_session_id || null,
     status:          row.status || 'active',
     notes:           row.notes  || '',
     funnel_id:       row.funnel_id || null,
@@ -95,11 +96,15 @@ router.post('/students', async (req, res) => {
 router.put('/students/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
-  const { status, notes, assigned_staff } = req.body;
+  const { status, notes, assigned_staff, assigned_session_id } = req.body;
   const updates = [], params = [];
-  if (status !== undefined)         { params.push(status);         updates.push(`status=$${params.length}`); }
-  if (notes !== undefined)          { params.push(notes);          updates.push(`notes=$${params.length}`); }
-  if (assigned_staff !== undefined) { params.push(assigned_staff); updates.push(`assigned_staff=$${params.length}`); }
+  if (status !== undefined)              { params.push(status);         updates.push(`status=$${params.length}`); }
+  if (notes !== undefined)               { params.push(notes);          updates.push(`notes=$${params.length}`); }
+  if (assigned_staff !== undefined)      { params.push(assigned_staff); updates.push(`assigned_staff=$${params.length}`); }
+  if (assigned_session_id !== undefined) {
+    params.push(assigned_session_id === '' || assigned_session_id === null ? null : Number(assigned_session_id));
+    updates.push(`assigned_session_id=$${params.length}`);
+  }
   if (!updates.length) return res.status(400).json({ error: '沒有要更新的欄位' });
   params.push(id);
   try {

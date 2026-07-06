@@ -352,6 +352,16 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
 .session-attend-txt { font-size:12px; color:var(--text-muted); flex-shrink:0; text-align:right; }
 .attend-bar-wrap { width:70px; background:var(--charcoal-4); border-radius:3px; height:5px; overflow:hidden; flex-shrink:0; }
 .attend-bar-fill { height:100%; background:var(--gold); border-radius:3px; }
+.sess-card { background:var(--charcoal-2); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:8px; overflow:hidden; }
+.sess-card-hd { display:flex; align-items:center; gap:12px; padding:12px 16px; cursor:pointer; user-select:none; transition:background .15s; }
+.sess-card-hd:hover { background:rgba(255,255,255,.025); }
+.sess-expand { padding:16px; border-top:1px solid var(--border); background:rgba(0,0,0,.15); }
+.sess-badge { font-size:10px; font-weight:700; padding:3px 9px; border-radius:99px; flex-shrink:0; }
+.sess-badge-past { background:rgba(160,154,142,.12); color:var(--text-muted); }
+.sess-badge-today { background:rgba(212,168,67,.2); color:var(--gold); }
+.sess-badge-upcoming { background:rgba(125,201,138,.15); color:#7DC98A; }
+.sess-roster-row { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.04); flex-wrap:wrap; }
+.sess-roster-row:last-child { border-bottom:none; }
 .chart-h-sm2 { height:220px; }
 /* 17:30 Snapshot block */
 .snapshot-block { margin-top:14px; background:rgba(212,168,67,.06); border:1px solid rgba(212,168,67,.2); border-radius:var(--radius-sm); padding:12px 14px; }
@@ -770,13 +780,24 @@ footer, .footer, #footer, .site-footer { background:#F5F5F5 !important; color:#3
     <div id="cs-sessions" style="display:none">
       <div class="add-panel open" style="margin-bottom:1.25rem">
         <div class="panel-title">新增直播場次</div>
-        <div class="form-grid c3">
-          <div class="form-field"><label>日期</label><input type="date" id="cs-sess-date"></div>
-          <div class="form-field" style="grid-column:span 2"><label>場次標題</label><input type="text" id="cs-sess-title" placeholder="例：第一堂 — 外匯基礎入門"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <button class="btn" onclick="quickSession(1,'14:00')" style="font-size:12px;padding:6px 16px">📅 週一 14:00</button>
+          <button class="btn" onclick="quickSession(4,'20:30')" style="font-size:12px;padding:6px 16px">📅 週四 20:30</button>
+          <button class="btn" id="cs-sess-custom-btn" onclick="toggleCustomSession()" style="font-size:12px;padding:6px 16px">✏ 自訂日期</button>
         </div>
-        <div class="form-grid c2" style="margin-top:10px">
-          <div class="form-field"><label>出席人數</label><input type="number" id="cs-sess-attended" placeholder="0" min="0"></div>
-          <div class="form-field"><label>備註（選填）</label><input type="text" id="cs-sess-notes" placeholder=""></div>
+        <div id="cs-sess-custom-row" style="display:none;margin-bottom:12px">
+          <div class="form-grid c3">
+            <div class="form-field"><label>日期</label><input type="date" id="cs-sess-date" oninput="updateSessionTitle()"></div>
+            <div class="form-field"><label>時間</label><input type="time" id="cs-sess-time" value="14:00" oninput="updateSessionTitle()"></div>
+          </div>
+        </div>
+        <div class="form-field" style="margin-bottom:10px">
+          <label>場次標題</label>
+          <input type="text" id="cs-sess-title" placeholder="點擊快速選項自動產生">
+        </div>
+        <div class="form-field">
+          <label>備註（選填）</label>
+          <input type="text" id="cs-sess-notes" placeholder="">
         </div>
         <div class="form-actions">
           <button class="btn btn-primary" onclick="addSession()">新增場次</button>
@@ -2921,6 +2942,14 @@ function renderStudentList() {
               <option value="dropped" ${s.status==='dropped'?'selected':''}>已退出</option>
             </select>
           </div>
+          <div class="form-field" style="margin:0;min-width:160px">
+            <label style="font-size:12px">指派場次</label>
+            <select id="ef-session-${s.id}" style="padding:5px 8px;font-size:12px;max-width:220px"
+              onchange="assignStudentSessionFromDropdown(${s.id},this.value)">
+              <option value="">未指派</option>
+              ${sessionOptionsHtml(s.assigned_session_id)}
+            </select>
+          </div>
           <div class="form-field" style="margin:0;flex:1;min-width:160px">
             <label style="font-size:12px">備註</label>
             <input type="text" id="ef-notes-${s.id}" value="${esc(s.notes||'')}"
@@ -3212,21 +3241,91 @@ async function importStudents() {
 }
 
 // ---- Sessions ----
+let sessionExpandedId = null;
+let sessionRosters    = {};
+let sessionAttendEdit = {};
+
+function sessionOptionsHtml(selectedId) {
+  const sorted = [...courseSessions].sort((a,b) => b.session_date.localeCompare(a.session_date));
+  return sorted.map(s => {
+    const sel   = s.id === selectedId ? 'selected' : '';
+    const label = `${s.session_date}${s.session_time ? ' '+s.session_time : ''} ${s.session_title.length > 14 ? s.session_title.slice(0,14)+'…' : s.session_title}`;
+    return `<option value="${s.id}" ${sel}>${esc(label)}</option>`;
+  }).join('');
+}
+
 function renderSessionList() {
   if (!courseSessions.length) {
     g('cs-session-list').innerHTML = '<div class="empty"><div class="empty-icon">📅</div>尚無直播場次</div>';
     renderSessionChart();
     return;
   }
-  const sorted = [...courseSessions].sort((a,b) => b.session_date.localeCompare(a.session_date));
+  const todayStr = new Date().toISOString().split('T')[0];
+  const sorted   = [...courseSessions].sort((a,b) => b.session_date.localeCompare(a.session_date));
   g('cs-session-list').innerHTML = sorted.map(s => {
-    const pct = s.total_students > 0 ? Math.round(s.attended_count / s.total_students * 100) : 0;
-    const pctDisp = s.total_students > 0 ? `${s.attended_count} / ${s.total_students}人 (${pct}%)` : `${s.attended_count} 人出席`;
-    return `<div class="session-item">
-      <div class="session-date-txt">${s.session_date}</div>
-      <div class="session-title-txt">${esc(s.session_title)}</div>
-      <div class="session-attend-txt"><strong style="color:var(--gold)">${pctDisp}</strong></div>
-      <div class="attend-bar-wrap"><div class="attend-bar-fill" style="width:${pct}%"></div></div>
+    const isPast   = s.session_date < todayStr;
+    const isToday  = s.session_date === todayStr;
+    const isOpen   = sessionExpandedId === s.id;
+    const enrolled = s.enrollment_count ?? 0;
+    const attended = s.attended_count   ?? 0;
+    const pct      = enrolled > 0 ? Math.round(attended / enrolled * 100) : 0;
+    const dateDisp = s.session_date.slice(5).replace('-','/');
+    const timeDisp = s.session_time || '';
+    const badgeCls = isPast ? 'sess-badge-past' : isToday ? 'sess-badge-today' : 'sess-badge-upcoming';
+    const badgeTxt = isPast ? '已結束' : isToday ? '今日' : '即將開始';
+
+    let rosterHtml = '';
+    if (isOpen) {
+      const roster = sessionRosters[s.id];
+      const edits  = sessionAttendEdit[s.id] || {};
+      if (!roster) {
+        rosterHtml = `<div id="sess-roster-${s.id}" style="color:var(--text-muted);font-size:13px;padding:8px 0">載入中…</div>`;
+      } else if (roster.length === 0) {
+        rosterHtml = `<div id="sess-roster-${s.id}" style="color:var(--text-muted);font-size:13px;padding:8px 0">尚無報名學員</div>`;
+      } else {
+        const rows = roster.map(st => {
+          const att      = st.id in edits ? edits[st.id] : st.attended;
+          const absMark  = isPast && !att ? `<span style="font-size:11px;color:#e06c6c;font-weight:600;margin-left:4px">未到</span>` : '';
+          const reschedBtn = isPast && !att
+            ? `<button class="btn" onclick="rescheduleStudent(${st.id},${s.id})" style="font-size:11px;padding:3px 8px;margin-left:4px">改排下一場</button>`
+            : '';
+          return `<div class="sess-roster-row">
+            <input type="checkbox" style="width:16px;height:16px;accent-color:var(--gold);flex-shrink:0"
+              ${att ? 'checked' : ''} onchange="toggleAttendance(${s.id},${st.id},this.checked)">
+            <span style="font-size:13px;font-weight:600;flex:1;min-width:0">${esc(st.name)}${absMark}</span>
+            <span style="font-size:11px;color:var(--text-muted);min-width:44px">${esc(st.assigned_staff||'')}</span>
+            ${st.contact ? `<span style="font-size:11px;color:var(--text-muted)">${esc(st.contact)}</span>` : ''}
+            ${reschedBtn}
+          </div>`;
+        }).join('');
+        rosterHtml = `<div id="sess-roster-${s.id}">
+          <div style="font-size:11px;color:var(--text-muted);font-weight:600;letter-spacing:.06em;margin-bottom:8px">報名學員（${roster.length} 人）</div>
+          ${rows}
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="saveAttendance(${s.id})" style="font-size:12px;padding:5px 12px">儲存出席記錄</button>
+            <span id="sess-attend-msg-${s.id}" style="font-size:12px;color:var(--text-muted)"></span>
+          </div>
+        </div>`;
+      }
+    }
+
+    return `<div class="sess-card">
+      <div class="sess-card-hd" onclick="toggleSessionCard(${s.id})">
+        <div style="flex-shrink:0;text-align:center;width:48px">
+          <div style="font-size:15px;font-weight:700;color:var(--text-primary)">${dateDisp}</div>
+          ${timeDisp ? `<div style="font-size:11px;color:var(--text-muted)">${timeDisp}</div>` : ''}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.session_title)}</div>
+        </div>
+        <span class="sess-badge ${badgeCls}">${badgeTxt}</span>
+        <div style="text-align:right;flex-shrink:0;min-width:76px">
+          <div style="font-size:13px;font-weight:600;color:var(--gold)">${attended} / ${enrolled} 人</div>
+          <div style="font-size:11px;color:var(--text-muted)">${enrolled > 0 ? pct+'%' : '0 報名'}</div>
+        </div>
+        <svg class="chevron ${isOpen?'open':''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      ${isOpen ? `<div class="sess-expand">${rosterHtml}</div>` : ''}
     </div>`;
   }).join('');
   renderSessionChart();
@@ -3247,25 +3346,145 @@ function renderSessionChart() {
     options:{ ...B, plugins:{tooltip:TT, legend:{display:false}}, scales:{x:LS, y:sc()} } });
 }
 
+// Quick session helpers
+const _DOW_ZH = ['日','一','二','三','四','五','六'];
+function _nextWeekdayDate(dow) {
+  const t = new Date();
+  const daysUntil = (dow - t.getDay() + 7) % 7;
+  const next = new Date(t);
+  next.setDate(t.getDate() + daysUntil);
+  return next.toISOString().split('T')[0];
+}
+function _sessionAutoTitle(dateStr, timeStr) {
+  const d  = new Date(dateStr + 'T12:00:00');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `新手課 ${mm}/${dd}（週${_DOW_ZH[d.getDay()]}）${timeStr||''}`;
+}
+
+let _sessCustomMode = false;
+function quickSession(dow, time) {
+  _sessCustomMode = false;
+  g('cs-sess-custom-row').style.display = 'none';
+  g('cs-sess-custom-btn').textContent = '✏ 自訂日期';
+  const dateStr = _nextWeekdayDate(dow);
+  g('cs-sess-date').value  = dateStr;
+  g('cs-sess-time').value  = time;
+  g('cs-sess-title').value = _sessionAutoTitle(dateStr, time);
+}
+function toggleCustomSession() {
+  _sessCustomMode = !_sessCustomMode;
+  g('cs-sess-custom-row').style.display = _sessCustomMode ? 'block' : 'none';
+  g('cs-sess-custom-btn').textContent = _sessCustomMode ? '✕ 取消自訂' : '✏ 自訂日期';
+  if (!_sessCustomMode) { g('cs-sess-title').value = ''; g('cs-sess-date').value = ''; g('cs-sess-time').value = '14:00'; }
+}
+function updateSessionTitle() {
+  const d = g('cs-sess-date').value, t = g('cs-sess-time').value;
+  if (d) g('cs-sess-title').value = _sessionAutoTitle(d, t);
+}
+
 async function addSession() {
   const session_date  = g('cs-sess-date').value;
+  const session_time  = g('cs-sess-time') ? (g('cs-sess-time').value || '') : '';
   const session_title = g('cs-sess-title').value.trim();
-  const attended_count = parseInt(g('cs-sess-attended').value) || 0;
-  const notes = g('cs-sess-notes').value.trim();
+  const notes         = g('cs-sess-notes').value.trim();
   g('cs-sesserr').textContent = '';
-  if (!session_date || !session_title) { g('cs-sesserr').textContent = '請填寫日期和標題'; return; }
+  if (!session_date || !session_title) { g('cs-sesserr').textContent = '請選擇場次類型並確認標題'; return; }
   try {
     const saved = await apiFetch('/api/sessions', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ session_date, session_title, attended_count, notes }),
+      body: JSON.stringify({ session_date, session_time, session_title, notes }),
     });
     courseSessions.unshift(saved);
     g('cs-sess-title').value = g('cs-sess-notes').value = '';
-    g('cs-sess-attended').value = '';
+    g('cs-sess-date').value = ''; if (g('cs-sess-time')) g('cs-sess-time').value = '14:00';
     g('cs-sessmsg').textContent = '場次已新增！';
     setTimeout(() => { g('cs-sessmsg').textContent = ''; }, 2500);
     renderSessionList();
   } catch (e) { g('cs-sesserr').textContent = '新增失敗：' + e.message; }
+}
+
+async function toggleSessionCard(id) {
+  if (sessionExpandedId === id) {
+    sessionExpandedId = null;
+  } else {
+    sessionExpandedId = id;
+    if (!sessionRosters[id]) {
+      renderSessionList(); // show loading state first
+      try {
+        sessionRosters[id]    = await apiFetch(`/api/sessions/${id}/roster`);
+        sessionAttendEdit[id] = {};
+      } catch (e) {
+        sessionRosters[id] = [];
+      }
+    }
+  }
+  renderSessionList();
+}
+
+function toggleAttendance(sessionId, studentId, checked) {
+  if (!sessionAttendEdit[sessionId]) sessionAttendEdit[sessionId] = {};
+  sessionAttendEdit[sessionId][studentId] = checked;
+}
+
+async function saveAttendance(sessionId) {
+  const roster = sessionRosters[sessionId] || [];
+  const edits  = sessionAttendEdit[sessionId] || {};
+  const records = roster.map(st => ({
+    student_id: st.id,
+    attended:   st.id in edits ? edits[st.id] : st.attended,
+  }));
+  const msgEl = g(`sess-attend-msg-${sessionId}`);
+  try {
+    const res = await apiFetch(`/api/sessions/${sessionId}/attendance`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ records }),
+    });
+    const sess = courseSessions.find(s => s.id === sessionId);
+    if (sess) sess.attended_count = res.attended_count;
+    sessionRosters[sessionId] = sessionRosters[sessionId].map(st => ({
+      ...st, attended: st.id in edits ? edits[st.id] : st.attended,
+    }));
+    sessionAttendEdit[sessionId] = {};
+    if (msgEl) { msgEl.textContent = '已儲存'; setTimeout(() => { if(msgEl) msgEl.textContent = ''; }, 2000); }
+    renderSessionList();
+  } catch (e) {
+    if (msgEl) msgEl.textContent = '儲存失敗：' + e.message;
+  }
+}
+
+async function rescheduleStudent(studentId, fromSessionId) {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const nextSess = [...courseSessions]
+    .filter(s => s.session_date >= todayStr && s.id !== fromSessionId)
+    .sort((a,b) => a.session_date.localeCompare(b.session_date))[0];
+  if (!nextSess) { alert('找不到下一場次'); return; }
+  await _doAssignStudentSession(studentId, nextSess.id, fromSessionId);
+}
+
+async function assignStudentSessionFromDropdown(studentId, sessionIdStr) {
+  const sessionId = sessionIdStr ? parseInt(sessionIdStr) : null;
+  const st = courseStudents.find(s => s.id === studentId);
+  const oldSessionId = st ? st.assigned_session_id : null;
+  await _doAssignStudentSession(studentId, sessionId, oldSessionId);
+}
+
+async function _doAssignStudentSession(studentId, sessionId, oldSessionId) {
+  try {
+    await apiFetch(`/api/students/${studentId}`, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ assigned_session_id: sessionId }),
+    });
+    const st = courseStudents.find(s => s.id === studentId);
+    if (st) st.assigned_session_id = sessionId;
+    if (oldSessionId) delete sessionRosters[oldSessionId];
+    if (sessionId)    delete sessionRosters[sessionId];
+    courseSessions = await apiFetch('/api/sessions');
+    if (courseSubTab === 'sessions') renderSessionList();
+    if (courseSubTab === 'students') renderStudentList();
+  } catch (e) {
+    alert('指派失敗：' + e.message);
+  }
 }
 
 // ---- Trends ----

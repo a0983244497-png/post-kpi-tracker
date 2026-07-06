@@ -199,6 +199,22 @@ export async function initDb() {
   await pool.query(`ALTER TABLE course_students ADD COLUMN IF NOT EXISTS contact VARCHAR(100) DEFAULT ''`);
   await pool.query(`ALTER TABLE course_students ADD COLUMN IF NOT EXISTS source  VARCHAR(100) DEFAULT ''`);
 
+  // Migration: session time + student-session assignment
+  await pool.query(`ALTER TABLE course_sessions ADD COLUMN IF NOT EXISTS session_time VARCHAR(5) DEFAULT ''`);
+  await pool.query(`ALTER TABLE course_students ADD COLUMN IF NOT EXISTS assigned_session_id INTEGER REFERENCES course_sessions(id) ON DELETE SET NULL`);
+
+  // Attendance tracking per session
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS session_attendance (
+      id         SERIAL PRIMARY KEY,
+      session_id INTEGER NOT NULL REFERENCES course_sessions(id)  ON DELETE CASCADE,
+      student_id INTEGER NOT NULL REFERENCES course_students(id) ON DELETE CASCADE,
+      attended   BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(session_id, student_id)
+    )
+  `);
+
   // Seed default staff (unconditional, skips if already exists)
   await pool.query(
     `INSERT INTO staff (name) VALUES ('Gino'),('Darren'),('Josh'),('Jenna'),('路克') ON CONFLICT (name) DO NOTHING`
