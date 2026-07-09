@@ -36,6 +36,9 @@
   --shadow-card: 0 2px 12px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.03);
   --shadow-glow: 0 0 0 1px rgba(212,168,67,.18), 0 6px 28px rgba(0,0,0,.55);
   --shadow-gold: 0 4px 20px rgba(212,168,67,.2);
+  --teal: #4ECDC4;
+  --teal-dim: rgba(78,205,196,.1);
+  --teal-shadow: 0 4px 16px rgba(78,205,196,.18);
   --ease: cubic-bezier(.4,0,.2,1);
   --t: 160ms;
 }
@@ -737,7 +740,6 @@ select option { background: var(--charcoal-3); }
     <div class="course-subtabs" id="course-subtabs">
       <button class="ctab active" onclick="switchCourseTab('overview')">漏斗總覽</button>
       <button class="ctab" onclick="switchCourseTab('students')">學員管理</button>
-      <button class="ctab" onclick="switchCourseTab('sessions')">直播場次</button>
       <button class="ctab" onclick="switchCourseTab('trends')">趨勢圖</button>
     </div>
 
@@ -754,6 +756,48 @@ select option { background: var(--charcoal-3); }
 
     <!-- 子頁：學員管理 -->
     <div id="cs-students" style="display:none">
+
+      <!-- 上區：直播場次管理（可收合） -->
+      <div id="cs-sessions-panel" style="margin-bottom:1.5rem">
+        <div class="section-hd" style="cursor:pointer;user-select:none;margin-bottom:.75rem" onclick="toggleSessionsPanel()">
+          <div class="section-hd-title">直播場次管理</div>
+          <svg id="cs-sessions-chevron" class="chevron open" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div id="cs-sessions-body">
+          <div class="add-panel open" style="margin-bottom:1.25rem">
+            <div class="panel-title">新增直播場次</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+              <button class="btn" onclick="quickSession(1,'14:00')" style="font-size:12px;padding:6px 16px">📅 週一 14:00</button>
+              <button class="btn" onclick="quickSession(4,'20:30')" style="font-size:12px;padding:6px 16px">📅 週四 20:30</button>
+              <button class="btn" id="cs-sess-custom-btn" onclick="toggleCustomSession()" style="font-size:12px;padding:6px 16px">✏ 自訂日期</button>
+            </div>
+            <div id="cs-sess-custom-row" style="display:none;margin-bottom:12px">
+              <div class="form-grid c3">
+                <div class="form-field"><label>日期</label><input type="date" id="cs-sess-date" oninput="updateSessionTitle()"></div>
+                <div class="form-field"><label>時間</label><input type="time" id="cs-sess-time" value="14:00" oninput="updateSessionTitle()"></div>
+              </div>
+            </div>
+            <div class="form-field" style="margin-bottom:10px">
+              <label>場次標題</label>
+              <input type="text" id="cs-sess-title" placeholder="點擊快速選項自動產生">
+            </div>
+            <div class="form-field">
+              <label>備註（選填）</label>
+              <input type="text" id="cs-sess-notes" placeholder="">
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" onclick="addSession()">新增場次</button>
+              <span class="form-msg" id="cs-sessmsg"></span>
+              <span class="form-err" id="cs-sesserr"></span>
+            </div>
+          </div>
+          <div id="cs-session-list"></div>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin-bottom:1.5rem">
+
+      <!-- 下區：學員列表 -->
       <div class="add-panel open" style="margin-bottom:1.25rem">
         <div class="panel-title">新增學員</div>
         <div class="form-grid c3">
@@ -787,44 +831,6 @@ select option { background: var(--charcoal-3); }
       <div id="cs-student-list"></div>
     </div>
 
-    <!-- 子頁：直播場次 -->
-    <div id="cs-sessions" style="display:none">
-      <div class="add-panel open" style="margin-bottom:1.25rem">
-        <div class="panel-title">新增直播場次</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-          <button class="btn" onclick="quickSession(1,'14:00')" style="font-size:12px;padding:6px 16px">📅 週一 14:00</button>
-          <button class="btn" onclick="quickSession(4,'20:30')" style="font-size:12px;padding:6px 16px">📅 週四 20:30</button>
-          <button class="btn" id="cs-sess-custom-btn" onclick="toggleCustomSession()" style="font-size:12px;padding:6px 16px">✏ 自訂日期</button>
-        </div>
-        <div id="cs-sess-custom-row" style="display:none;margin-bottom:12px">
-          <div class="form-grid c3">
-            <div class="form-field"><label>日期</label><input type="date" id="cs-sess-date" oninput="updateSessionTitle()"></div>
-            <div class="form-field"><label>時間</label><input type="time" id="cs-sess-time" value="14:00" oninput="updateSessionTitle()"></div>
-          </div>
-        </div>
-        <div class="form-field" style="margin-bottom:10px">
-          <label>場次標題</label>
-          <input type="text" id="cs-sess-title" placeholder="點擊快速選項自動產生">
-        </div>
-        <div class="form-field">
-          <label>備註（選填）</label>
-          <input type="text" id="cs-sess-notes" placeholder="">
-        </div>
-        <div class="form-actions">
-          <button class="btn btn-primary" onclick="addSession()">新增場次</button>
-          <span class="form-msg" id="cs-sessmsg"></span>
-          <span class="form-err" id="cs-sesserr"></span>
-        </div>
-      </div>
-      <div id="cs-session-list"></div>
-      <div style="margin-top:1.25rem">
-        <div class="chart-card" style="width:100%">
-          <p class="chart-card-title">各場次出席人數</p>
-          <div class="chart-h-sm2"><canvas id="ch-session-attend"></canvas></div>
-        </div>
-      </div>
-    </div>
-
     <!-- 子頁：趨勢圖 -->
     <div id="cs-trends" style="display:none">
       <div class="chart-row chart-r2">
@@ -836,6 +842,10 @@ select option { background: var(--charcoal-3); }
           <p class="chart-card-title">每場出席人數趨勢</p>
           <div class="chart-h"><canvas id="ch-attend-trend"></canvas></div>
         </div>
+      </div>
+      <div class="chart-card" style="width:100%;margin-top:1rem">
+        <p class="chart-card-title">各場次出席人數</p>
+        <div class="chart-h-sm2"><canvas id="ch-session-attend"></canvas></div>
       </div>
     </div>
 
@@ -2707,7 +2717,8 @@ function renderDailyFollowersChart() {
 async function renderCourseSection() {
   const today = new Date().toISOString().split('T')[0];
   if (!g('cs-sdate').value) g('cs-sdate').value = today;
-  if (!g('cs-sess-date').value) g('cs-sess-date').value = today;
+  const sessDate = g('cs-sess-date');
+  if (sessDate && !sessDate.value) sessDate.value = today;
   if (!courseLoaded) {
     g('cs-stats-grid').innerHTML = `<div class="stat-card" style="grid-column:span 3"><div class="loading"><div class="loading-spinner"></div>載入中…</div></div>`;
     try {
@@ -2727,16 +2738,15 @@ async function renderCourseSection() {
 }
 
 function renderCourseSubTab() {
-  ['overview','students','sessions','trends'].forEach(t => {
+  ['overview','students','trends'].forEach(t => {
     const el = g(`cs-${t}`);
     if (el) el.style.display = t === courseSubTab ? '' : 'none';
   });
   document.querySelectorAll('#course-subtabs .ctab').forEach((btn, i) => {
-    btn.classList.toggle('active', ['overview','students','sessions','trends'][i] === courseSubTab);
+    btn.classList.toggle('active', ['overview','students','trends'][i] === courseSubTab);
   });
   if (courseSubTab === 'overview')  renderFunnelOverview();
-  if (courseSubTab === 'students')  renderStudentList();
-  if (courseSubTab === 'sessions')  renderSessionList();
+  if (courseSubTab === 'students')  { renderSessionList(); renderStudentList(); }
   if (courseSubTab === 'trends')    renderCourseTrends();
 }
 
@@ -2937,11 +2947,6 @@ function renderStudentList() {
               style="opacity:${ef.converted?'1':'.4'}">
           </div>
         </div>
-        <div class="form-actions" style="margin-top:8px">
-          <button class="btn btn-primary" onclick="saveFunnel()">更新漏斗狀態</button>
-          <span class="form-msg" id="cs-fmsg-${s.id}"></span>
-          <span class="form-err" id="cs-ferr-${s.id}"></span>
-        </div>
         <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
         <div style="font-size:11px;color:var(--text-muted);font-weight:600;letter-spacing:.06em;margin-bottom:10px">學員資料</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
@@ -2966,11 +2971,12 @@ function renderStudentList() {
             <input type="text" id="ef-notes-${s.id}" value="${esc(s.notes||'')}"
               placeholder="備注內容…" style="width:100%">
           </div>
-          <button class="btn" onclick="saveStudentMeta(${s.id})" style="padding:6px 14px;font-size:12px">儲存</button>
-          <span class="form-msg" id="cs-metamsg-${s.id}" style="font-size:12px"></span>
         </div>
-        <div style="margin-top:12px">
+        <div style="margin-top:14px;display:flex;gap:8px;align-items:center">
+          <button class="btn btn-primary" onclick="saveAll(${s.id})" style="font-size:12px;padding:6px 14px">💾 儲存全部</button>
           <button class="btn" onclick="toggleStudentCard(${s.id})" style="font-size:12px;padding:5px 12px">收起</button>
+          <span class="form-msg" id="cs-savemsg-${s.id}" style="font-size:12px"></span>
+          <span class="form-err" id="cs-saveerr-${s.id}" style="font-size:12px;color:var(--danger)"></span>
         </div>
       </div>`;
     }
@@ -3053,6 +3059,57 @@ async function saveFunnel() {
   } catch (e) {
     if (errEl) errEl.textContent = '更新失敗：' + e.message;
   }
+}
+
+async function saveAll(id) {
+  const msgEl = g(`cs-savemsg-${id}`);
+  const errEl = g(`cs-saveerr-${id}`);
+  if (msgEl) msgEl.textContent = '';
+  if (errEl) errEl.textContent = '';
+  const s = courseStudents.find(x => x.id === id);
+  if (!s) return;
+  try {
+    // 1. 儲存漏斗進度
+    if (s.funnel_id) {
+      const updated = await apiFetch(`/api/funnel/${s.funnel_id}`, {
+        method:'PUT', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(courseEditFunnel),
+      });
+      const idx = courseStudents.findIndex(x => x.id === id);
+      if (idx !== -1) courseStudents[idx] = { ...courseStudents[idx], ...updated };
+    }
+    // 2. 儲存學員資料
+    const statusEl = g(`ef-status-${id}`);
+    const notesEl  = g(`ef-notes-${id}`);
+    await apiFetch(`/api/students/${id}`, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        status: statusEl?.value,
+        notes:  notesEl?.value.trim(),
+      }),
+    });
+    const st = courseStudents.find(x => x.id === id);
+    if (st) {
+      if (statusEl) st.status = statusEl.value;
+      if (notesEl)  st.notes  = notesEl.value.trim();
+    }
+    apiFetch('/api/funnel-stats').then(fs => { courseStats = fs; });
+    courseExpandedId = null;
+    courseEditFunnel = {};
+    showToast('已儲存');
+    renderStudentList();
+  } catch (e) {
+    if (errEl) errEl.textContent = '儲存失敗：' + e.message;
+  }
+}
+
+let _sessionsPanelOpen = true;
+function toggleSessionsPanel() {
+  _sessionsPanelOpen = !_sessionsPanelOpen;
+  const body = g('cs-sessions-body');
+  const chev = g('cs-sessions-chevron');
+  if (body) body.style.display = _sessionsPanelOpen ? '' : 'none';
+  if (chev) chev.classList.toggle('open', _sessionsPanelOpen);
 }
 
 // ─── Batch Import ────────────────────────────────────────────
@@ -3491,8 +3548,7 @@ async function _doAssignStudentSession(studentId, sessionId, oldSessionId) {
     if (oldSessionId) delete sessionRosters[oldSessionId];
     if (sessionId)    delete sessionRosters[sessionId];
     courseSessions = await apiFetch('/api/sessions');
-    if (courseSubTab === 'sessions') renderSessionList();
-    if (courseSubTab === 'students') renderStudentList();
+    if (courseSubTab === 'students') { renderSessionList(); renderStudentList(); }
   } catch (e) {
     alert('指派失敗：' + e.message);
   }
@@ -3534,6 +3590,8 @@ function renderCourseTrends() {
       data:{ labels:attLabels, datasets:[{ data:attData, borderColor:'#7DC98A', backgroundColor:'rgba(125,201,138,.1)', fill:true, pointBackgroundColor:'#7DC98A', tension:0.3, pointRadius:4, label:'出席人數' }] },
       options:{ ...B, plugins:{tooltip:TT, legend:{display:false}}, scales:{x:LS, y:sc()} } });
   }
+
+  renderSessionChart();
 }
 
 // ===== REFRESH =====
