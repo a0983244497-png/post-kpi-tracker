@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { syncWeeklyPlan } from '../lib/googleCalendar.js';
+import { syncWeeklyPlan, getWeekEvents } from '../lib/googleCalendar.js';
 
 const router = Router();
 
@@ -45,6 +45,24 @@ router.post('/sync', async (req, res) => {
     res.json({ ok: true, summary: { created, skipped, errors }, results });
   } catch (e) {
     console.error('[ContentCalendar] sync error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * GET /api/content-calendar/events?week=YYYY-MM-DD
+ * Returns all content events for the week containing the given date (Mon–Sun, Asia/Taipei).
+ */
+router.get('/events', async (req, res) => {
+  try {
+    const { week } = req.query;
+    if (!week || !/^\d{4}-\d{2}-\d{2}$/.test(week)) {
+      return res.status(400).json({ error: 'week 參數格式應為 YYYY-MM-DD，例如 ?week=2026-07-21' });
+    }
+    const events = await getWeekEvents(week);
+    res.json(events);
+  } catch (e) {
+    console.error('[ContentCalendar] events error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
