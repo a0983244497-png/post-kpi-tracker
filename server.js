@@ -34,10 +34,29 @@ function requireAuth(req, res, next) {
 }
 
 // ─── CORS ────────────────────────────────────────────────
+// CORS_ALLOWED_ORIGINS: comma-separated list of allowed origins.
+// If unset/empty → allow all (*). If set → whitelist mode.
+const ALLOWED_ORIGINS = process.env.CORS_ALLOWED_ORIGINS
+  ? process.env.CORS_ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
+  : [];
+
 app.use((req, res, next) => {
-  res.set('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+
+  if (ALLOWED_ORIGINS.length === 0) {
+    // Open mode
+    res.set('Access-Control-Allow-Origin', '*');
+  } else if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    // Whitelist mode: reflect matched origin and add Vary
+    res.set('Access-Control-Allow-Origin', origin);
+    res.set('Vary', 'Origin');
+  }
+  // If whitelist mode and origin not in list: no ACAO header → browser blocks
+
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-  res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+
+  // OPTIONS preflight must be answered before Auth middleware
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
