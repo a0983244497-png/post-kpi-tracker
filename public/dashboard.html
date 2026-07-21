@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>發文工作台｜重心開始</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Montserrat:wght@500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+/* ===== TOKENS ===== */
+:root{
+  --bg:#EDE8DF;
+  --surface:#F5F0E8;
+  --surface-2:#FDFAF5;
+  --brown:#3A2010;
+  --brown-mid:#7A4A2A;
+  --brick:#B8531A;
+  --brick-light:#E8906A;
+  --sand:#D4B896;
+  --sand-light:#EAD9C4;
+  --text:#3A2010;
+  --text-mid:rgba(58,32,16,.6);
+  --text-muted:rgba(58,32,16,.35);
+  --border:rgba(58,32,16,.1);
+  --border-strong:rgba(58,32,16,.2);
+  --radius:10px;
+  --radius-sm:6px;
+  --font:'Noto Sans TC',sans-serif;
+  --font-display:'Montserrat',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:100vh}
+
+/* ===== HEADER ===== */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--brick);letter-spacing:.1em;text-transform:uppercase}
+.logo-sub{font-size:11px;color:var(--text-muted);margin-top:1px}
+.header-right{display:flex;align-items:center;gap:10px}
+.pw-input{font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-family:var(--font);width:160px;outline:none}
+.pw-input:focus{border-color:var(--brick)}
+.conn-status{font-size:11px;display:flex;align-items:center;gap:5px;color:var(--text-muted)}
+.conn-dot{width:6px;height:6px;border-radius:50%;background:var(--border-strong)}
+.conn-dot.live{background:#4CAF50}
+
+/* ===== LAYOUT ===== */
+.layout{display:grid;grid-template-columns:1fr 380px;min-height:calc(100vh - 56px)}
+.left{padding:1.5rem 2rem;border-right:1px solid var(--border)}
+.right{padding:1.5rem;background:var(--surface)}
+
+/* ===== WEEK NAV ===== */
+.week-nav{display:flex;align-items:center;gap:10px;margin-bottom:1.25rem}
+.wnav-btn{background:none;border:1px solid var(--border-strong);color:var(--brown-mid);width:30px;height:30px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
+.wnav-btn:hover{background:var(--sand-light)}
+.week-label{font-size:13px;font-weight:500;color:var(--text);min-width:130px;text-align:center}
+.refresh-btn{margin-left:auto;font-size:12px;padding:5px 12px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:none;color:var(--brown-mid);cursor:pointer;font-family:var(--font)}
+.refresh-btn:hover{background:var(--sand-light)}
+
+/* ===== CALENDAR GRID ===== */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.day-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px;min-height:120px;cursor:pointer;transition:border-color .15s,transform .1s}
+.day-card:hover{border-color:var(--brick-light);transform:translateY(-1px)}
+.day-card.today{border:2px solid var(--brick)}
+.day-card.empty{background:transparent;border-style:dashed;cursor:default;pointer-events:none;opacity:.35}
+.day-card.done{opacity:.4}
+.day-card.selected{border-color:var(--brick);background:#FEF6F0}
+.day-name{font-size:10px;color:var(--text-muted);font-weight:500;margin-bottom:2px}
+.day-num{font-size:20px;font-weight:500;color:var(--text);line-height:1;margin-bottom:7px}
+.day-num.today-num{color:var(--brick)}
+.today-pip{width:5px;height:5px;border-radius:50%;background:var(--brick);display:inline-block;margin-left:4px;vertical-align:middle}
+.type-badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;margin-bottom:5px}
+.b-single{background:#FEF0E0;color:#8A4A08}
+.b-carousel{background:#E6F0FE;color:#1A4A8A}
+.b-cta{background:#E6F5EE;color:#1A6A3A}
+.b-done{background:var(--bg);color:var(--text-muted)}
+.day-topic{font-size:11px;color:var(--text-mid);line-height:1.5}
+
+/* ===== RIGHT PANEL ===== */
+.panel-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font-size:13px;gap:8px;text-align:center}
+.panel-empty-icon{font-size:32px;opacity:.3}
+.panel-header{margin-bottom:1.25rem}
+.panel-series{font-size:10px;color:var(--brick);letter-spacing:.1em;text-transform:uppercase;font-weight:500;margin-bottom:6px}
+.panel-title{font-size:17px;font-weight:700;color:var(--text);line-height:1.35;margin-bottom:4px}
+.panel-meta{font-size:12px;color:var(--text-muted)}
+.panel-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:1.25rem}
+.ptab{font-size:13px;padding:7px 16px;cursor:pointer;border:none;background:none;color:var(--text-mid);font-family:var(--font);border-bottom:2px solid transparent;margin-bottom:-1px}
+.ptab.on{color:var(--brick);border-bottom-color:var(--brick);font-weight:500}
+.pane{display:none}
+.pane.on{display:block}
+
+/* ===== CAPTION PANE ===== */
+.caption-area{font-size:13px;color:var(--text);line-height:1.9;white-space:pre-wrap;background:var(--bg);border-radius:var(--radius-sm);padding:12px 14px;min-height:120px;margin-bottom:10px}
+.caption-loading{font-size:13px;color:var(--text-muted);padding:16px;text-align:center}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font-size:12px;padding:7px 14px;border-radius:var(--radius-sm);border:1px solid var(--border-strong);background:none;color:var(--text);cursor:pointer;font-family:var(--font);display:inline-flex;align-items:center;gap:5px;transition:background .15s}
+.btn:hover{background:var(--sand-light)}
+.btn-primary{background:var(--brick);border-color:var(--brick);color:#fff;font-weight:500}
+.btn-primary:hover{background:#9A3F0E}
+
+/* ===== IMAGE PANE ===== */
+.img-preview{width:100%;aspect-ratio:1;background:var(--bg);border-radius:var(--radius);overflow:hidden;margin-bottom:10px;position:relative}
+#img-canvas{width:100%;height:100%;display:block}
+.img-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text-muted);text-align:center;padding:1rem}
+
+/* ===== IMAGE CANVAS (hidden, for generation) ===== */
+.img-gen-wrap{position:fixed;left:-9999px;top:0;width:500px;height:500px}
+#gen-slide{width:500px;height:500px;position:relative;overflow:hidden;background:var(--surface)}
+
+/* ===== ERR / LOADING ===== */
+.err-box{font-size:13px;color:#8A2010;background:#FEE8E4;border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:1rem}
+.loading-msg{font-size:13px;color:var(--text-muted);padding:2rem;text-align:center}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}
+  .right{border-top:1px solid var(--border)}
+}
+@media(max-width:600px){
+  .cal-grid{grid-template-columns:repeat(4,1fr)}
+  .left{padding:1rem}
+  .header{padding:0 1rem}
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div>
+    <div class="logo">重心開始</div>
+    <div class="logo-sub">發文工作台</div>
+  </div>
+  <div class="header-right">
+    <input type="password" class="pw-input" id="pw-input" placeholder="TEAM_PASSWORD" autocomplete="off">
+    <button class="refresh-btn" onclick="loadWeek()">載入 ↻</button>
+    <div class="conn-status">
+      <div class="conn-dot" id="conn-dot"></div>
+      <span id="conn-label">未連線</span>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- LEFT: Calendar -->
+  <div class="left">
+    <div class="week-nav">
+      <button class="wnav-btn" onclick="changeWeek(-7)">&#8592;</button>
+      <div class="week-label" id="week-label">—</div>
+      <button class="wnav-btn" onclick="changeWeek(7)">&#8594;</button>
+      <button class="refresh-btn" onclick="loadWeek()">重新整理</button>
+    </div>
+    <div id="cal-wrap">
+      <div class="loading-msg">輸入密碼後按「載入」</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Detail Panel -->
+  <div class="right" id="right-panel">
+    <div class="panel-empty" id="panel-empty">
+      <div class="panel-empty-icon">📅</div>
+      <div>點擊左側任何一天<br>展開文案與圖片</div>
+    </div>
+    <div id="panel-content" style="display:none">
+      <div class="panel-header">
+        <div class="panel-series" id="p-series"></div>
+        <div class="panel-title" id="p-title"></div>
+        <div class="panel-meta" id="p-meta"></div>
+      </div>
+      <div class="panel-tabs">
+        <button class="ptab on" onclick="switchPane('caption',this)">文案</button>
+        <button class="ptab" onclick="switchPane('image',this)">出圖</button>
+      </div>
+      <div class="pane on" id="pane-caption">
+        <div class="caption-area" id="caption-area">點下方按鈕產出文案</div>
+        <div class="btn-row" style="margin-bottom:10px">
+          <button class="btn btn-primary" onclick="genCaption()">✦ 產出文案</button>
+          <button class="btn" onclick="copyCaption()">複製</button>
+        </div>
+      </div>
+      <div class="pane" id="pane-image">
+        <div class="img-preview">
+          <div class="img-placeholder" id="img-placeholder">點下方按鈕生成圖片</div>
+          <canvas id="img-canvas" style="display:none"></canvas>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="genImage()">✦ 生成圖片</button>
+          <button class="btn" id="dl-btn" onclick="downloadImage()" style="display:none">下載 PNG</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden canvas for image generation -->
+<div class="img-gen-wrap">
+  <div id="gen-slide"></div>
+</div>
+
+<script>
+// ===== CONFIG =====
+// TODO（夥伴5）：把這裡換成實際部署的網址
+const API_BASE = 'https://post-kpi-tracker-production.up.railway.app';
+// TODO（夥伴5）：Claude API 呼叫改成透過後端轉發
+// POST /api/claude-proxy  body: {system, prompt} → 回傳 {text}
+const CLAUDE_PROXY = '/api/claude-proxy';
+
+// ===== SOP SYSTEM PROMPT =====
+const SOP_SYSTEM = `你是 Gino（@yusheng.zhu.14）的 Threads 文案助理，品牌名稱「重心開始」。Gino 是黃金日內交易講師，語氣像在跟朋友聊天，偶爾帶乾話感，不裝專業、不說教。
+
+慣用詞範例：「好家在我有設停損」「這把直接被掃光」「二話不說反手」「行情在來回刷」「拿好拿滿」。不用成語，不用書面語，不翻譯腔。
+
+輸出格式：
+Hook（25字以內，第一句製造好奇或共鳴）
+空行
+本文（60–100字）
+空行
+結尾（疑問句引互動，或一句帶乾話感的觀察）
+
+規則：
+- 禁止「你是否曾經」「很多人都」開場
+- 禁止勵志收尾
+- 每則至少有一個具體數字或具體場景
+- 不得出現：保證獲利、穩賺、零風險、保本、月入XX萬
+- 結尾加一行：＊以上為個人操作習慣，非投資建議`;
+
+// ===== STATE =====
+let pw = '';
+let curDate = new Date();
+let eventsCache = [];
+let selEvent = null;
+let generatedCaption = '';
+
+// ===== UTILS =====
+function weekStart(d) {
+  const day = new Date(d);
+  const diff = day.getDay() === 0 ? -6 : 1 - day.getDay();
+  day.setDate(day.getDate() + diff);
+  return day;
+}
+function fmtISO(d) { return d.toISOString().split('T')[0]; }
+function fmtDisplay(d) { return `${d.getMonth()+1}/${d.getDate()}`; }
+const DAY_NAMES = ['週日','週一','週二','週三','週四','週五','週六'];
+const TYPE_LABEL = {single:'單篇',carousel:'輪播',cta:'CTA'};
+const TYPE_BADGE = {single:'b-single',carousel:'b-carousel',cta:'b-cta'};
+
+function setConn(live, msg) {
+  document.getElementById('conn-dot').className = 'conn-dot' + (live ? ' live' : '');
+  document.getElementById('conn-label').textContent = msg;
+}
+
+// ===== LOAD WEEK =====
+async function loadWeek() {
+  pw = document.getElementById('pw-input').value.trim();
+  if (!pw) { setConn(false, '請輸入密碼'); return; }
+  setConn(false, '連線中…');
+  document.getElementById('cal-wrap').innerHTML = '<div class="loading-msg">載入中…</div>';
+  closePanel();
+  const ws = weekStart(curDate);
+  const iso = fmtISO(ws);
+  document.getElementById('week-label').textContent =
+    `${fmtDisplay(ws)} – ${fmtDisplay(new Date(ws.getTime()+6*86400000))}`;
+  try {
+    const res = await fetch(`${API_BASE}/api/content-calendar/events?week=${iso}`, {
+      headers: { Authorization: 'Basic ' + btoa(':' + pw) }
+    });
+    if (res.status === 401) { setConn(false,'密碼錯誤'); document.getElementById('cal-wrap').innerHTML='<div class="err-box">密碼錯誤</div>'; return; }
+    if (!res.ok) throw new Error(res.status);
+    eventsCache = await res.json();
+    if (!Array.isArray(eventsCache)) eventsCache = eventsCache.events || [];
+    setConn(true, '已連線');
+    renderCalendar(ws);
+  } catch(e) {
+    setConn(false,'連線失敗');
+    document.getElementById('cal-wrap').innerHTML = `<div class="err-box">無法連線：${e.message}</div>`;
+  }
+}
+
+function changeWeek(days) {
+  curDate = new Date(curDate.getTime() + days * 86400000);
+  loadWeek();
+}
+
+// ===== RENDER CALENDAR =====
+function renderCalendar(ws) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  let html = '<div class="cal-grid">';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(ws.getTime() + i * 86400000);
+    const iso = fmtISO(d);
+    const isToday = d.getTime() === today.getTime();
+    const isPast = d < today;
+    const ev = eventsCache.find(e => e.date === iso);
+    const dayName = DAY_NAMES[d.getDay()];
+    if (!ev) {
+      html += `<div class="day-card empty"><div class="day-name">${dayName}</div><div class="day-num">${d.getDate()}</div></div>`;
+    } else {
+      const isDone = isPast && !isToday;
+      html += `<div class="day-card${isToday?' today':''}${isDone?' done':''}" id="dc-${iso}" onclick="selectDay('${iso}')">
+        <div class="day-name">${dayName}</div>
+        <div class="day-num${isToday?' today-num':''}">${d.getDate()}${isToday?'<span class="today-pip"></span>':''}</div>
+        <span class="type-badge ${isDone?'b-done':TYPE_BADGE[ev.type]||'b-single'}">${isDone?'已發':TYPE_LABEL[ev.type]||ev.type}</span>
+        <div class="day-topic">${ev.topic}</div>
+      </div>`;
+    }
+  }
+  html += '</div>';
+  document.getElementById('cal-wrap').innerHTML = html;
+}
+
+// ===== SELECT DAY =====
+function selectDay(iso) {
+  selEvent = eventsCache.find(e => e.date === iso);
+  if (!selEvent) return;
+  document.querySelectorAll('.day-card').forEach(c => c.classList.remove('selected'));
+  const dc = document.getElementById('dc-' + iso);
+  if (dc) dc.classList.add('selected');
+  generatedCaption = '';
+  document.getElementById('panel-empty').style.display = 'none';
+  document.getElementById('panel-content').style.display = 'block';
+  document.getElementById('p-series').textContent = selEvent.series || '';
+  document.getElementById('p-title').textContent = selEvent.topic;
+  document.getElementById('p-meta').textContent = `${iso} ${selEvent.time||'09:00'} ｜ ${TYPE_LABEL[selEvent.type]||selEvent.type}`;
+  document.getElementById('caption-area').textContent = '點「產出文案」按鈕';
+  document.getElementById('img-placeholder').style.display = 'flex';
+  document.getElementById('img-canvas').style.display = 'none';
+  document.getElementById('dl-btn').style.display = 'none';
+  switchPane('caption', document.querySelector('.ptab'));
+}
+
+function closePanel() {
+  document.getElementById('panel-empty').style.display = 'flex';
+  document.getElementById('panel-content').style.display = 'none';
+  selEvent = null;
+}
+
+function switchPane(name, btn) {
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('on'));
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  else document.querySelectorAll('.ptab')[0].classList.add('on');
+  document.getElementById('pane-' + name).classList.add('on');
+}
+
+// ===== GENERATE CAPTION =====
+async function genCaption() {
+  if (!selEvent) return;
+  const area = document.getElementById('caption-area');
+  area.textContent = '產出中…';
+  try {
+    const res = await fetch(API_BASE + CLAUDE_PROXY, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + btoa(':' + pw),
+      },
+      body: JSON.stringify({
+        system: SOP_SYSTEM,
+        prompt: `主題：${selEvent.topic}\n系列：${selEvent.series}\n類型：${TYPE_LABEL[selEvent.type]}`,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    generatedCaption = data.text;
+    area.textContent = generatedCaption;
+  } catch(e) {
+    area.textContent = '產出失敗，請再試一次';
+  }
+}
+
+function copyCaption() {
+  const text = document.getElementById('caption-area').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('#pane-caption .btn:not(.btn-primary)');
+    const orig = btn.textContent;
+    btn.textContent = '已複製！';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
+// ===== GENERATE IMAGE =====
+async function genImage() {
+  if (!selEvent) return;
+  document.getElementById('img-placeholder').innerHTML = '生成中…';
+  await new Promise(r => setTimeout(r, 100));
+  const caption = generatedCaption || selEvent.topic;
+  const lines = caption.split('\n').filter(l => l.trim());
+  const hook = lines[0] || selEvent.topic;
+  const body = lines.slice(1, 5).join('\n');
+  const ending = lines[5] || '';
+  const slide = document.getElementById('gen-slide');
+  slide.innerHTML = `
+    <svg width="500" height="500" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gbg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#F5EFE5"/>
+          <stop offset="100%" stop-color="#EAE0D0"/>
+        </linearGradient>
+        <linearGradient id="gvig" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="60%" stop-color="transparent"/>
+          <stop offset="100%" stop-color="rgba(58,32,16,.12)"/>
+        </linearGradient>
+      </defs>
+      <rect width="500" height="500" fill="url(#gbg)"/>
+      <rect width="500" height="500" fill="url(#gvig)"/>
+      <rect x="0" y="0" width="6" height="500" fill="#B8531A"/>
+      <text x="44" y="52" font-family="Noto Sans TC,sans-serif" font-size="10" fill="#B8531A" letter-spacing="2" opacity=".85">${selEvent.series||'重心開始'}</text>
+      <text x="36" y="120" font-family="Montserrat,sans-serif" font-size="90" font-weight="900" fill="#B8531A" opacity=".07">"</text>
+      ${wrapSVGText(hook, 44, 116, 22, '#3A2010', 700, 380)}
+      <rect x="44" y="${116 + countLines(hook,380,22)*30 + 8}" width="32" height="3" rx="1.5" fill="#B8531A"/>
+      ${wrapSVGText(body, 44, 116 + countLines(hook,380,22)*30 + 30, 13, 'rgba(58,32,16,.6)', 400, 380)}
+      ${ending ? `<rect x="44" y="${116 + countLines(hook,380,22)*30 + 30 + countLines(body,380,13)*22 + 12}" width="2.5" height="36" rx="1.5" fill="#B8531A"/>
+      ${wrapSVGText(ending, 58, 116 + countLines(hook,380,22)*30 + 30 + countLines(body,380,13)*22 + 28, 13, '#7A4A2A', 500, 360)}` : ''}
+      <text x="456" y="478" font-family="Montserrat,sans-serif" font-size="10" fill="rgba(58,32,16,.2)" text-anchor="end" letter-spacing="1">@yusheng.zhu.14</text>
+    </svg>`;
+  await new Promise(r => setTimeout(r, 200));
+  try {
+    const canvas = await html2canvas(slide, {scale:2, useCORS:true, backgroundColor:'#F5EFE5'});
+    const imgCanvas = document.getElementById('img-canvas');
+    imgCanvas.width = canvas.width;
+    imgCanvas.height = canvas.height;
+    imgCanvas.getContext('2d').drawImage(canvas, 0, 0);
+    imgCanvas.style.display = 'block';
+    document.getElementById('img-placeholder').style.display = 'none';
+    document.getElementById('dl-btn').style.display = 'inline-flex';
+  } catch(e) {
+    document.getElementById('img-placeholder').innerHTML = '生成失敗，請再試一次';
+  }
+}
+
+function downloadImage() {
+  const canvas = document.getElementById('img-canvas');
+  const a = document.createElement('a');
+  a.download = `重心開始_${selEvent?.topic||'貼文'}.png`;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+}
+
+// ===== SVG TEXT HELPERS =====
+function countLines(text, maxW, fontSize) {
+  if (!text) return 0;
+  const charsPerLine = Math.floor(maxW / (fontSize * 0.6));
+  return text.split('\n').reduce((sum, line) => sum + Math.ceil((line.length||1) / charsPerLine), 0);
+}
+function wrapSVGText(text, x, y, fontSize, fill, weight, maxW) {
+  if (!text) return '';
+  const charsPerLine = Math.floor(maxW / (fontSize * 0.62));
+  const lineH = fontSize * 1.75;
+  let svg = '';
+  let curY = y;
+  text.split('\n').forEach(line => {
+    if (!line.trim()) { curY += lineH * 0.6; return; }
+    for (let i = 0; i < line.length; i += charsPerLine) {
+      const chunk = line.slice(i, i + charsPerLine);
+      svg += `<text x="${x}" y="${curY}" font-family="Noto Sans TC,sans-serif" font-size="${fontSize}" fill="${fill}" font-weight="${weight}">${chunk.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</text>`;
+      curY += lineH;
+    }
+  });
+  return svg;
+}
+
+// ===== INIT =====
+document.getElementById('pw-input').addEventListener('keydown', e => { if(e.key==='Enter') loadWeek(); });
+</script>
+</body>
+</html>

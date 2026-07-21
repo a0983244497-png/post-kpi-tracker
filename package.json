@@ -10,6 +10,7 @@
   "dependencies": {
     "express": "^4.19.2",
     "googleapis": "^173.0.0",
+    "openai": "^6.48.0",
     "pg": "^8.12.0"
   }
 }
