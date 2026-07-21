@@ -33,6 +33,15 @@ function requireAuth(req, res, next) {
   next();
 }
 
+// ─── CORS ────────────────────────────────────────────────
+app.use((req, res, next) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
 // ─── Middleware ───────────────────────────────────────────
 app.use(express.json());
 
