@@ -354,6 +354,7 @@ async function genCaption() {
       body: JSON.stringify({
         system: SOP_SYSTEM,
         prompt: `主題：${selEvent.topic}\n系列：${selEvent.series}\n類型：${TYPE_LABEL[selEvent.type]}`,
+        type: selEvent.type,
       }),
     });
     if (!res.ok) {
