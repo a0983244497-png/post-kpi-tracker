@@ -4,11 +4,8 @@ import OpenAI from 'openai';
 const router = Router();
 
 const FORMAT_RULES = {
-  single:
-    '本次產出類型為【single】。請嚴格依照系統提示中【single（單篇）】的格式輸出，不要輸出其他類型的格式，也不要額外加上其他類型的內容。',
-
   carousel:
-    '本次產出類型為【carousel】。請嚴格依照系統提示中【carousel（輪播）】的格式輸出，不要輸出其他類型的格式，也不要額外加上其他類型的內容。務必產出完整 7 張，不可少於 7 張。',
+    '本次產出類型為【carousel】。請嚴格依照系統提示中【carousel（輪播）】的格式輸出，不要輸出其他類型的格式，也不要額外加上其他類型的內容。務必產出完整 6 張，不可多於或少於 6 張。',
 
   cta:
     '本次產出類型為【cta】。請嚴格依照系統提示中【cta（行動呼籲）】的格式輸出，不要輸出其他類型的格式，也不要額外加上其他類型的內容。',
@@ -25,7 +22,8 @@ router.post('/', async (req, res) => {
     return res.status(500).json({ error: 'OPENAI_KEY 環境變數未設定' });
   }
 
-  const formatRule = FORMAT_RULES[type] ?? FORMAT_RULES.single;
+  // single 已廢除，未知 type 一律 fallback 為 carousel
+  const formatRule = FORMAT_RULES[type] ?? FORMAT_RULES.carousel;
   const fullSystem = `${system}\n\n${formatRule}`;
 
   try {
