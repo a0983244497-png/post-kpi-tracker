@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { syncWeeklyPlan, getWeekEvents } from '../lib/googleCalendar.js';
+import { syncWeeklyPlan, getWeekEvents, getMonthEvents } from '../lib/googleCalendar.js';
 
 const router = Router();
 
@@ -50,16 +50,34 @@ router.post('/sync', async (req, res) => {
 });
 
 /**
- * GET /api/content-calendar/events?week=YYYY-MM-DD
- * Returns all content events for the week containing the given date (Mon–Sun, Asia/Taipei).
+ * GET /api/content-calendar/events
+ *   ?month=YYYY-MM   → 回傳整月事件（優先）
+ *   ?week=YYYY-MM-DD → 回傳該週事件（Mon–Sun, Asia/Taipei）
+ *   (無參數)          → 回傳當週事件
  */
 router.get('/events', async (req, res) => {
   try {
-    const { week } = req.query;
-    if (!week || !/^\d{4}-\d{2}-\d{2}$/.test(week)) {
+    const { week, month } = req.query;
+
+    // month 優先
+    if (month !== undefined) {
+      if (!/^\d{4}-\d{2}$/.test(month)) {
+        return res.status(400).json({ error: 'month 參數格式應為 YYYY-MM，例如 ?month=2026-07' });
+      }
+      const events = await getMonthEvents(month);
+      return res.json(events);
+    }
+
+    // week，或無參數時預設當週
+    let weekParam = week;
+    if (!weekParam) {
+      const now = new Date(Date.now() + 8 * 3600000); // Asia/Taipei
+      weekParam = now.toISOString().slice(0, 10);
+    } else if (!/^\d{4}-\d{2}-\d{2}$/.test(weekParam)) {
       return res.status(400).json({ error: 'week 參數格式應為 YYYY-MM-DD，例如 ?week=2026-07-21' });
     }
-    const events = await getWeekEvents(week);
+
+    const events = await getWeekEvents(weekParam);
     res.json(events);
   } catch (e) {
     console.error('[ContentCalendar] events error:', e.message);
