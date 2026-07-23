@@ -301,7 +301,9 @@ function weekStart(d) {
   day.setDate(day.getDate() + diff);
   return day;
 }
-function fmtISO(d) { return d.toISOString().split('T')[0]; }
+function fmtISO(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 function fmtDisplay(d) { return `${d.getMonth()+1}/${d.getDate()}`; }
 const DAY_NAMES = ['週日','週一','週二','週三','週四','週五','週六'];
 const TYPE_LABEL = {single:'單篇',carousel:'輪播',cta:'CTA'};
