@@ -6,6 +6,7 @@
 <title>發文工作台｜重心開始</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Montserrat:wght@500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 /* ===== TOKENS ===== */
 :root{
@@ -132,6 +133,22 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 .month-event-item .type-badge{font-size:9px;padding:1px 5px;margin-bottom:2px;display:block;width:fit-content}
 .month-event-topic{font-size:10px;color:var(--text-mid);line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .more-events{font-size:10px;color:var(--brick);font-weight:600;margin-top:2px}
+
+/* ===== CAROUSEL GALLERY ===== */
+.carousel-gallery{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.carousel-gallery::-webkit-scrollbar{height:4px}
+.carousel-gallery::-webkit-scrollbar-thumb{background:var(--sand);border-radius:2px}
+.carousel-thumb{flex-shrink:0;width:112px;position:relative;cursor:zoom-in;border-radius:var(--radius-sm);overflow:hidden;border:2px solid var(--border);transition:border-color .15s;scroll-snap-align:start}
+.carousel-thumb:hover{border-color:var(--brick-light)}
+.thumb-num{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.45);color:#fff;font-size:10px;font-family:var(--font-display);font-weight:700;padding:2px 5px;border-radius:3px;pointer-events:none}
+.thumb-dl{position:absolute;bottom:4px;right:4px;background:var(--brick);color:#fff;border:none;font-size:11px;padding:3px 7px;border-radius:3px;cursor:pointer;opacity:0;transition:opacity .15s;font-weight:700}
+.carousel-thumb:hover .thumb-dl{opacity:1}
+.img-progress{font-size:12px;color:var(--text-muted);padding:6px 0;text-align:center}
+
+/* ===== LIGHTBOX ===== */
+#carousel-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:1000;display:none;align-items:center;justify-content:center;cursor:zoom-out}
+#carousel-lightbox.on{display:flex}
+#lightbox-canvas{max-width:min(90vw,600px);max-height:90vh;border-radius:var(--radius);box-shadow:0 8px 40px rgba(0,0,0,.5)}
 .day-selector{white-space:normal}
 .day-selector-item{padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;margin-bottom:6px;background:var(--surface-2);border:1px solid var(--border)}
 .day-selector-item:hover{border-color:var(--brick-light);background:#FEF6F0}
@@ -212,13 +229,22 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
         </div>
       </div>
       <div class="pane" id="pane-image">
-        <div class="img-preview">
-          <div class="img-placeholder" id="img-placeholder">點下方按鈕生成圖片</div>
-          <canvas id="img-canvas" style="display:none"></canvas>
+        <!-- Single / CTA view -->
+        <div id="img-single-view">
+          <div class="img-preview">
+            <div class="img-placeholder" id="img-placeholder">點下方按鈕生成圖片</div>
+            <canvas id="img-canvas" style="display:none"></canvas>
+          </div>
+        </div>
+        <!-- Carousel view -->
+        <div id="img-carousel-view" style="display:none">
+          <div class="img-progress" id="img-progress" style="display:none"></div>
+          <div class="carousel-gallery" id="carousel-gallery"></div>
         </div>
         <div class="btn-row">
           <button class="btn btn-primary" onclick="genImage()">✦ 生成圖片</button>
           <button class="btn" id="dl-btn" onclick="downloadImage()" style="display:none">下載 PNG</button>
+          <button class="btn" id="dl-zip-btn" onclick="downloadZip()" style="display:none">↓ 下載全部 ZIP</button>
         </div>
       </div>
     </div>
@@ -228,6 +254,11 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 <!-- Hidden canvas for image generation -->
 <div class="img-gen-wrap">
   <div id="gen-slide"></div>
+</div>
+
+<!-- Carousel lightbox -->
+<div id="carousel-lightbox" onclick="closeLightbox()">
+  <canvas id="lightbox-canvas"></canvas>
 </div>
 
 <script>
@@ -311,6 +342,7 @@ let eventsCache = [];
 let monthEventsCache = [];
 let selEvent = null;
 let generatedCaption = '';
+let carouselCanvases = [];
 
 // ===== UTILS =====
 function weekStart(d) {
@@ -512,15 +544,23 @@ function selectMonthEventByIndex(iso, idx) {
 // ===== OPEN RIGHT PANEL (shared) =====
 function openPanel(iso) {
   generatedCaption = '';
+  carouselCanvases = [];
   document.getElementById('panel-empty').style.display = 'none';
   document.getElementById('panel-content').style.display = 'block';
   document.getElementById('p-series').textContent = selEvent.series || '';
   document.getElementById('p-title').textContent = selEvent.topic;
   document.getElementById('p-meta').textContent = `${iso} ${selEvent.time||'09:00'} ｜ ${TYPE_LABEL[selEvent.type]||selEvent.type}`;
   document.getElementById('caption-area').textContent = '點「產出文案」按鈕';
+  // Reset image pane
+  document.getElementById('img-placeholder').innerHTML = '點下方按鈕生成圖片';
   document.getElementById('img-placeholder').style.display = 'flex';
   document.getElementById('img-canvas').style.display = 'none';
   document.getElementById('dl-btn').style.display = 'none';
+  document.getElementById('dl-zip-btn').style.display = 'none';
+  document.getElementById('img-single-view').style.display = '';
+  document.getElementById('img-carousel-view').style.display = 'none';
+  document.getElementById('carousel-gallery').innerHTML = '';
+  document.getElementById('img-progress').style.display = 'none';
   switchPane('caption', document.querySelector('.ptab'));
 }
 
@@ -626,9 +666,200 @@ function cleanForImage(text) {
   }).join('\n');
 }
 
+// ===== PARSE CAROUSEL SLIDES =====
+function parseCarouselSlides(text) {
+  const markers = [...text.matchAll(/第\s*(\d+)\s*張/g)];
+  if (markers.length === 0) return null;
+  const slides = [];
+  for (let i = 0; i < Math.min(markers.length, 10); i++) {
+    const blockStart = markers[i].index;
+    const blockEnd   = markers[i + 1]?.index ?? text.length;
+    const block      = text.slice(blockStart, blockEnd);
+    const index      = parseInt(block.match(/第\s*(\d+)\s*張/)?.[1] ?? (i + 1));
+    const titleMatch = block.match(/標題[：:]\s*([^\n]+)/);
+    const title      = (titleMatch?.[1] ?? '').trim();
+    const bodyMatch  = block.match(/正文[：:]\s*([\s\S]+?)(?=\n\s*(?:視覺建議[：:]|＊)|$)/);
+    let   body       = (bodyMatch?.[1] ?? '').trim();
+    body = body.replace(/\n*＊[^\n]*$/, '').trim(); // strip trailing disclaimer
+    slides.push({ index, title, body });
+  }
+  return slides.length > 0 ? slides : null;
+}
+
+// ===== BUILD CAROUSEL SLIDE SVG =====
+function buildCarouselSlideSVG(slide, total, isCover) {
+  const { index, title, body } = slide;
+  const series    = (selEvent?.series || '重心開始').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const titleSize = isCover ? 22 : 19;
+  const titleY    = isCover ? 116 : 100;
+  const maxW      = 400;
+  const titleLineCount = countLines(title, maxW, titleSize);
+  const sepY  = titleY + titleLineCount * 30 + 8;
+  const bodyY = titleY + titleLineCount * 30 + 30;
+  const gi = index; // unique gradient id suffix
+
+  return `<svg width="500" height="500" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gbg${gi}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#F5EFE5"/>
+        <stop offset="100%" stop-color="#EAE0D0"/>
+      </linearGradient>
+      <linearGradient id="gvig${gi}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="60%" stop-color="transparent"/>
+        <stop offset="100%" stop-color="rgba(58,32,16,.12)"/>
+      </linearGradient>
+    </defs>
+    <rect width="500" height="500" fill="url(#gbg${gi})"/>
+    <rect width="500" height="500" fill="url(#gvig${gi})"/>
+    <rect x="0" y="0" width="6" height="500" fill="#B8531A"/>
+    ${isCover ? '<rect x="0" y="494" width="500" height="6" fill="#B8531A"/>' : ''}
+    <text x="44" y="48" font-family="Noto Sans TC,sans-serif" font-size="10" fill="#B8531A" letter-spacing="2" opacity=".85">${series}</text>
+    ${isCover ? `<text x="36" y="${titleY + 4}" font-family="Montserrat,sans-serif" font-size="90" font-weight="900" fill="#B8531A" opacity=".07">"</text>` : ''}
+    ${wrapSVGText(title, 44, titleY, titleSize, '#3A2010', 700, maxW)}
+    <rect x="44" y="${sepY}" width="32" height="3" rx="1.5" fill="#B8531A"/>
+    ${wrapSVGText(body, 44, bodyY, 13, 'rgba(58,32,16,.6)', 400, maxW)}
+    <text x="456" y="466" font-family="Noto Sans TC,sans-serif" font-size="8.5" fill="rgba(58,32,16,.2)" text-anchor="end">＊以上為個人操作習慣，非投資建議</text>
+    <text x="456" y="482" font-family="Montserrat,sans-serif" font-size="11" fill="rgba(184,83,26,.45)" text-anchor="end" font-weight="700" letter-spacing=".5">${index}/${total}</text>
+    <text x="456" y="496" font-family="Montserrat,sans-serif" font-size="9" fill="rgba(58,32,16,.2)" text-anchor="end" letter-spacing="1">@yusheng.zhu.14</text>
+  </svg>`;
+}
+
+// ===== GENERATE CAROUSEL IMAGES =====
+async function genCarouselImages() {
+  if (!generatedCaption) { alert('請先產出文案'); return; }
+  const slides = parseCarouselSlides(generatedCaption);
+  if (!slides) {
+    const prog = document.getElementById('img-progress');
+    prog.textContent = '⚠️ 無法解析輪播格式，請重新產出文案';
+    prog.style.display = 'block';
+    document.getElementById('img-carousel-view').style.display = 'block';
+    document.getElementById('img-single-view').style.display = 'none';
+    return;
+  }
+  const total = slides.length;
+  document.getElementById('img-single-view').style.display = 'none';
+  document.getElementById('img-carousel-view').style.display = 'block';
+  document.getElementById('dl-btn').style.display = 'none';
+  document.getElementById('dl-zip-btn').style.display = 'none';
+
+  const gallery  = document.getElementById('carousel-gallery');
+  const progress = document.getElementById('img-progress');
+  gallery.innerHTML = '';
+  carouselCanvases = [];
+  progress.style.display = 'block';
+
+  const genSlide = document.getElementById('gen-slide');
+  for (let i = 0; i < total; i++) {
+    progress.textContent = `生成中… ${i + 1} / ${total}`;
+    const isCover = slides[i].index === 1;
+    genSlide.innerHTML = buildCarouselSlideSVG(slides[i], total, isCover);
+    await new Promise(r => setTimeout(r, 200));
+
+    try {
+      const canvas = await html2canvas(genSlide, { scale: 2, useCORS: true, backgroundColor: '#F5EFE5' });
+      carouselCanvases.push(canvas);
+
+      // Thumbnail canvas (240×240, displayed at 112px via CSS)
+      const tc = document.createElement('canvas');
+      tc.width = 240; tc.height = 240;
+      tc.style.cssText = 'width:100%;height:auto;display:block;border-radius:3px';
+      tc.getContext('2d').drawImage(canvas, 0, 0, 240, 240);
+
+      const numLabel = document.createElement('div');
+      numLabel.className = 'thumb-num';
+      numLabel.textContent = `${slides[i].index}/${total}`;
+
+      const dlBtn = document.createElement('button');
+      dlBtn.className = 'thumb-dl';
+      dlBtn.textContent = '↓';
+      dlBtn.title = '下載此張';
+      const idx = i;
+      dlBtn.onclick = e => { e.stopPropagation(); downloadSingle(idx); };
+
+      const wrap = document.createElement('div');
+      wrap.className = 'carousel-thumb';
+      wrap.onclick = () => openLightbox(idx);
+      wrap.appendChild(tc);
+      wrap.appendChild(numLabel);
+      wrap.appendChild(dlBtn);
+      gallery.appendChild(wrap);
+    } catch (e) {
+      carouselCanvases.push(null);
+      const errDiv = document.createElement('div');
+      errDiv.className = 'carousel-thumb';
+      errDiv.style.cssText = 'background:#FEE8E4;display:flex;align-items:center;justify-content:center;font-size:10px;color:#8A2010;min-height:112px';
+      errDiv.textContent = `第 ${slides[i].index} 張失敗`;
+      gallery.appendChild(errDiv);
+    }
+  }
+  progress.style.display = 'none';
+  document.getElementById('dl-zip-btn').style.display = 'inline-flex';
+}
+
+// ===== LIGHTBOX =====
+function openLightbox(i) {
+  const canvas = carouselCanvases[i];
+  if (!canvas) return;
+  const lb  = document.getElementById('carousel-lightbox');
+  const lbc = document.getElementById('lightbox-canvas');
+  lbc.width  = canvas.width;
+  lbc.height = canvas.height;
+  lbc.getContext('2d').drawImage(canvas, 0, 0);
+  lb.classList.add('on');
+}
+function closeLightbox() {
+  document.getElementById('carousel-lightbox').classList.remove('on');
+}
+
+// ===== DOWNLOAD SINGLE SLIDE =====
+function downloadSingle(i) {
+  const canvas = carouselCanvases[i];
+  if (!canvas) return;
+  const a = document.createElement('a');
+  a.download = `重心開始_${selEvent?.topic||'輪播'}_${String(i+1).padStart(2,'0')}.png`;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+}
+
+// ===== DOWNLOAD ALL AS ZIP =====
+async function downloadZip() {
+  if (!carouselCanvases.length) return;
+  const btn  = document.getElementById('dl-zip-btn');
+  const orig = btn.textContent;
+  btn.textContent = '打包中…'; btn.disabled = true;
+  try {
+    const zip   = new JSZip();
+    const topic = selEvent?.topic || '貼文';
+    const date  = selEvent?.date  || '';
+    for (let i = 0; i < carouselCanvases.length; i++) {
+      if (!carouselCanvases[i]) continue;
+      const b64 = carouselCanvases[i].toDataURL('image/png').split(',')[1];
+      zip.file(`${String(i+1).padStart(2,'0')}.png`, b64, { base64: true });
+    }
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.download = `輪播_${topic}${date ? '_' + date : ''}.zip`;
+    a.href = URL.createObjectURL(blob);
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  } finally {
+    btn.textContent = orig; btn.disabled = false;
+  }
+}
+
 // ===== GENERATE IMAGE =====
 async function genImage() {
   if (!selEvent) return;
+
+  // Carousel → dedicated multi-slide flow
+  if (selEvent.type === 'carousel') {
+    await genCarouselImages();
+    return;
+  }
+
+  // Single / CTA → existing single-image flow
+  document.getElementById('img-single-view').style.display = '';
+  document.getElementById('img-carousel-view').style.display = 'none';
   document.getElementById('img-placeholder').innerHTML = '生成中…';
   await new Promise(r => setTimeout(r, 100));
   const raw = generatedCaption || selEvent.topic;
