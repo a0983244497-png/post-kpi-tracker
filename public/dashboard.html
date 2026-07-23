@@ -88,13 +88,12 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 .acc-series{font-size:10px;color:var(--brick);letter-spacing:.1em;text-transform:uppercase;font-weight:500;margin-bottom:4px}
 .acc-title-txt{font-size:16px;font-weight:700;color:var(--text);margin-bottom:3px;line-height:1.35}
 .acc-date-meta{font-size:11px;color:var(--text-muted);margin-bottom:10px}
-.acc-body{height:380px;overflow-y:auto;padding:0 16px 12px}
+.acc-body{height:340px;overflow-y:auto;padding:0 16px 12px}
 .acc-body::-webkit-scrollbar{width:4px}
 .acc-body::-webkit-scrollbar-track{background:transparent}
 .acc-body::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:2px}
 .acc-body .caption-area{background:var(--surface-0);margin-bottom:0}
-.acc-footer{padding:10px 16px;border-top:1px solid var(--border);flex-shrink:0}
-.acc-img-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;color:var(--text-muted);font-size:13px;gap:6px;text-align:center;opacity:.6}
+.acc-footer{padding:10px 16px;border-top:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:8px}
 
 /* ===== RIGHT PANEL ===== */
 .panel-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font-size:13px;gap:8px;text-align:center}
@@ -119,13 +118,19 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 .btn-primary:hover{background:#9A3F0E}
 
 /* ===== IMAGE PANE ===== */
-.img-preview{width:100%;aspect-ratio:1;background:var(--bg);border-radius:var(--radius);overflow:hidden;margin-bottom:10px;position:relative}
-#img-canvas{width:100%;height:100%;display:block}
-.img-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text-muted);text-align:center;padding:1rem}
+.img-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:8px 0;min-height:80px}
+.img-thumb-card{aspect-ratio:4/5;position:relative;border-radius:6px;overflow:hidden;border:2px solid var(--border);background:var(--surface-0);cursor:default;transition:border-color .15s}
+.img-thumb-card.ready{cursor:zoom-in;border-color:var(--border-strong)}
+.img-thumb-card.ready:hover{border-color:var(--brick-light)}
+.img-thumb-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--text-muted);opacity:.5}
+.img-thumb-card img{width:100%;height:100%;object-fit:cover;display:block}
+.img-thumb-num{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.45);color:#fff;font-size:10px;font-family:var(--font-display);font-weight:700;padding:2px 5px;border-radius:3px;pointer-events:none}
+.img-thumb-dl{position:absolute;bottom:4px;right:4px;background:var(--brick);color:#fff;border:none;font-size:11px;padding:3px 7px;border-radius:3px;cursor:pointer;opacity:0;transition:opacity .15s;font-weight:700}
+.img-thumb-card.ready:hover .img-thumb-dl{opacity:1}
+.img-grid-msg{padding:16px 0;text-align:center;color:var(--text-muted);font-size:12px;grid-column:1/-1}
 
-/* ===== IMAGE CANVAS (hidden, for generation) ===== */
-.img-gen-wrap{position:fixed;left:-9999px;top:0;width:500px;height:500px}
-#gen-slide{width:500px;height:500px;position:relative;overflow:hidden;background:var(--surface)}
+/* ===== SLIDE GEN (1080×1350, off-screen) ===== */
+#slide-gen-wrap{position:fixed;left:-2000px;top:0;width:1080px;height:1350px;overflow:hidden;pointer-events:none}
 
 /* ===== ERR / LOADING ===== */
 .err-box{font-size:13px;color:#8A2010;background:#FEE8E4;border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:1rem}
@@ -141,21 +146,10 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 .month-day-hdrs{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:4px}
 .month-day-hdr{text-align:center;font-size:11px;color:var(--text-muted);font-weight:500;padding:4px 0}
 
-/* ===== CAROUSEL GALLERY ===== */
-.carousel-gallery{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
-.carousel-gallery::-webkit-scrollbar{height:4px}
-.carousel-gallery::-webkit-scrollbar-thumb{background:var(--sand);border-radius:2px}
-.carousel-thumb{flex-shrink:0;width:112px;position:relative;cursor:zoom-in;border-radius:var(--radius-sm);overflow:hidden;border:2px solid var(--border);transition:border-color .15s;scroll-snap-align:start}
-.carousel-thumb:hover{border-color:var(--brick-light)}
-.thumb-num{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.45);color:#fff;font-size:10px;font-family:var(--font-display);font-weight:700;padding:2px 5px;border-radius:3px;pointer-events:none}
-.thumb-dl{position:absolute;bottom:4px;right:4px;background:var(--brick);color:#fff;border:none;font-size:11px;padding:3px 7px;border-radius:3px;cursor:pointer;opacity:0;transition:opacity .15s;font-weight:700}
-.carousel-thumb:hover .thumb-dl{opacity:1}
-.img-progress{font-size:12px;color:var(--text-muted);padding:6px 0;text-align:center}
-
 /* ===== LIGHTBOX ===== */
 #carousel-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:1000;display:none;align-items:center;justify-content:center;cursor:zoom-out}
 #carousel-lightbox.on{display:flex}
-#lightbox-canvas{max-width:min(90vw,600px);max-height:90vh;border-radius:var(--radius);box-shadow:0 8px 40px rgba(0,0,0,.5)}
+#lightbox-img{max-width:min(90vw,540px);max-height:90vh;border-radius:var(--radius);box-shadow:0 8px 40px rgba(0,0,0,.5);display:block}
 .day-selector{white-space:normal}
 .day-selector-item{padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;margin-bottom:6px;background:var(--surface-2);border:1px solid var(--border)}
 .day-selector-item:hover{border-color:var(--brick-light);background:#FEF6F0}
@@ -165,10 +159,11 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 /* ===== RESPONSIVE ===== */
 @media(max-width:600px){
   .cal-grid{grid-template-columns:repeat(4,1fr)}
-  .acc-body{height:420px}
+  .acc-body{height:380px}
   .acc-wrap.open{max-height:800px}
   .left{padding:1rem}
   .header{padding:0 1rem}
+  .img-grid{grid-template-columns:repeat(2,1fr)}
 }
 </style>
 </head>
@@ -207,14 +202,12 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
   </div>
 </div>
 
-<!-- Hidden canvas for image generation -->
-<div class="img-gen-wrap">
-  <div id="gen-slide"></div>
-</div>
+<!-- Slide gen container (1080×1350, off-screen) -->
+<div id="slide-gen-wrap"></div>
 
-<!-- Carousel lightbox -->
+<!-- Lightbox -->
 <div id="carousel-lightbox" onclick="closeLightbox()">
-  <canvas id="lightbox-canvas"></canvas>
+  <img id="lightbox-img" src="" alt="" style="max-width:min(90vw,540px);max-height:90vh;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.5);display:block">
 </div>
 
 <script>
@@ -528,16 +521,21 @@ function buildAccordionHTML(iso, ev) {
     <div class="acc-body">
       <div class="pane on" id="pane-caption">
         <div class="caption-area" id="caption-area">點「產出文案」按鈕</div>
-        <div class="btn-row" style="margin-top:10px">
-          <button class="btn btn-primary" id="gen-caption-btn" onclick="genCaption()">✦ 產出文案</button>
-          <button class="btn" onclick="copyCaption()">複製</button>
-        </div>
       </div>
       <div class="pane" id="pane-image">
-        <div class="acc-img-placeholder">
-          <span style="font-size:24px;opacity:.4">🎨</span>
-          <span>出圖功能將於第二批上線</span>
+        <div class="img-grid" id="img-grid">
+          <div class="img-grid-msg">先產出文案，再點「生成圖片」</div>
         </div>
+      </div>
+    </div>
+    <div class="acc-footer">
+      <div id="footer-caption" class="btn-row">
+        <button class="btn btn-primary" id="gen-caption-btn" onclick="genCaption()">✦ 產出文案</button>
+        <button class="btn" onclick="copyCaption()">複製</button>
+      </div>
+      <div id="footer-image" class="btn-row" style="display:none">
+        <button class="btn btn-primary" id="gen-image-btn" onclick="genImages()">✦ 生成圖片</button>
+        <button class="btn" id="dl-zip-btn" style="display:none" onclick="downloadZip()">↓ 下載全部 ZIP</button>
       </div>
     </div>
   </div>`;
@@ -584,6 +582,11 @@ function switchPane(name, btn) {
   if (btn) btn.classList.add('on');
   else document.querySelectorAll('.ptab')[0].classList.add('on');
   document.getElementById('pane-' + name).classList.add('on');
+  const fc = document.getElementById('footer-caption');
+  const fi = document.getElementById('footer-image');
+  if (fc) fc.style.display = name === 'caption' ? '' : 'none';
+  if (fi) fi.style.display = name === 'image' ? '' : 'none';
+  if (name === 'image') initImgGrid();
 }
 
 // ===== GENERATE CAPTION =====
@@ -623,7 +626,7 @@ async function genCaption() {
 function copyCaption() {
   const text = document.getElementById('caption-area').textContent;
   navigator.clipboard.writeText(text).then(() => {
-    const btn = document.querySelector('#pane-caption .btn-row .btn:not(.btn-primary)');
+    const btn = document.querySelector('#footer-caption .btn:not(.btn-primary)');
     if (!btn) return;
     const orig = btn.textContent;
     btn.textContent = '已複製！';
@@ -631,145 +634,218 @@ function copyCaption() {
   });
 }
 
-// ===== IMAGE TEXT CLEANER =====
-function cleanForImage(text) {
-  return text.split('\n').map(l => {
-    if (/^第\s*\d+\s*張/.test(l)) return '';           // 第N張｜... 整行移除
-    if (/^視覺建議[：:]/.test(l)) return '';             // 視覺建議：... 整行移除
-    l = l.replace(/^標題[：:]\s*/, '');                  // 保留標題內容，去掉前綴
-    l = l.replace(/^正文[：:]\s*/, '');                  // 保留正文內容，去掉前綴
-    return l;
-  }).join('\n');
-}
-
-// ===== PARSE CAROUSEL SLIDES =====
-function parseCarouselSlides(text) {
-  const markers = [...text.matchAll(/第\s*(\d+)\s*張/g)];
-  if (markers.length === 0) return null;
+// ===== PARSE SLIDES (keyword matching, no 第N張 dependency) =====
+function parseSlides(text) {
+  // Find all 標題： markers and their positions
+  const titles = [...text.matchAll(/(?:^|\n)[^\S\n]*標題[：:]\s*(.+)/g)];
+  if (!titles.length) return null;
   const slides = [];
-  for (let i = 0; i < Math.min(markers.length, 10); i++) {
-    const blockStart = markers[i].index;
-    const blockEnd   = markers[i + 1]?.index ?? text.length;
+  for (let i = 0; i < Math.min(titles.length, 10); i++) {
+    const title = titles[i][1].trim();
+    const blockStart = titles[i].index + titles[i][0].length;
+    const blockEnd   = i + 1 < titles.length ? titles[i + 1].index : text.length;
     const block      = text.slice(blockStart, blockEnd);
-    const index      = parseInt(block.match(/第\s*(\d+)\s*張/)?.[1] ?? (i + 1));
-    const titleMatch = block.match(/標題[：:]\s*([^\n]+)/);
-    const title      = (titleMatch?.[1] ?? '').trim();
-    const bodyMatch  = block.match(/正文[：:]\s*([\s\S]+?)(?=\n\s*(?:視覺建議[：:]|＊)|$)/);
-    let   body       = (bodyMatch?.[1] ?? '').trim();
-    body = body.replace(/\n*＊[^\n]*$/, '').trim(); // strip trailing disclaimer
-    slides.push({ index, title, body });
+    // Extract body after 正文：
+    const bodyMatch  = block.match(/[^\S\n]*正文[：:]\s*([\s\S]+)/);
+    let body = bodyMatch ? bodyMatch[1] : '';
+    // Remove disclaimer lines and structural labels
+    body = body.split('\n').filter(l => {
+      const t = l.trim();
+      return t && !/^[＊*]/.test(t) && !/^視覺建議[：:]/.test(t) && !/^第\s*\d+\s*張/.test(t);
+    }).join('\n').trim();
+    if (title) slides.push({ index: slides.length + 1, title, body });
   }
   return slides.length > 0 ? slides : null;
 }
 
-// ===== BUILD CAROUSEL SLIDE SVG =====
-function buildCarouselSlideSVG(slide, total, isCover) {
+// ===== BUILD SLIDE DIV (HTML div, 1080×1350) =====
+function buildSlideDiv(slide, total, layout) {
   const { index, title, body } = slide;
-  const series    = (selEvent?.series || '重心開始').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const titleSize = isCover ? 22 : 19;
-  const titleY    = isCover ? 116 : 100;
-  const maxW      = 400;
-  const titleLineCount = countLines(title, maxW, titleSize);
-  const sepY  = titleY + titleLineCount * 30 + 8;
-  const bodyY = titleY + titleLineCount * 30 + 30;
-  const gi = index; // unique gradient id suffix
+  const series = (selEvent?.series || '重心開始')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const safeTitle = title.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const safeBody  = body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-  return `<svg width="500" height="500" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="gbg${gi}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#F5EFE5"/>
-        <stop offset="100%" stop-color="#EAE0D0"/>
-      </linearGradient>
-      <linearGradient id="gvig${gi}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="60%" stop-color="transparent"/>
-        <stop offset="100%" stop-color="rgba(58,32,16,.12)"/>
-      </linearGradient>
-    </defs>
-    <rect width="500" height="500" fill="url(#gbg${gi})"/>
-    <rect width="500" height="500" fill="url(#gvig${gi})"/>
-    <rect x="0" y="0" width="6" height="500" fill="#B8531A"/>
-    ${isCover ? '<rect x="0" y="494" width="500" height="6" fill="#B8531A"/>' : ''}
-    <text x="44" y="48" font-family="Noto Sans TC,sans-serif" font-size="10" fill="#B8531A" letter-spacing="2" opacity=".85">${series}</text>
-    ${isCover ? `<text x="36" y="${titleY + 4}" font-family="Montserrat,sans-serif" font-size="90" font-weight="900" fill="#B8531A" opacity=".07">"</text>` : ''}
-    ${wrapSVGText(title, 44, titleY, titleSize, '#3A2010', 700, maxW)}
-    <rect x="44" y="${sepY}" width="32" height="3" rx="1.5" fill="#B8531A"/>
-    ${wrapSVGText(body, 44, bodyY, 13, 'rgba(58,32,16,.6)', 400, maxW)}
-    <text x="456" y="466" font-family="Noto Sans TC,sans-serif" font-size="8.5" fill="rgba(58,32,16,.2)" text-anchor="end">＊以上為個人操作習慣，非投資建議</text>
-    <text x="456" y="482" font-family="Montserrat,sans-serif" font-size="11" fill="rgba(184,83,26,.45)" text-anchor="end" font-weight="700" letter-spacing=".5">${index}/${total}</text>
-    <text x="456" y="496" font-family="Montserrat,sans-serif" font-size="9" fill="rgba(58,32,16,.2)" text-anchor="end" letter-spacing="1">@yusheng.zhu.14</text>
-  </svg>`;
+  const base = 'width:1080px;height:1350px;position:relative;background:linear-gradient(to bottom,#F5EFE5,#EAE0D0);font-family:\'Noto Sans TC\',sans-serif;overflow:hidden;';
+  const leftBar = '<div style="position:absolute;left:0;top:0;width:10px;height:1350px;background:#B8531A"></div>';
+  const pageNum = `<div style="position:absolute;bottom:50px;right:60px;text-align:right;font-family:'Montserrat',sans-serif">
+    <div style="font-size:24px;color:rgba(58,32,16,.25);font-weight:500;line-height:1.2">${index}/${total}</div>
+    <div style="font-size:20px;color:rgba(58,32,16,.2);letter-spacing:1px">@yusheng.zhu.14</div>
+  </div>`;
+  const disclaimer = '<div style="font-size:22px;color:rgba(58,32,16,.3);line-height:1.5">＊以上為個人操作習慣，非投資建議</div>';
+
+  if (layout === 'cover') {
+    return `<div style="${base}">
+      ${leftBar}
+      <div style="position:absolute;width:800px;height:800px;border-radius:50%;background:radial-gradient(circle,rgba(234,217,196,.5),rgba(212,184,150,.2));right:-200px;bottom:-200px"></div>
+      <div style="position:absolute;width:560px;height:560px;border-radius:50%;background:rgba(234,217,196,.3);right:-80px;bottom:-80px"></div>
+      <div style="position:absolute;top:230px;left:28px;font-family:'Montserrat',sans-serif;font-size:220px;font-weight:900;color:#B8531A;opacity:.08;line-height:1;user-select:none">"</div>
+      <div style="position:absolute;left:88px;top:180px;right:64px;bottom:160px;display:flex;flex-direction:column">
+        <div style="font-size:26px;color:#B8531A;letter-spacing:3px;font-weight:500;margin-bottom:28px;flex-shrink:0">${series}</div>
+        <div style="font-size:52px;font-weight:700;color:#3A2010;line-height:1.3;margin-bottom:36px;word-break:break-word;overflow-wrap:break-word;flex-shrink:0">${safeTitle}</div>
+        <div style="width:60px;height:5px;background:#B8531A;border-radius:2.5px;margin-bottom:36px;flex-shrink:0"></div>
+        <div class="slide-body" style="flex:1;font-size:28px;color:rgba(58,32,16,.6);line-height:1.7;word-break:break-word;overflow-wrap:break-word;overflow:hidden">${safeBody}</div>
+      </div>
+      <div style="position:absolute;bottom:50px;left:88px;right:220px">${disclaimer}</div>
+      ${pageNum}
+    </div>`;
+  }
+
+  if (layout === 'outro') {
+    return `<div style="${base}">
+      ${leftBar}
+      <div style="position:absolute;top:80px;left:88px;font-size:26px;color:#B8531A;letter-spacing:3px;font-weight:500">${series}</div>
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 80px 160px">
+        <div style="font-size:44px;font-weight:700;color:#3A2010;line-height:1.3;text-align:center;word-break:break-word;overflow-wrap:break-word;margin-bottom:40px">${safeTitle}</div>
+        <div style="width:200px;height:4px;background:#B8531A;border-radius:2px;margin-bottom:40px;flex-shrink:0"></div>
+        <div class="slide-body" style="font-size:28px;color:rgba(58,32,16,.6);line-height:1.7;text-align:center;word-break:break-word;overflow-wrap:break-word;overflow:hidden;max-height:400px">${safeBody}</div>
+      </div>
+      <div style="position:absolute;bottom:60px;left:0;right:0;text-align:center">${disclaimer}</div>
+      ${pageNum}
+    </div>`;
+  }
+
+  // content layout (middle slides)
+  return `<div style="${base}">
+    ${leftBar}
+    <div style="position:absolute;left:88px;top:180px;right:64px;bottom:160px;display:flex;flex-direction:column">
+      <div style="font-size:26px;color:#B8531A;letter-spacing:3px;font-weight:500;margin-bottom:28px;flex-shrink:0">${series}</div>
+      <div style="font-size:44px;font-weight:700;color:#3A2010;line-height:1.3;margin-bottom:36px;word-break:break-word;overflow-wrap:break-word;flex-shrink:0">${safeTitle}</div>
+      <div style="width:60px;height:5px;background:#B8531A;border-radius:2.5px;margin-bottom:36px;flex-shrink:0"></div>
+      <div class="slide-body" style="flex:1;font-size:28px;color:rgba(58,32,16,.6);line-height:1.7;word-break:break-word;overflow-wrap:break-word;overflow:hidden">${safeBody}</div>
+    </div>
+    <div style="position:absolute;bottom:50px;left:88px;right:220px">${disclaimer}</div>
+    ${pageNum}
+  </div>`;
 }
 
-// ===== GENERATE CAROUSEL IMAGES =====
-async function genCarouselImages() {
-  if (!generatedCaption) { alert('請先產出文案'); return; }
-  const slides = parseCarouselSlides(generatedCaption);
-  if (!slides) {
-    const prog = document.getElementById('img-progress');
-    prog.textContent = '⚠️ 無法解析輪播格式，請重新產出文案';
-    prog.style.display = 'block';
-    document.getElementById('img-carousel-view').style.display = 'block';
-    document.getElementById('img-single-view').style.display = 'none';
+// ===== AUTO SHRINK BODY FONT SIZE =====
+function fitBodyFontSize(bodyEl) {
+  if (!bodyEl) return;
+  // maxH: for flex:1 elements use clientHeight; for max-height elements use parseInt
+  const styleMaxH = parseInt(bodyEl.style.maxHeight);
+  const maxH = (styleMaxH > 0) ? styleMaxH : bodyEl.clientHeight;
+  if (!maxH) return;
+  const sizes = [28, 24, 20, 18];
+  for (const sz of sizes) {
+    bodyEl.style.fontSize = sz + 'px';
+    bodyEl.style.lineHeight = '1.7';
+    if (bodyEl.scrollHeight <= maxH) return; // fits
+  }
+  // At 18px overflow:hidden clips the rest
+}
+
+// ===== INIT IMAGE GRID PLACEHOLDERS =====
+function initImgGrid() {
+  const grid = document.getElementById('img-grid');
+  if (!grid) return;
+  if (grid.querySelector('.img-thumb-card.ready')) return; // already rendered
+  if (!generatedCaption) {
+    grid.innerHTML = '<div class="img-grid-msg">先切換回「文案」tab 產出文案，再回來生成圖片</div>';
     return;
   }
+  const isCarousel = selEvent?.type === 'carousel';
+  const slides = isCarousel ? parseSlides(generatedCaption) : [{ index: 1 }];
+  if (!slides) {
+    grid.innerHTML = '<div class="img-grid-msg">文案格式無法解析，請重新產出文案</div>';
+    return;
+  }
+  grid.innerHTML = '';
+  slides.forEach((_, i) => {
+    const card = document.createElement('div');
+    card.className = 'img-thumb-card';
+    card.id = `thumb-${i}`;
+    card.innerHTML = `<div class="img-thumb-placeholder">${i + 1}</div>`;
+    grid.appendChild(card);
+  });
+}
+
+// ===== GENERATE IMAGES (carousel + single/cta) =====
+async function genImages() {
+  if (!selEvent) return;
+  const genBtn = document.getElementById('gen-image-btn');
+  const zipBtn = document.getElementById('dl-zip-btn');
+  const grid   = document.getElementById('img-grid');
+  if (!grid) return;
+
+  // Build slide list
+  let slides;
+  if (selEvent.type === 'carousel') {
+    if (!generatedCaption) {
+      grid.innerHTML = '<div class="img-grid-msg">請先產出文案，再生成圖片</div>'; return;
+    }
+    slides = parseSlides(generatedCaption);
+    if (!slides) {
+      grid.innerHTML = '<div class="img-grid-msg">文案格式無法解析，請重新產出文案</div>'; return;
+    }
+  } else {
+    // single / cta: treat whole caption as the body of one slide
+    const body = (generatedCaption || '')
+      .split('\n').filter(l => !/^[＊*]/.test(l.trim())).join('\n').trim();
+    slides = [{ index: 1, title: selEvent.topic, body }];
+  }
+
   const total = slides.length;
-  document.getElementById('img-single-view').style.display = 'none';
-  document.getElementById('img-carousel-view').style.display = 'block';
-  document.getElementById('dl-btn').style.display = 'none';
-  document.getElementById('dl-zip-btn').style.display = 'none';
+  carouselCanvases = new Array(total).fill(null);
 
-  const gallery  = document.getElementById('carousel-gallery');
-  const progress = document.getElementById('img-progress');
-  gallery.innerHTML = '';
-  carouselCanvases = [];
-  progress.style.display = 'block';
+  // Show placeholder grid
+  grid.innerHTML = '';
+  slides.forEach((_, i) => {
+    const card = document.createElement('div');
+    card.className = 'img-thumb-card';
+    card.id = `thumb-${i}`;
+    card.innerHTML = `<div class="img-thumb-placeholder">${i + 1}</div>`;
+    grid.appendChild(card);
+  });
 
-  const genSlide = document.getElementById('gen-slide');
+  if (genBtn) { genBtn.textContent = `生成中 0/${total}…`; genBtn.disabled = true; }
+  if (zipBtn) zipBtn.style.display = 'none';
+
+  await document.fonts.ready;
+  const genWrap = document.getElementById('slide-gen-wrap');
+
   for (let i = 0; i < total; i++) {
-    progress.textContent = `生成中… ${i + 1} / ${total}`;
-    const isCover = slides[i].index === 1;
-    genSlide.innerHTML = buildCarouselSlideSVG(slides[i], total, isCover);
-    await new Promise(r => setTimeout(r, 200));
+    if (genBtn) genBtn.textContent = `生成中 ${i + 1}/${total}…`;
+    const layout = i === 0 ? 'cover' : i === total - 1 && total > 1 ? 'outro' : 'content';
+    genWrap.innerHTML = buildSlideDiv(slides[i], total, layout);
+    await new Promise(r => setTimeout(r, 80)); // flush layout
+    const bodyEl = genWrap.querySelector('.slide-body');
+    fitBodyFontSize(bodyEl);
+    await new Promise(r => setTimeout(r, 60)); // let font size settle
 
+    const card = document.getElementById(`thumb-${i}`);
     try {
-      const canvas = await html2canvas(genSlide, { scale: 2, useCORS: true, backgroundColor: '#F5EFE5' });
-      carouselCanvases.push(canvas);
-
-      // Thumbnail canvas (240×240, displayed at 112px via CSS)
-      const tc = document.createElement('canvas');
-      tc.width = 240; tc.height = 240;
-      tc.style.cssText = 'width:100%;height:auto;display:block;border-radius:3px';
-      tc.getContext('2d').drawImage(canvas, 0, 0, 240, 240);
-
-      const numLabel = document.createElement('div');
-      numLabel.className = 'thumb-num';
-      numLabel.textContent = `${slides[i].index}/${total}`;
-
-      const dlBtn = document.createElement('button');
-      dlBtn.className = 'thumb-dl';
-      dlBtn.textContent = '↓';
-      dlBtn.title = '下載此張';
-      const idx = i;
-      dlBtn.onclick = e => { e.stopPropagation(); downloadSingle(idx); };
-
-      const wrap = document.createElement('div');
-      wrap.className = 'carousel-thumb';
-      wrap.onclick = () => openLightbox(idx);
-      wrap.appendChild(tc);
-      wrap.appendChild(numLabel);
-      wrap.appendChild(dlBtn);
-      gallery.appendChild(wrap);
+      const canvas = await html2canvas(genWrap.firstElementChild, {
+        scale: 1, useCORS: true, backgroundColor: '#F5EFE5', logging: false,
+      });
+      carouselCanvases[i] = canvas;
+      if (card) {
+        const img = document.createElement('img');
+        img.src = canvas.toDataURL('image/jpeg', 0.88);
+        const numDiv = document.createElement('div');
+        numDiv.className = 'img-thumb-num';
+        numDiv.textContent = `${i + 1}/${total}`;
+        const dlBtn2 = document.createElement('button');
+        dlBtn2.className = 'img-thumb-dl';
+        dlBtn2.textContent = '↓';
+        const idx = i;
+        dlBtn2.onclick = e => { e.stopPropagation(); downloadSingle(idx); };
+        card.innerHTML = '';
+        card.className = 'img-thumb-card ready';
+        card.onclick = () => openLightbox(i);
+        card.appendChild(img);
+        card.appendChild(numDiv);
+        card.appendChild(dlBtn2);
+      }
     } catch (e) {
-      carouselCanvases.push(null);
-      const errDiv = document.createElement('div');
-      errDiv.className = 'carousel-thumb';
-      errDiv.style.cssText = 'background:#FEE8E4;display:flex;align-items:center;justify-content:center;font-size:10px;color:#8A2010;min-height:112px';
-      errDiv.textContent = `第 ${slides[i].index} 張失敗`;
-      gallery.appendChild(errDiv);
+      carouselCanvases[i] = null;
+      if (card) card.innerHTML = '<div class="img-thumb-placeholder" style="font-size:11px;color:#8A2010;white-space:nowrap">生成失敗</div>';
     }
   }
-  progress.style.display = 'none';
-  document.getElementById('dl-zip-btn').style.display = 'inline-flex';
+
+  genWrap.innerHTML = '';
+  if (genBtn) { genBtn.textContent = '✦ 生成圖片'; genBtn.disabled = false; }
+  if (zipBtn && carouselCanvases.some(Boolean)) zipBtn.style.display = '';
 }
 
 // ===== LIGHTBOX =====
@@ -777,142 +853,48 @@ function openLightbox(i) {
   const canvas = carouselCanvases[i];
   if (!canvas) return;
   const lb  = document.getElementById('carousel-lightbox');
-  const lbc = document.getElementById('lightbox-canvas');
-  lbc.width  = canvas.width;
-  lbc.height = canvas.height;
-  lbc.getContext('2d').drawImage(canvas, 0, 0);
+  const img = document.getElementById('lightbox-img');
+  img.src = canvas.toDataURL('image/jpeg', 0.92);
   lb.classList.add('on');
 }
 function closeLightbox() {
   document.getElementById('carousel-lightbox').classList.remove('on');
 }
 
-// ===== DOWNLOAD SINGLE SLIDE =====
+// ===== DOWNLOAD SINGLE =====
 function downloadSingle(i) {
   const canvas = carouselCanvases[i];
   if (!canvas) return;
+  const topic = selEvent?.topic || '貼文';
   const a = document.createElement('a');
-  a.download = `重心開始_${selEvent?.topic||'輪播'}_${String(i+1).padStart(2,'0')}.png`;
+  a.download = `重心開始_${topic}_${String(i + 1).padStart(2, '0')}.png`;
   a.href = canvas.toDataURL('image/png');
   a.click();
 }
 
 // ===== DOWNLOAD ALL AS ZIP =====
 async function downloadZip() {
-  if (!carouselCanvases.length) return;
+  if (!carouselCanvases.some(Boolean)) return;
   const btn  = document.getElementById('dl-zip-btn');
   const orig = btn.textContent;
   btn.textContent = '打包中…'; btn.disabled = true;
   try {
     const zip   = new JSZip();
     const topic = selEvent?.topic || '貼文';
-    const date  = selEvent?.date  || '';
     for (let i = 0; i < carouselCanvases.length; i++) {
       if (!carouselCanvases[i]) continue;
       const b64 = carouselCanvases[i].toDataURL('image/png').split(',')[1];
-      zip.file(`${String(i+1).padStart(2,'0')}.png`, b64, { base64: true });
+      zip.file(`重心開始_${topic}_${String(i + 1).padStart(2, '0')}.png`, b64, { base64: true });
     }
     const blob = await zip.generateAsync({ type: 'blob' });
     const a = document.createElement('a');
-    a.download = `輪播_${topic}${date ? '_' + date : ''}.zip`;
+    a.download = `重心開始_${topic}.zip`;
     a.href = URL.createObjectURL(blob);
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   } finally {
     btn.textContent = orig; btn.disabled = false;
   }
-}
-
-// ===== GENERATE IMAGE =====
-async function genImage() {
-  if (!selEvent) return;
-
-  // Carousel → dedicated multi-slide flow
-  if (selEvent.type === 'carousel') {
-    await genCarouselImages();
-    return;
-  }
-
-  // Single / CTA → existing single-image flow
-  document.getElementById('img-single-view').style.display = '';
-  document.getElementById('img-carousel-view').style.display = 'none';
-  document.getElementById('img-placeholder').innerHTML = '生成中…';
-  await new Promise(r => setTimeout(r, 100));
-  const raw = generatedCaption || selEvent.topic;
-  const caption = cleanForImage(raw);
-  const lines = caption.split('\n').filter(l => l.trim());
-  const hook = lines[0] || selEvent.topic;
-  const body = lines.slice(1, 5).join('\n');
-  const ending = lines[5] || '';
-  const slide = document.getElementById('gen-slide');
-  slide.innerHTML = `
-    <svg width="500" height="500" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="gbg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#F5EFE5"/>
-          <stop offset="100%" stop-color="#EAE0D0"/>
-        </linearGradient>
-        <linearGradient id="gvig" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="60%" stop-color="transparent"/>
-          <stop offset="100%" stop-color="rgba(58,32,16,.12)"/>
-        </linearGradient>
-      </defs>
-      <rect width="500" height="500" fill="url(#gbg)"/>
-      <rect width="500" height="500" fill="url(#gvig)"/>
-      <rect x="0" y="0" width="6" height="500" fill="#B8531A"/>
-      <text x="44" y="52" font-family="Noto Sans TC,sans-serif" font-size="10" fill="#B8531A" letter-spacing="2" opacity=".85">${selEvent.series||'重心開始'}</text>
-      <text x="36" y="120" font-family="Montserrat,sans-serif" font-size="90" font-weight="900" fill="#B8531A" opacity=".07">"</text>
-      ${wrapSVGText(hook, 44, 116, 22, '#3A2010', 700, 380)}
-      <rect x="44" y="${116 + countLines(hook,380,22)*30 + 8}" width="32" height="3" rx="1.5" fill="#B8531A"/>
-      ${wrapSVGText(body, 44, 116 + countLines(hook,380,22)*30 + 30, 13, 'rgba(58,32,16,.6)', 400, 380)}
-      ${ending ? `<rect x="44" y="${116 + countLines(hook,380,22)*30 + 30 + countLines(body,380,13)*22 + 12}" width="2.5" height="36" rx="1.5" fill="#B8531A"/>
-      ${wrapSVGText(ending, 58, 116 + countLines(hook,380,22)*30 + 30 + countLines(body,380,13)*22 + 28, 13, '#7A4A2A', 500, 360)}` : ''}
-      <text x="456" y="478" font-family="Montserrat,sans-serif" font-size="10" fill="rgba(58,32,16,.2)" text-anchor="end" letter-spacing="1">@yusheng.zhu.14</text>
-    </svg>`;
-  await new Promise(r => setTimeout(r, 200));
-  try {
-    const canvas = await html2canvas(slide, {scale:2, useCORS:true, backgroundColor:'#F5EFE5'});
-    const imgCanvas = document.getElementById('img-canvas');
-    imgCanvas.width = canvas.width;
-    imgCanvas.height = canvas.height;
-    imgCanvas.getContext('2d').drawImage(canvas, 0, 0);
-    imgCanvas.style.display = 'block';
-    document.getElementById('img-placeholder').style.display = 'none';
-    document.getElementById('dl-btn').style.display = 'inline-flex';
-  } catch(e) {
-    document.getElementById('img-placeholder').innerHTML = '生成失敗，請再試一次';
-  }
-}
-
-function downloadImage() {
-  const canvas = document.getElementById('img-canvas');
-  const a = document.createElement('a');
-  a.download = `重心開始_${selEvent?.topic||'貼文'}.png`;
-  a.href = canvas.toDataURL('image/png');
-  a.click();
-}
-
-// ===== SVG TEXT HELPERS =====
-function countLines(text, maxW, fontSize) {
-  if (!text) return 0;
-  const charsPerLine = Math.floor(maxW / (fontSize * 0.6));
-  return text.split('\n').reduce((sum, line) => sum + Math.ceil((line.length||1) / charsPerLine), 0);
-}
-function wrapSVGText(text, x, y, fontSize, fill, weight, maxW) {
-  if (!text) return '';
-  const charsPerLine = Math.floor(maxW / (fontSize * 0.62));
-  const lineH = fontSize * 1.75;
-  let svg = '';
-  let curY = y;
-  text.split('\n').forEach(line => {
-    if (!line.trim()) { curY += lineH * 0.6; return; }
-    for (let i = 0; i < line.length; i += charsPerLine) {
-      const chunk = line.slice(i, i + charsPerLine);
-      svg += `<text x="${x}" y="${curY}" font-family="Noto Sans TC,sans-serif" font-size="${fontSize}" fill="${fill}" font-weight="${weight}">${chunk.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</text>`;
-      curY += lineH;
-    }
-  });
-  return svg;
 }
 
 // ===== INIT =====
