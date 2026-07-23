@@ -13,6 +13,7 @@
   --bg:#EDE8DF;
   --surface:#F5F0E8;
   --surface-2:#FDFAF5;
+  --surface-0:rgba(58,32,16,.04);
   --brown:#3A2010;
   --brown-mid:#7A4A2A;
   --brick:#B8531A;
@@ -24,6 +25,8 @@
   --text-muted:rgba(58,32,16,.35);
   --border:rgba(58,32,16,.1);
   --border-strong:rgba(58,32,16,.2);
+  --border-accent:#B8531A;
+  --bg-accent:rgba(184,83,26,.06);
   --radius:10px;
   --radius-sm:6px;
   --font:'Noto Sans TC',sans-serif;
@@ -44,9 +47,8 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 .conn-dot.live{background:#4CAF50}
 
 /* ===== LAYOUT ===== */
-.layout{display:grid;grid-template-columns:1fr 380px;min-height:calc(100vh - 56px)}
-.left{padding:1.5rem 2rem;border-right:1px solid var(--border)}
-.right{padding:1.5rem;background:var(--surface)}
+.layout{min-height:calc(100vh - 56px)}
+.left{padding:1.5rem 2rem}
 
 /* ===== WEEK NAV ===== */
 .week-nav{display:flex;align-items:center;gap:10px;margin-bottom:1.25rem}
@@ -57,15 +59,17 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 .refresh-btn:hover{background:var(--sand-light)}
 
 /* ===== CALENDAR GRID ===== */
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
-.day-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px;min-height:120px;cursor:pointer;transition:border-color .15s,transform .1s}
-.day-card:hover{border-color:var(--brick-light);transform:translateY(-1px)}
-.day-card.today{border:2px solid var(--brick)}
-.day-card.empty{background:transparent;border-style:dashed;cursor:default;pointer-events:none;opacity:.35}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.day-card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--radius);padding:10px;min-height:100px;cursor:pointer;transition:border-color .15s;position:relative}
+.day-card:hover{border-color:var(--border-strong)}
+.day-card.today{border:1.5px solid var(--border-accent)}
+.day-card.empty-day{background:transparent;border-style:dashed;cursor:default;pointer-events:none;opacity:.3}
+.day-card.other-month{opacity:.15;pointer-events:none;cursor:default}
 .day-card.done{opacity:.4}
-.day-card.selected{border-color:var(--brick);background:#FEF6F0}
+.day-card.selected{border-color:var(--border-accent);background:var(--bg-accent)}
+.day-card.selected .acc-arrow{transform:rotate(180deg)}
 .day-name{font-size:10px;color:var(--text-muted);font-weight:500;margin-bottom:2px}
-.day-num{font-size:20px;font-weight:500;color:var(--text);line-height:1;margin-bottom:7px}
+.day-num{font-size:18px;font-weight:500;color:var(--text);line-height:1;margin-bottom:6px}
 .day-num.today-num{color:var(--brick)}
 .today-pip{width:5px;height:5px;border-radius:50%;background:var(--brick);display:inline-block;margin-left:4px;vertical-align:middle}
 .type-badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;margin-bottom:5px}
@@ -73,7 +77,24 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 .b-carousel{background:#E6F0FE;color:#1A4A8A}
 .b-cta{background:#E6F5EE;color:#1A6A3A}
 .b-done{background:var(--bg);color:var(--text-muted)}
-.day-topic{font-size:11px;color:var(--text-mid);line-height:1.5}
+.day-topic{font-size:11px;color:var(--text-mid);line-height:1.4;padding-right:14px}
+.acc-arrow{position:absolute;bottom:6px;right:7px;font-size:11px;color:var(--text-muted);transition:transform .25s;line-height:1}
+
+/* ===== ACCORDION ===== */
+.acc-wrap{grid-column:1/-1;overflow:hidden;max-height:0;transition:max-height .35s cubic-bezier(.4,0,.2,1)}
+.acc-wrap.open{max-height:560px}
+.acc-inner{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);margin:2px 0 6px;overflow:hidden;display:flex;flex-direction:column}
+.acc-hdr{padding:14px 16px 0;flex-shrink:0}
+.acc-series{font-size:10px;color:var(--brick);letter-spacing:.1em;text-transform:uppercase;font-weight:500;margin-bottom:4px}
+.acc-title-txt{font-size:16px;font-weight:700;color:var(--text);margin-bottom:3px;line-height:1.35}
+.acc-date-meta{font-size:11px;color:var(--text-muted);margin-bottom:10px}
+.acc-body{height:380px;overflow-y:auto;padding:0 16px 12px}
+.acc-body::-webkit-scrollbar{width:4px}
+.acc-body::-webkit-scrollbar-track{background:transparent}
+.acc-body::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:2px}
+.acc-body .caption-area{background:var(--surface-0);margin-bottom:0}
+.acc-footer{padding:10px 16px;border-top:1px solid var(--border);flex-shrink:0}
+.acc-img-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;color:var(--text-muted);font-size:13px;gap:6px;text-align:center;opacity:.6}
 
 /* ===== RIGHT PANEL ===== */
 .panel-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font-size:13px;gap:8px;text-align:center}
@@ -116,23 +137,9 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 .vtab.on{background:var(--brick);color:#fff}
 .vtab:not(.on):hover{background:var(--sand-light)}
 
-/* ===== MONTH GRID ===== */
+/* ===== MONTH HEADERS ===== */
+.month-day-hdrs{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:4px}
 .month-day-hdr{text-align:center;font-size:11px;color:var(--text-muted);font-weight:500;padding:4px 0}
-.month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-.month-day-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px;min-height:80px;cursor:pointer;transition:border-color .15s}
-.month-day-card:hover{border-color:var(--brick-light)}
-.month-day-card.today{border:2px solid var(--brick)}
-.month-day-card.done{opacity:.5}
-.month-day-card.other-month{background:transparent;border:1px solid transparent;opacity:.2;cursor:default;pointer-events:none}
-.month-day-card.no-events{cursor:default}
-.month-day-card.no-events:hover{border-color:var(--border)}
-.month-day-card.selected{border-color:var(--brick);background:#FEF6F0}
-.month-day-num{font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px;line-height:1}
-.month-day-num.today-num{color:var(--brick)}
-.month-event-item{margin-bottom:3px}
-.month-event-item .type-badge{font-size:9px;padding:1px 5px;margin-bottom:2px;display:block;width:fit-content}
-.month-event-topic{font-size:10px;color:var(--text-mid);line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.more-events{font-size:10px;color:var(--brick);font-weight:600;margin-top:2px}
 
 /* ===== CAROUSEL GALLERY ===== */
 .carousel-gallery{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
@@ -156,15 +163,10 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 .day-selector-meta{font-size:11px;color:var(--text-muted);margin-top:2px}
 
 /* ===== RESPONSIVE ===== */
-@media(max-width:900px){
-  .layout{grid-template-columns:1fr}
-  .right{border-top:1px solid var(--border)}
-}
-@media(max-width:720px){
-  .month-event-topic{display:none}
-}
 @media(max-width:600px){
   .cal-grid{grid-template-columns:repeat(4,1fr)}
+  .acc-body{height:420px}
+  .acc-wrap.open{max-height:800px}
   .left{padding:1rem}
   .header{padding:0 1rem}
 }
@@ -188,7 +190,6 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 </header>
 
 <div class="layout">
-  <!-- LEFT: Calendar -->
   <div class="left">
     <div class="week-nav">
       <button class="wnav-btn" onclick="changeNav(-1)">&#8592;</button>
@@ -202,51 +203,6 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
     </div>
     <div id="cal-wrap">
       <div class="loading-msg">輸入密碼後按「載入」</div>
-    </div>
-  </div>
-
-  <!-- RIGHT: Detail Panel -->
-  <div class="right" id="right-panel">
-    <div class="panel-empty" id="panel-empty">
-      <div class="panel-empty-icon">📅</div>
-      <div>點擊左側任何一天<br>展開文案與圖片</div>
-    </div>
-    <div id="panel-content" style="display:none">
-      <div class="panel-header">
-        <div class="panel-series" id="p-series"></div>
-        <div class="panel-title" id="p-title"></div>
-        <div class="panel-meta" id="p-meta"></div>
-      </div>
-      <div class="panel-tabs">
-        <button class="ptab on" onclick="switchPane('caption',this)">文案</button>
-        <button class="ptab" onclick="switchPane('image',this)">出圖</button>
-      </div>
-      <div class="pane on" id="pane-caption">
-        <div class="caption-area" id="caption-area">點下方按鈕產出文案</div>
-        <div class="btn-row" style="margin-bottom:10px">
-          <button class="btn btn-primary" onclick="genCaption()">✦ 產出文案</button>
-          <button class="btn" onclick="copyCaption()">複製</button>
-        </div>
-      </div>
-      <div class="pane" id="pane-image">
-        <!-- Single / CTA view -->
-        <div id="img-single-view">
-          <div class="img-preview">
-            <div class="img-placeholder" id="img-placeholder">點下方按鈕生成圖片</div>
-            <canvas id="img-canvas" style="display:none"></canvas>
-          </div>
-        </div>
-        <!-- Carousel view -->
-        <div id="img-carousel-view" style="display:none">
-          <div class="img-progress" id="img-progress" style="display:none"></div>
-          <div class="carousel-gallery" id="carousel-gallery"></div>
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-primary" onclick="genImage()">✦ 生成圖片</button>
-          <button class="btn" id="dl-btn" onclick="downloadImage()" style="display:none">下載 PNG</button>
-          <button class="btn" id="dl-zip-btn" onclick="downloadZip()" style="display:none">↓ 下載全部 ZIP</button>
-        </div>
-      </div>
     </div>
   </div>
 </div>
@@ -341,6 +297,7 @@ let curMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let eventsCache = [];
 let monthEventsCache = [];
 let selEvent = null;
+let selDate = null;
 let generatedCaption = '';
 let carouselCanvases = [];
 
@@ -395,7 +352,7 @@ async function loadWeek() {
   if (!pw) { setConn(false, '請輸入密碼'); return; }
   setConn(false, '連線中…');
   document.getElementById('cal-wrap').innerHTML = '<div class="loading-msg">載入中…</div>';
-  closePanel();
+  closeAllAccordions();
   const ws = weekStart(curDate);
   const iso = fmtISO(ws);
   document.getElementById('week-label').textContent =
@@ -422,7 +379,7 @@ async function loadMonth() {
   if (!pw) { setConn(false, '請輸入密碼'); return; }
   setConn(false, '連線中…');
   document.getElementById('cal-wrap').innerHTML = '<div class="loading-msg">載入中…</div>';
-  closePanel();
+  closeAllAccordions();
   const y = curMonthDate.getFullYear();
   const mo = String(curMonthDate.getMonth() + 1).padStart(2, '0');
   const monthStr = `${y}-${mo}`;
@@ -449,14 +406,14 @@ function renderMonthCalendar() {
   const mo = curMonthDate.getMonth();
   const today = new Date(); today.setHours(0,0,0,0);
   const firstDay = new Date(y, mo, 1);
-  const startDow = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; // Mon=0…Sun=6
+  const startDow = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
   const lastDate = new Date(y, mo + 1, 0).getDate();
   const totalCells = Math.ceil((startDow + lastDate) / 7) * 7;
 
   const hdrs = ['一','二','三','四','五','六','日'];
-  let html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">';
+  let html = '<div class="month-day-hdrs">';
   hdrs.forEach(h => { html += `<div class="month-day-hdr">${h}</div>`; });
-  html += '</div><div class="month-grid">';
+  html += '</div><div class="cal-grid">';
 
   for (let i = 0; i < totalCells; i++) {
     const dayN = i - startDow + 1;
@@ -464,104 +421,38 @@ function renderMonthCalendar() {
     const isCurMonth = date.getMonth() === mo;
     const iso = fmtISO(date);
     const isToday = date.getTime() === today.getTime();
-    const isPast  = date < today;
+    const isPast = date < today;
+    const rowIdx = Math.floor(i / 7);
 
     if (!isCurMonth) {
-      html += `<div class="month-day-card other-month"><div class="month-day-num">${date.getDate()}</div></div>`;
-      continue;
+      html += `<div class="day-card other-month"><div class="day-num">${date.getDate()}</div></div>`;
+    } else {
+      const dayEvs = monthEventsCache.filter(e => e.date === iso);
+      const hasEvs = dayEvs.length > 0;
+      const isDone = isPast && !isToday;
+      const cls = ['day-card', isToday ? 'today' : '', isDone && hasEvs ? 'done' : '', !hasEvs ? 'empty-day' : ''].filter(Boolean).join(' ');
+
+      const evHtml = dayEvs.slice(0, 2).map(ev => `
+        <span class="type-badge ${isDone ? 'b-done' : TYPE_BADGE[ev.type]||'b-single'}">${isDone ? '已發' : TYPE_LABEL[ev.type]||ev.type}</span>
+        <div class="day-topic">${ev.topic}</div>`).join('');
+
+      const moreHtml = dayEvs.length > 2 ? `<div style="font-size:10px;color:var(--text-muted)">+${dayEvs.length-2} 筆</div>` : '';
+      const onclick = hasEvs ? `onclick="selectDay('${iso}',${rowIdx})"` : '';
+
+      html += `<div class="${cls}" id="dc-${iso}" ${onclick}>
+        <div class="day-num${isToday?' today-num':''}">${date.getDate()}${isToday?'<span class="today-pip"></span>':''}</div>
+        ${evHtml}${moreHtml}
+        ${hasEvs ? '<div class="acc-arrow">▾</div>' : ''}
+      </div>`;
     }
 
-    const dayEvs  = monthEventsCache.filter(e => e.date === iso);
-    const hasEvs  = dayEvs.length > 0;
-    const isDone  = isPast && !isToday;
-    const cls = ['month-day-card',
-      isToday   ? 'today'    : '',
-      isDone && hasEvs ? 'done' : '',
-      !hasEvs   ? 'no-events' : '',
-    ].filter(Boolean).join(' ');
-
-    const evHtml = dayEvs.slice(0, 2).map(ev => `
-      <div class="month-event-item">
-        <span class="type-badge ${isDone ? 'b-done' : TYPE_BADGE[ev.type]||'b-single'}">${isDone ? '已發' : TYPE_LABEL[ev.type]||ev.type}</span>
-        <div class="month-event-topic">${ev.topic}</div>
-      </div>`).join('');
-
-    const moreHtml = dayEvs.length > 2
-      ? `<div class="more-events">+${dayEvs.length - 2} 筆</div>` : '';
-
-    const onclick = hasEvs ? `onclick="selectDayInMonth('${iso}')"` : '';
-
-    html += `<div class="${cls}" id="mdc-${iso}" ${onclick}>
-      <div class="month-day-num${isToday?' today-num':''}">${date.getDate()}${isToday?'<span class="today-pip"></span>':''}</div>
-      ${evHtml}${moreHtml}
-    </div>`;
+    if ((i + 1) % 7 === 0) {
+      html += `<div class="acc-wrap" data-row="${Math.floor(i / 7)}"></div>`;
+    }
   }
 
   html += '</div>';
   document.getElementById('cal-wrap').innerHTML = html;
-}
-
-// ===== SELECT DAY IN MONTH VIEW =====
-function selectDayInMonth(iso) {
-  const dayEvs = monthEventsCache.filter(e => e.date === iso);
-  if (!dayEvs.length) return;
-  document.querySelectorAll('.month-day-card').forEach(c => c.classList.remove('selected'));
-  const dc = document.getElementById('mdc-' + iso);
-  if (dc) dc.classList.add('selected');
-
-  if (dayEvs.length === 1) {
-    selEvent = dayEvs[0];
-    openPanel(iso);
-  } else {
-    document.getElementById('panel-empty').style.display = 'none';
-    document.getElementById('panel-content').style.display = 'block';
-    document.getElementById('p-series').textContent = '';
-    document.getElementById('p-title').textContent = `${iso} 有 ${dayEvs.length} 篇貼文`;
-    document.getElementById('p-meta').textContent = '選擇要操作的貼文';
-    switchPane('caption', document.querySelector('.ptab'));
-    const captionEl = document.getElementById('caption-area');
-    captionEl.style.whiteSpace = 'normal';
-    captionEl.innerHTML = `<div class="day-selector">${dayEvs.map((ev, i) => `
-      <div class="day-selector-item" onclick="selectMonthEventByIndex('${iso}',${i})">
-        <span class="type-badge ${TYPE_BADGE[ev.type]||'b-single'}">${TYPE_LABEL[ev.type]||ev.type}</span>
-        <div class="day-selector-name">${ev.topic}</div>
-        <div class="day-selector-meta">${ev.time||'09:00'}${ev.series?' ｜ '+ev.series:''}</div>
-      </div>`).join('')}</div>`;
-    document.querySelector('#pane-caption .btn-row').style.display = 'none';
-  }
-}
-
-function selectMonthEventByIndex(iso, idx) {
-  const dayEvs = monthEventsCache.filter(e => e.date === iso);
-  if (!dayEvs[idx]) return;
-  selEvent = dayEvs[idx];
-  const captionEl = document.getElementById('caption-area');
-  captionEl.style.whiteSpace = '';
-  document.querySelector('#pane-caption .btn-row').style.display = '';
-  openPanel(iso);
-}
-
-// ===== OPEN RIGHT PANEL (shared) =====
-function openPanel(iso) {
-  generatedCaption = '';
-  carouselCanvases = [];
-  document.getElementById('panel-empty').style.display = 'none';
-  document.getElementById('panel-content').style.display = 'block';
-  document.getElementById('p-series').textContent = selEvent.series || '';
-  document.getElementById('p-title').textContent = selEvent.topic;
-  document.getElementById('p-meta').textContent = `${iso} ${selEvent.time||'09:00'} ｜ ${TYPE_LABEL[selEvent.type]||selEvent.type}`;
-  document.getElementById('caption-area').textContent = '點「產出文案」按鈕';
-  // Reset image pane
-  document.getElementById('img-placeholder').innerHTML = '點下方按鈕生成圖片';
-  document.getElementById('img-placeholder').style.display = 'flex';
-  document.getElementById('img-canvas').style.display = 'none';
-  document.getElementById('dl-btn').style.display = 'none';
-  document.getElementById('dl-zip-btn').style.display = 'none';
-  document.getElementById('img-single-view').style.display = '';
-  document.getElementById('img-carousel-view').style.display = 'none';
-  document.getElementById('carousel-gallery').innerHTML = '';
-  document.getElementById('img-progress').style.display = 'none';
-  switchPane('caption', document.querySelector('.ptab'));
 }
 
 // ===== RENDER CALENDAR =====
@@ -576,34 +467,114 @@ function renderCalendar(ws) {
     const ev = eventsCache.find(e => e.date === iso);
     const dayName = DAY_NAMES[d.getDay()];
     if (!ev) {
-      html += `<div class="day-card empty"><div class="day-name">${dayName}</div><div class="day-num">${d.getDate()}</div></div>`;
+      html += `<div class="day-card empty-day"><div class="day-name">${dayName}</div><div class="day-num">${d.getDate()}</div></div>`;
     } else {
       const isDone = isPast && !isToday;
-      html += `<div class="day-card${isToday?' today':''}${isDone?' done':''}" id="dc-${iso}" onclick="selectDay('${iso}')">
+      html += `<div class="day-card${isToday?' today':''}${isDone?' done':''}" id="dc-${iso}" onclick="selectDay('${iso}',0)">
         <div class="day-name">${dayName}</div>
         <div class="day-num${isToday?' today-num':''}">${d.getDate()}${isToday?'<span class="today-pip"></span>':''}</div>
         <span class="type-badge ${isDone?'b-done':TYPE_BADGE[ev.type]||'b-single'}">${isDone?'已發':TYPE_LABEL[ev.type]||ev.type}</span>
         <div class="day-topic">${ev.topic}</div>
+        <div class="acc-arrow">▾</div>
       </div>`;
     }
   }
+  html += '<div class="acc-wrap" data-row="0"></div>';
   html += '</div>';
   document.getElementById('cal-wrap').innerHTML = html;
 }
 
-// ===== SELECT DAY (week view) =====
-function selectDay(iso) {
-  selEvent = eventsCache.find(e => e.date === iso);
-  if (!selEvent) return;
-  document.querySelectorAll('.day-card').forEach(c => c.classList.remove('selected'));
+// ===== SELECT DAY (unified: week + month) =====
+function selectDay(iso, rowIdx) {
+  const events = viewMode === 'month'
+    ? monthEventsCache.filter(e => e.date === iso)
+    : eventsCache.filter(e => e.date === iso);
+  if (!events.length) return;
+
+  if (selDate === iso) { closeAllAccordions(); return; }
+
+  closeAllAccordions();
+  selDate = iso;
   const dc = document.getElementById('dc-' + iso);
   if (dc) dc.classList.add('selected');
-  openPanel(iso);
+
+  const wrap = document.querySelector(`.acc-wrap[data-row="${rowIdx}"]`);
+  if (!wrap) return;
+
+  if (events.length === 1) {
+    selEvent = events[0];
+    generatedCaption = '';
+    wrap.innerHTML = buildAccordionHTML(iso, events[0]);
+  } else {
+    selEvent = null;
+    wrap.innerHTML = buildAccordionSelectorHTML(iso, events);
+  }
+  wrap.classList.add('open');
 }
 
-function closePanel() {
-  document.getElementById('panel-empty').style.display = 'flex';
-  document.getElementById('panel-content').style.display = 'none';
+function buildAccordionHTML(iso, ev) {
+  const badge = TYPE_BADGE[ev.type] || 'b-single';
+  const label = TYPE_LABEL[ev.type] || ev.type;
+  return `<div class="acc-inner">
+    <div class="acc-hdr">
+      ${ev.series ? `<div class="acc-series">${ev.series}</div>` : ''}
+      <div class="acc-title-txt">${ev.topic}</div>
+      <div class="acc-date-meta">${iso} ${ev.time||'09:00'} ｜ <span class="type-badge ${badge}" style="display:inline;padding:1px 6px">${label}</span></div>
+    </div>
+    <div class="panel-tabs">
+      <button class="ptab on" onclick="switchPane('caption',this)">文案</button>
+      <button class="ptab" onclick="switchPane('image',this)">出圖</button>
+    </div>
+    <div class="acc-body">
+      <div class="pane on" id="pane-caption">
+        <div class="caption-area" id="caption-area">點「產出文案」按鈕</div>
+        <div class="btn-row" style="margin-top:10px">
+          <button class="btn btn-primary" id="gen-caption-btn" onclick="genCaption()">✦ 產出文案</button>
+          <button class="btn" onclick="copyCaption()">複製</button>
+        </div>
+      </div>
+      <div class="pane" id="pane-image">
+        <div class="acc-img-placeholder">
+          <span style="font-size:24px;opacity:.4">🎨</span>
+          <span>出圖功能將於第二批上線</span>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function buildAccordionSelectorHTML(iso, evs) {
+  const items = evs.map((ev, i) => `
+    <div class="day-selector-item" onclick="pickAccordionEvent('${iso}',${i})">
+      <span class="type-badge ${TYPE_BADGE[ev.type]||'b-single'}">${TYPE_LABEL[ev.type]||ev.type}</span>
+      <div class="day-selector-name">${ev.topic}</div>
+      <div class="day-selector-meta">${ev.time||'09:00'}${ev.series?' ｜ '+ev.series:''}</div>
+    </div>`).join('');
+  return `<div class="acc-inner">
+    <div class="acc-hdr">
+      <div class="acc-title-txt">${iso} 有 ${evs.length} 篇貼文</div>
+      <div class="acc-date-meta">選擇要操作的貼文</div>
+    </div>
+    <div class="acc-body"><div class="day-selector">${items}</div></div>
+  </div>`;
+}
+
+function pickAccordionEvent(iso, idx) {
+  const events = viewMode === 'month'
+    ? monthEventsCache.filter(e => e.date === iso)
+    : eventsCache.filter(e => e.date === iso);
+  if (!events[idx]) return;
+  selEvent = events[idx];
+  generatedCaption = '';
+  const wrap = document.querySelector('.acc-wrap.open');
+  if (wrap) wrap.innerHTML = buildAccordionHTML(iso, selEvent);
+}
+
+// ===== CLOSE ALL ACCORDIONS =====
+function closeAllAccordions() {
+  document.querySelectorAll('.acc-wrap').forEach(w => { w.classList.remove('open'); w.innerHTML = ''; });
+  document.querySelectorAll('.day-card').forEach(c => c.classList.remove('selected'));
+  selDate = null;
   selEvent = null;
 }
 
@@ -619,7 +590,9 @@ function switchPane(name, btn) {
 async function genCaption() {
   if (!selEvent) return;
   const area = document.getElementById('caption-area');
+  const btn  = document.getElementById('gen-caption-btn');
   area.textContent = '產出中…';
+  if (btn) btn.disabled = true;
   try {
     const res = await fetch(API_BASE + CLAUDE_PROXY, {
       method: 'POST',
@@ -629,7 +602,7 @@ async function genCaption() {
       },
       body: JSON.stringify({
         system: SOP_SYSTEM,
-        prompt: `主題：${selEvent.topic}\n系列：${selEvent.series}\n類型：${TYPE_LABEL[selEvent.type]}`,
+        prompt: `主題：${selEvent.topic}\n系列：${selEvent.series||''}\n類型：${TYPE_LABEL[selEvent.type]}\n發文日期：${selDate}`,
         type: selEvent.type,
       }),
     });
@@ -642,13 +615,16 @@ async function genCaption() {
     area.textContent = generatedCaption;
   } catch(e) {
     area.textContent = '產出失敗，請再試一次';
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
 function copyCaption() {
   const text = document.getElementById('caption-area').textContent;
   navigator.clipboard.writeText(text).then(() => {
-    const btn = document.querySelector('#pane-caption .btn:not(.btn-primary)');
+    const btn = document.querySelector('#pane-caption .btn-row .btn:not(.btn-primary)');
+    if (!btn) return;
     const orig = btn.textContent;
     btn.textContent = '已複製！';
     setTimeout(() => btn.textContent = orig, 1500);
