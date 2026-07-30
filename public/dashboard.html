@@ -132,6 +132,17 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 /* ===== SLIDE GEN (1080×1350, off-screen) ===== */
 #slide-gen-wrap{position:fixed;left:-2000px;top:0;width:1080px;height:1350px;overflow:hidden;pointer-events:none}
 
+/* ===== CAPTION MODE TOGGLE ===== */
+.caption-mode-toggle{display:flex;gap:6px;margin-bottom:10px}
+.cmtab{font-size:12px;padding:5px 13px;border:1px solid var(--border-strong);border-radius:20px;background:none;color:var(--brown-mid);cursor:pointer;font-family:var(--font);font-weight:500;transition:background .15s,color .15s,border-color .15s}
+.cmtab.on{background:var(--brick);border-color:var(--brick);color:#fff}
+.cmtab:not(.on):hover{background:var(--sand-light)}
+.imported-badge{display:inline-block;font-size:11px;padding:2px 9px;border-radius:20px;background:#E6F5EE;color:#1A6A3A;font-weight:500;margin-bottom:8px}
+.pending-badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;background:#FEF0DC;color:#9A5500;font-weight:500;margin-bottom:5px}
+.manual-textarea{width:100%;min-height:150px;font-size:13px;color:var(--text);line-height:1.9;background:var(--bg);border:1px solid var(--border-strong);border-radius:var(--radius-sm);padding:10px 12px;font-family:var(--font);resize:vertical;outline:none}
+.manual-textarea:focus{border-color:var(--brick)}
+.pending-notice{font-size:13px;color:#9A5500;background:#FEF6EC;border-radius:var(--radius-sm);padding:10px 13px;margin-bottom:8px;line-height:1.7}
+
 /* ===== ERR / LOADING ===== */
 .err-box{font-size:13px;color:#8A2010;background:#FEE8E4;border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:1rem}
 .loading-msg{font-size:13px;color:var(--text-muted);padding:2rem;text-align:center}
@@ -222,65 +233,81 @@ const CLAUDE_PROXY = '/api/claude-proxy';
 const SOP_SYSTEM = `你是 Gino（@yusheng.zhu.14）的 Threads 文案助理，品牌名稱「重心開始」。
 
 【身份設定】
-Gino 是黃金日內交易講師，有 2.5 年交易經驗，之前開過餐廳。語氣像在跟朋友聊天，偶爾帶乾話感，不裝專業、不說教。
+Gino 是黃金日內交易講師，有 2.5 年交易經驗，之前開過餐廳。語氣像在跟朋友聊天，偶爾帶乾話感，不裝專業、不說教。寫的是真實發生在自己身上的事，不是在舉例說明道理。
 
-【慣用詞與語感】
-直接照用這些詞：
-「好家在我有設停損」「這把直接被掃光」「二話不說直接反手」「行情在來回刷」「拿好拿滿」「兄弟姊妹們」「各位恭喜」「真的好家在」「差點中風」「被兩頭雙巴」「空單拿好拿滿」「脆友們」「硬做」「被洗出去」
+【強制慣用詞｜每張正文至少用一個】
+「好家在我有設停損」「這把直接被掃光」「二話不說直接反手」「行情在來回刷」「拿好拿滿」「兄弟姊妹們」「各位恭喜」「真的好家在」「差點中風」「被兩頭雙巴」「空單拿好拿滿」「脆友們」「硬做」「被洗出去」「二話不說關螢幕」
+
+【真實場景結構｜每張正文必須包含】
+時間（早上/中午/那週/昨天）＋價位或具體數字（4497、120點、三筆單）＋當下動作（我直接、我二話不說、我硬著頭皮）＋結果（被掃光、差點中風、好家在有設停損）
 
 【語氣規則】
 - 口語、直接，像在跟朋友說話
 - 不用成語、不用書面語、不用翻譯腔
-- 禁止：「我們一起」「迎來改變」「意味著」「解決方案」「照出你最真實的樣子」「蛻變」「成就更好的自己」
-- 數字要具體（不說「很多點」，說「60 點」）
-- 偶爾用疊字 emoji（🤣🤣🤣 / 😍😍 / 🥲）但不超過一組
+- 不說道理，說故事、說結果、說感受
+- 偶爾用疊字 emoji（🤣🤣🤣 / 😍😍 / 🥲）但不超過一組，放句尾
+- 正文每行不超過 22 個中文字
 
-【參考範本（一定要照這個語感）】
-範本一：
-早上做黃金真的被洗到差點中風 🥲
-行情在 4497-4479 來回刷，早盤先走了一張空單去試，結果直接被市場無情掃損，約莫中午看盤面一轉直接往上噴突破 4497，我二話不說直接反手。
+【台灣用語限制｜禁止使用中國網路用語】
+禁止：壓力山大、雞飛狗跳、無語、yyds、破防、內卷、躺平、打工人
+改用台灣說法：壓力很大、亂成一團、傻眼、崩潰、擺爛、上班族
 
-範本二：
-真的好家在上週黃金多單有在 4560 停利出場！上週五一度衝到 4595 以為要一飛沖天，結果被打回原形。這週在數據開牌打破僵局前，預計行情會在 4546 到 4490 之間反覆洗盤。硬做很容易被兩頭雙巴。
+【禁止詞彙】
+「我們一起」「讓我們一起」「取暖」「先照顧好內心」「損失無限放大」「穩定後再尋機會」「先整理好心情」「雞飛狗跳」「壓力山大」「迎來改變」「意味著」「解決方案」「照出你最真實的樣子」「蛻變」「成就更好的自己」「保證獲利」「穩賺」「零風險」「保本」「月入XX萬」
 
-範本三：
-溫馨提醒：黃金明天後天還會震盪，美元要注意 99.5 會不會被衝破。
-對了！今天這樣震盪，各位還活著嗎？
+【禁止句型】
+- 「你是否曾經…」開場
+- 「很多人都…」開場
+- 勵志收尾（「相信自己」「堅持下去」「穩定後再尋機會」）
+- 說教口吻（「要記得…」「一定要…」「停損停利要記得設」）
+- 結構標籤（Hook、本文、結尾不能出現在輸出裡）
+- 免責聲明（系統自動加，GPT 不要自己寫）
 
-【內容類型輸出格式】
+【反面範例｜這樣寫就是錯的】
+✗「壓力山大時，越想賺卻越容易被掃兩次。」
+✗「先靜下來，穩定後再尋機會。」
+✗「停損停利要記得設。」
+✗「讓我們一起取暖🤣」
+✗「先整理好心情，再回市場才不會雞飛狗跳。」
+✗「損失無限放大。先靜下來，穩定後再尋機會。」
 
-carousel（輪播）：
-產出 6 張內容，格式如下——
+【正面範例｜這樣寫才對】
+✓「壓力很大的那週我硬做了黃金，結果被掃 120 點，好家在有設停損不然更慘 🥲 壓力來的時候市場不會等你，但你可以選擇不進場。」
+✓「上次黃金一把賺到爽，隔天興奮到直接加倉，結果空單反殺 80 點全吐回去。贏錢之後的那個手感，才是最貴的雜訊。」
+✓「連續虧了幾天心情很差，還想靠交易把錢賺回來，結果四單被掃掉 200 點。二話不說直接關螢幕，隔天再說。」
+
+【輪播輸出格式｜6張】
 
 第1張｜封面
-標題：（10字以內，強烈、有畫面、不說教）
-正文：（50字以內，點出這篇要講什麼，口語）
+標題：（10字以內，強烈有畫面，第一眼就要讓人想滑下去）
+正文：（40字以內，口語，點出這篇要講什麼）
 
-第2–5張｜內容
-標題：（每張一個重點，10字以內）
-正文：（80–120字，至少一個具體數字或場景，照 Gino 語感）
+第2張｜內容
+標題：（這張的場景或狀態，10字以內）
+正文：（50–80字，真實場景結構：時間＋價位＋動作＋結果）
+
+第3張｜內容
+標題：
+正文：
+
+第4張｜內容
+標題：
+正文：
+
+第5張｜內容
+標題：
+正文：
 
 第6張｜收尾互動
-標題：（一句問句或乾話）
-正文：（引導留言或私訊，不要太銷售感）
+標題：（一句問句或帶乾話感的觀察）
+正文：（引導留言，40字以內，口語，不要銷售感）
 
-每張結尾加：＊以上為個人操作習慣，非投資建議
+【CTA 格式】
+第一句（25字以內，製造共鳴）
 
-cta（行動呼籲）：
-Hook（25字以內）
-空行
-本文（60–100字，帶出群組或課程價值，說實際不賣夢）
-空行
-行動指令（私訊「關鍵字」或連結在限動）
-空行
-＊以上為個人操作習慣，非投資建議
+本文（60–100字，說群組實際價值，不賣夢）
 
-【禁止事項】
-- 禁止：保證獲利、穩賺、零風險、保本、月入XX萬
-- 禁止：「你是否曾經」「很多人都」「照出你最真實的樣子」開場
-- 禁止：勵志收尾（不要「相信自己」「堅持下去」「蛻變」）
-- 禁止：翻譯腔和過度書面用語
-- 禁止：Hook/本文/結尾這些結構標籤出現在輸出內容裡`;
+行動指令（私訊「關鍵字」或連結在限動）`;
 
 // ===== STATE =====
 let pw = '';
@@ -293,6 +320,9 @@ let selEvent = null;
 let selDate = null;
 let generatedCaption = '';
 let carouselCanvases = [];
+let captionMode = 'gpt'; // 'gpt' | 'manual'
+let manualCaption = '';
+let manualLocked = false;
 
 // ===== UTILS =====
 function weekStart(d) {
@@ -429,6 +459,7 @@ function renderMonthCalendar() {
 
       const evHtml = dayEvs.slice(0, 2).map(ev => `
         <span class="type-badge ${isDone ? 'b-done' : TYPE_BADGE[ev.type]||'b-single'}">${isDone ? '已發' : TYPE_LABEL[ev.type]||ev.type}</span>
+        ${ev.pending && !isDone ? '<span class="pending-badge">待填入</span>' : ''}
         <div class="day-topic">${ev.topic}</div>`).join('');
 
       const moreHtml = dayEvs.length > 2 ? `<div style="font-size:10px;color:var(--text-muted)">+${dayEvs.length-2} 筆</div>` : '';
@@ -469,6 +500,7 @@ function renderCalendar(ws) {
         <div class="day-name">${dayName}</div>
         <div class="day-num${isToday?' today-num':''}">${d.getDate()}${isToday?'<span class="today-pip"></span>':''}</div>
         <span class="type-badge ${isDone?'b-done':TYPE_BADGE[ev.type]||'b-single'}">${isDone?'已發':TYPE_LABEL[ev.type]||ev.type}</span>
+        ${ev.pending && !isDone ? '<span class="pending-badge">待填入</span>' : ''}
         <div class="day-topic">${ev.topic}</div>
         <div class="acc-arrow">▾</div>
       </div>`;
@@ -499,6 +531,9 @@ function selectDay(iso, rowIdx) {
   if (events.length === 1) {
     selEvent = events[0];
     generatedCaption = '';
+    captionMode = events[0].pending ? 'manual' : 'gpt';
+    manualCaption = '';
+    manualLocked = false;
     wrap.innerHTML = buildAccordionHTML(iso, events[0]);
   } else {
     selEvent = null;
@@ -510,6 +545,10 @@ function selectDay(iso, rowIdx) {
 function buildAccordionHTML(iso, ev) {
   const badge = TYPE_BADGE[ev.type] || 'b-single';
   const label = TYPE_LABEL[ev.type] || ev.type;
+  const initManual = captionMode === 'manual';
+  const footerCaptionHTML = initManual
+    ? '<button class="btn btn-primary" onclick="saveManualCaption()">儲存</button>'
+    : '<button class="btn btn-primary" id="gen-caption-btn" onclick="genCaption()">✦ 產出文案</button><button class="btn" onclick="copyCaption()">複製</button>';
   return `<div class="acc-inner">
     <div class="acc-hdr">
       ${ev.series ? `<div class="acc-series">${ev.series}</div>` : ''}
@@ -522,7 +561,17 @@ function buildAccordionHTML(iso, ev) {
     </div>
     <div class="acc-body">
       <div class="pane on" id="pane-caption">
-        <div class="caption-area" id="caption-area">點「產出文案」按鈕</div>
+        <div class="caption-mode-toggle">
+          <button class="cmtab ${initManual?'':'on'}" id="cmtab-gpt" onclick="setCaptionMode('gpt')">✦ GPT 產出</button>
+          <button class="cmtab ${initManual?'on':''}" id="cmtab-manual" onclick="setCaptionMode('manual')">📋 手動匯入</button>
+        </div>
+        <div id="caption-gpt-area" style="${initManual?'display:none':''}">
+          <div class="caption-area" id="caption-area">點「產出文案」按鈕</div>
+        </div>
+        <div id="caption-manual-area" style="${initManual?'':'display:none'}">
+          ${ev.pending ? '<div class="pending-notice">⏳ 這篇需要當天數據，請在數據公布後填入文案</div>' : ''}
+          <textarea class="manual-textarea" id="manual-textarea" placeholder="貼入文案…"></textarea>
+        </div>
       </div>
       <div class="pane" id="pane-image">
         <div class="img-grid" id="img-grid">
@@ -531,10 +580,7 @@ function buildAccordionHTML(iso, ev) {
       </div>
     </div>
     <div class="acc-footer">
-      <div id="footer-caption" class="btn-row">
-        <button class="btn btn-primary" id="gen-caption-btn" onclick="genCaption()">✦ 產出文案</button>
-        <button class="btn" onclick="copyCaption()">複製</button>
-      </div>
+      <div id="footer-caption" class="btn-row">${footerCaptionHTML}</div>
       <div id="footer-image" class="btn-row" style="display:none">
         <button class="btn btn-primary" id="gen-image-btn" onclick="genImages()">✦ 生成圖片</button>
         <button class="btn" id="dl-zip-btn" style="display:none" onclick="downloadZip()">↓ 下載全部 ZIP</button>
@@ -566,6 +612,9 @@ function pickAccordionEvent(iso, idx) {
   if (!events[idx]) return;
   selEvent = events[idx];
   generatedCaption = '';
+  captionMode = events[idx].pending ? 'manual' : 'gpt';
+  manualCaption = '';
+  manualLocked = false;
   const wrap = document.querySelector('.acc-wrap.open');
   if (wrap) wrap.innerHTML = buildAccordionHTML(iso, selEvent);
 }
@@ -589,6 +638,61 @@ function switchPane(name, btn) {
   if (fc) fc.style.display = name === 'caption' ? '' : 'none';
   if (fi) fi.style.display = name === 'image' ? '' : 'none';
   if (name === 'image') initImgGrid();
+}
+
+// ===== CAPTION MODE FUNCTIONS =====
+function setCaptionMode(mode) {
+  captionMode = mode;
+  const gptTab = document.getElementById('cmtab-gpt');
+  const manTab = document.getElementById('cmtab-manual');
+  const gptArea = document.getElementById('caption-gpt-area');
+  const manArea = document.getElementById('caption-manual-area');
+  const footerCaption = document.getElementById('footer-caption');
+  if (!gptTab || !manTab || !gptArea || !manArea || !footerCaption) return;
+  gptTab.classList.toggle('on', mode === 'gpt');
+  manTab.classList.toggle('on', mode === 'manual');
+  if (mode === 'gpt') {
+    gptArea.style.display = '';
+    manArea.style.display = 'none';
+    footerCaption.innerHTML = '<button class="btn btn-primary" id="gen-caption-btn" onclick="genCaption()">✦ GPT 產出</button><button class="btn" onclick="copyCaption()">複製</button>';
+  } else {
+    gptArea.style.display = 'none';
+    manArea.style.display = '';
+    if (manualLocked) {
+      footerCaption.innerHTML = '<button class="btn" onclick="editManualCaption()">重新編輯</button>';
+    } else {
+      footerCaption.innerHTML = '<button class="btn btn-primary" onclick="saveManualCaption()">儲存</button>';
+    }
+  }
+}
+
+function saveManualCaption() {
+  const ta = document.getElementById('manual-textarea');
+  if (!ta || !ta.value.trim()) return;
+  manualCaption = ta.value.trim();
+  manualLocked = true;
+  generatedCaption = manualCaption;
+  const safe = manualCaption.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const manArea = document.getElementById('caption-manual-area');
+  if (manArea) {
+    manArea.innerHTML = `<span class="imported-badge">已匯入 ✓</span>
+      <div class="caption-area" style="margin-top:6px;white-space:pre-wrap">${safe}</div>`;
+  }
+  const footerCaption = document.getElementById('footer-caption');
+  if (footerCaption) footerCaption.innerHTML = '<button class="btn" onclick="editManualCaption()">重新編輯</button>';
+}
+
+function editManualCaption() {
+  manualLocked = false;
+  generatedCaption = '';
+  const manArea = document.getElementById('caption-manual-area');
+  if (manArea) {
+    manArea.innerHTML = '<textarea class="manual-textarea" id="manual-textarea" placeholder="貼入文案…"></textarea>';
+    const ta = document.getElementById('manual-textarea');
+    if (ta) ta.value = manualCaption;
+  }
+  const footerCaption = document.getElementById('footer-caption');
+  if (footerCaption) footerCaption.innerHTML = '<button class="btn btn-primary" onclick="saveManualCaption()">儲存</button>';
 }
 
 // ===== GENERATE CAPTION =====
@@ -626,7 +730,8 @@ async function genCaption() {
 }
 
 function copyCaption() {
-  const text = document.getElementById('caption-area').textContent;
+  const text = captionMode === 'manual' ? manualCaption
+    : (document.getElementById('caption-area') || {}).textContent || '';
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.querySelector('#footer-caption .btn:not(.btn-primary)');
     if (!btn) return;
@@ -674,21 +779,18 @@ function buildSlideDiv(slide, total, layout) {
     <div style="font-size:24px;color:rgba(58,32,16,.25);font-weight:500;line-height:1.2">${index}/${total}</div>
     <div style="font-size:20px;color:rgba(58,32,16,.2);letter-spacing:1px">@yusheng.zhu.14</div>
   </div>`;
-  const disclaimer = '<div style="font-size:22px;color:rgba(58,32,16,.3);line-height:1.5">＊以上為個人操作習慣，非投資建議</div>';
-
   if (layout === 'cover') {
     return `<div style="${base}">
       ${leftBar}
       <div style="position:absolute;width:800px;height:800px;border-radius:50%;background:radial-gradient(circle,rgba(234,217,196,.5),rgba(212,184,150,.2));right:-200px;bottom:-200px"></div>
       <div style="position:absolute;width:560px;height:560px;border-radius:50%;background:rgba(234,217,196,.3);right:-80px;bottom:-80px"></div>
       <div style="position:absolute;top:230px;left:28px;font-family:'Montserrat',sans-serif;font-size:220px;font-weight:900;color:#B8531A;opacity:.08;line-height:1;user-select:none">"</div>
-      <div style="position:absolute;left:88px;top:180px;right:64px;bottom:160px;display:flex;flex-direction:column">
+      <div style="position:absolute;left:88px;top:180px;width:928px;bottom:120px;display:flex;flex-direction:column">
         <div style="font-size:26px;color:#B8531A;letter-spacing:3px;font-weight:500;margin-bottom:28px;flex-shrink:0">${series}</div>
-        <div style="font-size:52px;font-weight:700;color:#3A2010;line-height:1.3;margin-bottom:36px;word-break:break-word;overflow-wrap:break-word;flex-shrink:0">${safeTitle}</div>
+        <div style="font-size:52px;font-weight:700;color:#3A2010;line-height:1.3;margin-bottom:36px;word-break:break-word;overflow-wrap:break-word;flex-shrink:0;max-width:928px">${safeTitle}</div>
         <div style="width:60px;height:5px;background:#B8531A;border-radius:2.5px;margin-bottom:36px;flex-shrink:0"></div>
-        <div class="slide-body" style="flex:1;font-size:28px;color:rgba(58,32,16,.6);line-height:1.7;word-break:break-word;overflow-wrap:break-word;overflow:hidden">${safeBody}</div>
+        <div class="slide-body" style="flex:1;font-size:28px;color:rgba(58,32,16,.6);line-height:1.7;word-break:break-word;overflow-wrap:break-word;overflow:hidden;max-width:928px">${safeBody}</div>
       </div>
-      <div style="position:absolute;bottom:50px;left:88px;right:220px">${disclaimer}</div>
       ${pageNum}
     </div>`;
   }
@@ -697,12 +799,11 @@ function buildSlideDiv(slide, total, layout) {
     return `<div style="${base}">
       ${leftBar}
       <div style="position:absolute;top:80px;left:88px;font-size:26px;color:#B8531A;letter-spacing:3px;font-weight:500">${series}</div>
-      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 80px 160px">
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 80px 120px">
         <div style="font-size:44px;font-weight:700;color:#3A2010;line-height:1.3;text-align:center;word-break:break-word;overflow-wrap:break-word;margin-bottom:40px">${safeTitle}</div>
         <div style="width:200px;height:4px;background:#B8531A;border-radius:2px;margin-bottom:40px;flex-shrink:0"></div>
         <div class="slide-body" style="font-size:28px;color:rgba(58,32,16,.6);line-height:1.7;text-align:center;word-break:break-word;overflow-wrap:break-word;overflow:hidden;max-height:400px">${safeBody}</div>
       </div>
-      <div style="position:absolute;bottom:60px;left:0;right:0;text-align:center">${disclaimer}</div>
       ${pageNum}
     </div>`;
   }
@@ -710,13 +811,12 @@ function buildSlideDiv(slide, total, layout) {
   // content layout (middle slides)
   return `<div style="${base}">
     ${leftBar}
-    <div style="position:absolute;left:88px;top:180px;right:64px;bottom:160px;display:flex;flex-direction:column">
+    <div style="position:absolute;left:88px;top:180px;width:928px;bottom:120px;display:flex;flex-direction:column">
       <div style="font-size:26px;color:#B8531A;letter-spacing:3px;font-weight:500;margin-bottom:28px;flex-shrink:0">${series}</div>
-      <div style="font-size:44px;font-weight:700;color:#3A2010;line-height:1.3;margin-bottom:36px;word-break:break-word;overflow-wrap:break-word;flex-shrink:0">${safeTitle}</div>
+      <div style="font-size:44px;font-weight:700;color:#3A2010;line-height:1.3;margin-bottom:36px;word-break:break-word;overflow-wrap:break-word;flex-shrink:0;max-width:928px">${safeTitle}</div>
       <div style="width:60px;height:5px;background:#B8531A;border-radius:2.5px;margin-bottom:36px;flex-shrink:0"></div>
-      <div class="slide-body" style="flex:1;font-size:28px;color:rgba(58,32,16,.6);line-height:1.7;word-break:break-word;overflow-wrap:break-word;overflow:hidden">${safeBody}</div>
+      <div class="slide-body" style="flex:1;font-size:28px;color:rgba(58,32,16,.6);line-height:1.7;word-break:break-word;overflow-wrap:break-word;overflow:hidden;max-width:928px">${safeBody}</div>
     </div>
-    <div style="position:absolute;bottom:50px;left:88px;right:220px">${disclaimer}</div>
     ${pageNum}
   </div>`;
 }
@@ -819,6 +919,7 @@ async function genImages() {
     try {
       const canvas = await html2canvas(genWrap.firstElementChild, {
         scale: 1, useCORS: true, backgroundColor: '#F5EFE5', logging: false,
+        width: 1080, height: 1350,
       });
       carouselCanvases[i] = canvas;
       if (card) {
