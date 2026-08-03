@@ -239,7 +239,7 @@ router.post('/field-visits/:id/photos', upload.single('photo'), async (req, res)
 });
 
 // ── DELETE /api/field-visits/:id ─────────────────────────
-router.delete('/field-visits/:id', async (req, res) => {
+router.delete('/field-visits/:id', requireManager, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
   try {

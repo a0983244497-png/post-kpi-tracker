@@ -452,7 +452,7 @@
       if (deparDone && !arriDone) actions.push(`<button class="btn btn-warning btn-sm" onclick="openArrive(${v.id})">抵達打卡</button>`);
       if (arriDone && !compDone)  actions.push(`<button class="btn btn-success btn-sm" onclick="openComplete(${v.id})">完成拜訪</button>`);
       actions.push(`<button class="btn btn-ghost btn-sm" onclick="triggerPhoto(${v.id})">📷 照片</button>`);
-      actions.push(`<button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="doDelete(${v.id})">刪除</button>`);
+      if (isMgr) actions.push(`<button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="doDelete(${v.id})">刪除</button>`);
     } else {
       actions.push(`<button class="btn btn-mgr btn-sm" onclick="doReview(${v.id})">✅ 已確認</button>`);
     }
