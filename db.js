@@ -215,6 +215,28 @@ export async function initDb() {
     )
   `);
 
+  // ── 業務外出記錄 ────────────────────────────────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS field_visits (
+      id             SERIAL PRIMARY KEY,
+      staff_name     VARCHAR(100) NOT NULL,
+      visit_date     DATE         NOT NULL DEFAULT CURRENT_DATE,
+      depart_time    TIMESTAMPTZ,
+      arrive_time    TIMESTAMPTZ,
+      complete_time  TIMESTAMPTZ,
+      arrive_lat     NUMERIC(10,7),
+      arrive_lng     NUMERIC(10,7),
+      arrive_address TEXT         DEFAULT '',
+      client_name    VARCHAR(200) DEFAULT '',
+      purpose        TEXT         DEFAULT '',
+      notes          TEXT         DEFAULT '',
+      photo_urls     JSONB        DEFAULT '[]',
+      status         VARCHAR(20)  DEFAULT 'in_progress',
+      created_at     TIMESTAMPTZ  DEFAULT NOW(),
+      updated_at     TIMESTAMPTZ  DEFAULT NOW()
+    )
+  `);
+
   // Seed default staff (unconditional, skips if already exists)
   await pool.query(
     `INSERT INTO staff (name) VALUES ('Gino'),('Darren'),('Josh'),('Jenna'),('路克') ON CONFLICT (name) DO NOTHING`

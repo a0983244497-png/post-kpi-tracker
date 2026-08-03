@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>業務外出記錄</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --success: #16a34a;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-500: #6b7280;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --radius: 10px;
+      --shadow: 0 1px 4px rgba(0,0,0,.12);
+      --shadow-lg: 0 4px 16px rgba(0,0,0,.15);
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--gray-100); color: var(--gray-900); min-height: 100vh; }
+
+    /* ── Header ── */
+    .topbar { background: var(--primary); color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 500; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+    .topbar h1 { font-size: 1.05rem; font-weight: 700; }
+    .topbar a { color: #fff; font-size: .85rem; text-decoration: none; opacity: .85; }
+    .topbar a:hover { opacity: 1; }
+
+    /* ── Toolbar ── */
+    .toolbar { padding: 12px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: #fff; border-bottom: 1px solid var(--gray-200); }
+    .toolbar select { flex: 1; min-width: 120px; padding: 8px 10px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: .9rem; background: var(--gray-50); }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: none; border-radius: 8px; font-size: .9rem; font-weight: 600; cursor: pointer; transition: background .15s, opacity .15s; white-space: nowrap; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #15803d; }
+    .btn-warning { background: var(--warning); color: #fff; }
+    .btn-warning:hover:not(:disabled) { background: #b45309; }
+    .btn-danger  { background: var(--danger);  color: #fff; }
+    .btn-danger:hover:not(:disabled)  { background: #b91c1c; }
+    .btn-sm { padding: 5px 10px; font-size: .8rem; }
+    .btn-ghost { background: transparent; color: var(--gray-700); border: 1px solid var(--gray-200); }
+    .btn-ghost:hover { background: var(--gray-100); }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; background: #fff; border-bottom: 2px solid var(--gray-200); }
+    .tab { flex: 1; padding: 10px; text-align: center; font-size: .9rem; font-weight: 600; color: var(--gray-500); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color .15s, border-color .15s; }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* ── Main Content ── */
+    .content { padding: 14px 16px; max-width: 700px; margin: 0 auto; }
+
+    /* ── Visit Cards ── */
+    .visit-card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 12px; overflow: hidden; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--gray-100); }
+    .card-header-left { display: flex; align-items: center; gap: 10px; }
+    .staff-badge { background: var(--primary); color: #fff; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .9rem; flex-shrink: 0; }
+    .staff-name { font-weight: 700; font-size: 1rem; }
+    .visit-date { font-size: .8rem; color: var(--gray-500); }
+    .status-badge { padding: 3px 9px; border-radius: 999px; font-size: .75rem; font-weight: 700; }
+    .status-in_progress { background: #fef3c7; color: #92400e; }
+    .status-completed    { background: #d1fae5; color: #065f46; }
+
+    .card-body { padding: 12px 14px; }
+    .card-body .info-row { display: flex; gap: 8px; margin-bottom: 6px; align-items: flex-start; font-size: .88rem; }
+    .card-body .info-label { color: var(--gray-500); min-width: 52px; flex-shrink: 0; }
+    .card-body .info-val { color: var(--gray-900); word-break: break-all; }
+    .timeline { display: flex; gap: 0; margin: 10px 0; }
+    .tl-step { flex: 1; text-align: center; position: relative; }
+    .tl-step::before { content:''; position: absolute; top: 12px; left: 0; right: 0; height: 2px; background: var(--gray-200); z-index: 0; }
+    .tl-step:first-child::before { left: 50%; }
+    .tl-step:last-child::before  { right: 50%; }
+    .tl-dot { width: 24px; height: 24px; border-radius: 50%; background: var(--gray-200); border: 2px solid var(--gray-300); margin: 0 auto 4px; position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; font-size: .7rem; }
+    .tl-dot.done { background: var(--success); border-color: var(--success); color: #fff; }
+    .tl-label { font-size: .7rem; color: var(--gray-500); }
+    .tl-time  { font-size: .65rem; color: var(--gray-500); margin-top: 2px; }
+
+    .card-actions { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 14px; background: var(--gray-50); border-top: 1px solid var(--gray-100); }
+
+    .photos-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .photos-row img { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; border: 1px solid var(--gray-200); cursor: pointer; }
+    .add-photo-btn { width: 72px; height: 72px; border-radius: 6px; border: 2px dashed var(--gray-300); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: var(--gray-400); cursor: pointer; background: var(--gray-50); }
+    .add-photo-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ── Map ── */
+    #map-view { display: none; height: calc(100vh - 180px); min-height: 300px; }
+
+    /* ── Modal ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: flex-end; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #fff; width: 100%; max-width: 480px; border-radius: 18px 18px 0 0; padding: 20px 20px 32px; max-height: 90vh; overflow-y: auto; }
+    @media(min-width: 500px) { .modal-overlay { align-items: center; } .modal { border-radius: 14px; margin: 16px; } }
+    .modal-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+    .modal-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--gray-500); padding: 0 4px; }
+    label { display: block; font-size: .85rem; font-weight: 600; color: var(--gray-700); margin-bottom: 4px; }
+    .form-group { margin-bottom: 14px; }
+    input[type=text], input[type=date], textarea, select.form-select {
+      width: 100%; padding: 9px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: .9rem; font-family: inherit;
+      background: var(--gray-50); color: var(--gray-900);
+    }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: var(--primary); background: #fff; }
+    textarea { resize: vertical; min-height: 70px; }
+
+    /* ── Empty state ── */
+    .empty { text-align: center; color: var(--gray-500); padding: 48px 16px; }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+
+    /* ── Loading ── */
+    .loading { text-align: center; color: var(--gray-500); padding: 32px; font-size: .9rem; }
+
+    /* ── Arrive modal confirm GPS ── */
+    .gps-preview { padding: 8px; background: var(--gray-50); border-radius: 8px; font-size: .82rem; color: var(--gray-700); margin-bottom: 10px; min-height: 36px; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>📍 業務外出記錄</h1>
+  <a href="/dashboard">← 主頁</a>
+</div>
+
+<div class="toolbar">
+  <select id="filter-staff" onchange="loadVisits()">
+    <option value="">全部業務</option>
+  </select>
+  <input type="date" id="filter-date" style="flex:1;min-width:120px;padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:.9rem;background:var(--gray-50);" onchange="loadVisits()">
+  <button class="btn btn-primary" onclick="openCreateModal()">＋ 新增外出</button>
+</div>
+
+<div class="tabs">
+  <div class="tab active" id="tab-list" onclick="switchTab('list')">清單</div>
+  <div class="tab" id="tab-map"  onclick="switchTab('map')">地圖</div>
+</div>
+
+<div id="list-view" class="content">
+  <div class="loading">載入中…</div>
+</div>
+<div id="map-view"></div>
+
+<!-- ── 建立外出 Modal ── -->
+<div class="modal-overlay" id="modal-create">
+  <div class="modal">
+    <div class="modal-title">新增外出記錄
+      <button class="modal-close" onclick="closeModal('modal-create')">×</button>
+    </div>
+    <div class="form-group">
+      <label>業務人員</label>
+      <select class="form-select" id="create-staff"></select>
+    </div>
+    <div class="form-group">
+      <label>日期</label>
+      <input type="date" id="create-date">
+    </div>
+    <div class="form-group">
+      <label>客戶名稱</label>
+      <input type="text" id="create-client" placeholder="客戶/公司名稱（可之後填）">
+    </div>
+    <div class="form-group">
+      <label>拜訪目的</label>
+      <input type="text" id="create-purpose" placeholder="例：開戶說明、課後追蹤…">
+    </div>
+    <button class="btn btn-primary" style="width:100%" onclick="submitCreate()">建立</button>
+  </div>
+</div>
+
+<!-- ── 抵達打卡 Modal ── -->
+<div class="modal-overlay" id="modal-arrive">
+  <div class="modal">
+    <div class="modal-title">抵達打卡
+      <button class="modal-close" onclick="closeModal('modal-arrive')">×</button>
+    </div>
+    <p style="font-size:.85rem;color:var(--gray-500);margin-bottom:12px;">點「取得位置」使用 GPS，或手動輸入地址。</p>
+    <div class="form-group">
+      <div class="gps-preview" id="gps-preview">尚未取得位置</div>
+      <button class="btn btn-ghost btn-sm" onclick="getGps()" id="gps-btn">📡 取得 GPS 位置</button>
+    </div>
+    <div class="form-group">
+      <label>地址（手動輸入或 GPS 後自動填入）</label>
+      <input type="text" id="arrive-address" placeholder="台北市信義區…">
+    </div>
+    <input type="hidden" id="arrive-lat">
+    <input type="hidden" id="arrive-lng">
+    <button class="btn btn-warning" style="width:100%;margin-top:4px" onclick="submitArrive()">確認抵達</button>
+  </div>
+</div>
+
+<!-- ── 完成 Modal ── -->
+<div class="modal-overlay" id="modal-complete">
+  <div class="modal">
+    <div class="modal-title">完成拜訪
+      <button class="modal-close" onclick="closeModal('modal-complete')">×</button>
+    </div>
+    <div class="form-group">
+      <label>備註（成果、後續跟進…）</label>
+      <textarea id="complete-notes" placeholder="例：客戶有意願，下週再跟進…"></textarea>
+    </div>
+    <button class="btn btn-success" style="width:100%" onclick="submitComplete()">完成</button>
+  </div>
+</div>
+
+<!-- ── 圖片預覽 Modal ── -->
+<div class="modal-overlay" id="modal-img" onclick="closeModal('modal-img')">
+  <img id="modal-img-src" style="max-width:95vw;max-height:90vh;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,.5)">
+</div>
+
+<input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none" onchange="uploadPhoto(event)">
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  let allVisits = [];
+  let activeVisitId = null;
+  let map = null;
+  let markersLayer = null;
+  let currentTab = 'list';
+
+  // ── Helpers ──────────────────────────────────────────────
+  function qs(sel) { return document.querySelector(sel); }
+  function fmtTime(ts) {
+    if (!ts) return null;
+    const d = new Date(ts);
+    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+  function twToday() {
+    return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+  }
+
+  async function api(path, opts = {}) {
+    const r = await fetch(path, { credentials: 'same-origin', ...opts });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || r.status); }
+    return r.json();
+  }
+
+  // ── Init ─────────────────────────────────────────────────
+  async function init() {
+    await loadStaffList();
+    const dateInput = qs('#filter-date');
+    dateInput.value = twToday();
+    await loadVisits();
+  }
+
+  async function loadStaffList() {
+    const staff = await api('/api/staff').catch(() => []);
+    const sel   = qs('#filter-staff');
+    const cSel  = qs('#create-staff');
+    staff.forEach(s => {
+      sel.innerHTML  += `<option value="${s.name}">${s.name}</option>`;
+      cSel.innerHTML += `<option value="${s.name}">${s.name}</option>`;
+    });
+  }
+
+  // ── Load Visits ──────────────────────────────────────────
+  async function loadVisits() {
+    const staff = qs('#filter-staff').value;
+    const date  = qs('#filter-date').value;
+    let url = '/api/field-visits?';
+    if (staff) url += `staff_name=${encodeURIComponent(staff)}&`;
+    if (date)  url += `date=${date}`;
+    qs('#list-view').innerHTML = '<div class="loading">載入中…</div>';
+    try {
+      allVisits = await api(url);
+      renderList();
+      if (currentTab === 'map') renderMap();
+    } catch (e) {
+      qs('#list-view').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div>${e.message}</div>`;
+    }
+  }
+
+  // ── Render List ──────────────────────────────────────────
+  function renderList() {
+    const container = qs('#list-view');
+    if (!allVisits.length) {
+      container.innerHTML = '<div class="empty"><div class="empty-icon">📋</div>今日尚無外出記錄</div>';
+      return;
+    }
+    container.innerHTML = allVisits.map(v => visitCard(v)).join('');
+  }
+
+  function visitCard(v) {
+    const initials = v.staff_name.slice(0, 2);
+    const deparDone = !!v.depart_time;
+    const arriDone  = !!v.arrive_time;
+    const compDone  = v.status === 'completed';
+
+    const photos = (v.photo_urls || []).map(url =>
+      `<img src="${url}" onclick="showImg('${url}')" alt="photo">`
+    ).join('');
+
+    const actions = [];
+    if (!deparDone) actions.push(`<button class="btn btn-primary btn-sm" onclick="doDepart(${v.id})">出發 →</button>`);
+    if (deparDone && !arriDone) actions.push(`<button class="btn btn-warning btn-sm" onclick="openArrive(${v.id})">抵達打卡</button>`);
+    if (arriDone && !compDone)  actions.push(`<button class="btn btn-success btn-sm" onclick="openComplete(${v.id})">完成拜訪</button>`);
+    actions.push(`<button class="btn btn-ghost btn-sm" onclick="triggerPhoto(${v.id})">📷 上傳照片</button>`);
+    actions.push(`<button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="doDelete(${v.id})">刪除</button>`);
+
+    return `
+    <div class="visit-card" id="card-${v.id}">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="staff-badge">${initials}</div>
+          <div>
+            <div class="staff-name">${v.staff_name}</div>
+            <div class="visit-date">${v.visit_date}</div>
+          </div>
+        </div>
+        <span class="status-badge status-${v.status}">${v.status === 'completed' ? '已完成' : '進行中'}</span>
+      </div>
+      <div class="card-body">
+        ${v.client_name ? `<div class="info-row"><span class="info-label">客戶</span><span class="info-val">${v.client_name}</span></div>` : ''}
+        ${v.purpose     ? `<div class="info-row"><span class="info-label">目的</span><span class="info-val">${v.purpose}</span></div>` : ''}
+        ${v.arrive_address ? `<div class="info-row"><span class="info-label">地址</span><span class="info-val">${v.arrive_address}</span></div>` : ''}
+        ${v.notes       ? `<div class="info-row"><span class="info-label">備註</span><span class="info-val">${v.notes}</span></div>` : ''}
+
+        <div class="timeline">
+          <div class="tl-step">
+            <div class="tl-dot ${deparDone ? 'done' : ''}">✓</div>
+            <div class="tl-label">出發</div>
+            <div class="tl-time">${fmtTime(v.depart_time) || '—'}</div>
+          </div>
+          <div class="tl-step">
+            <div class="tl-dot ${arriDone ? 'done' : ''}">✓</div>
+            <div class="tl-label">抵達</div>
+            <div class="tl-time">${fmtTime(v.arrive_time) || '—'}</div>
+          </div>
+          <div class="tl-step">
+            <div class="tl-dot ${compDone ? 'done' : ''}">✓</div>
+            <div class="tl-label">完成</div>
+            <div class="tl-time">${fmtTime(v.complete_time) || '—'}</div>
+          </div>
+        </div>
+
+        <div class="photos-row">
+          ${photos}
+        </div>
+      </div>
+      <div class="card-actions">${actions.join('')}</div>
+    </div>`;
+  }
+
+  // ── Tabs ─────────────────────────────────────────────────
+  function switchTab(tab) {
+    currentTab = tab;
+    qs('#tab-list').classList.toggle('active', tab === 'list');
+    qs('#tab-map').classList.toggle('active',  tab === 'map');
+    qs('#list-view').style.display = tab === 'list' ? '' : 'none';
+    qs('#map-view').style.display  = tab === 'map'  ? 'block' : 'none';
+    if (tab === 'map') renderMap();
+  }
+
+  function renderMap() {
+    const mapEl = qs('#map-view');
+    if (!map) {
+      map = L.map('map-view').setView([25.033, 121.565], 12);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+      markersLayer = L.layerGroup().addTo(map);
+    } else {
+      markersLayer.clearLayers();
+      map.invalidateSize();
+    }
+
+    const withGps = allVisits.filter(v => v.arrive_lat && v.arrive_lng);
+    if (!withGps.length) return;
+
+    const bounds = [];
+    withGps.forEach(v => {
+      const lat = parseFloat(v.arrive_lat);
+      const lng = parseFloat(v.arrive_lng);
+      bounds.push([lat, lng]);
+      L.marker([lat, lng])
+        .addTo(markersLayer)
+        .bindPopup(`<b>${v.staff_name}</b><br>${v.client_name || '（未填客戶）'}<br>${v.arrive_address || ''}`);
+    });
+    map.fitBounds(bounds, { padding: [30, 30] });
+  }
+
+  // ── Modal helpers ─────────────────────────────────────────
+  function openModal(id) { qs('#' + id).classList.add('open'); }
+  function closeModal(id) { qs('#' + id).classList.remove('open'); }
+
+  // ── Create ────────────────────────────────────────────────
+  function openCreateModal() {
+    qs('#create-date').value = twToday();
+    qs('#create-client').value = '';
+    qs('#create-purpose').value = '';
+    openModal('modal-create');
+  }
+
+  async function submitCreate() {
+    const staff_name  = qs('#create-staff').value;
+    const visit_date  = qs('#create-date').value;
+    const client_name = qs('#create-client').value.trim();
+    const purpose     = qs('#create-purpose').value.trim();
+    if (!staff_name) return alert('請選擇業務人員');
+    try {
+      await api('/api/field-visits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staff_name, visit_date, client_name, purpose }),
+      });
+      closeModal('modal-create');
+      loadVisits();
+    } catch (e) { alert('建立失敗：' + e.message); }
+  }
+
+  // ── Depart ───────────────────────────────────────────────
+  async function doDepart(id) {
+    try {
+      await api(`/api/field-visits/${id}/depart`, { method: 'POST' });
+      loadVisits();
+    } catch (e) { alert('出發打卡失敗：' + e.message); }
+  }
+
+  // ── Arrive ────────────────────────────────────────────────
+  function openArrive(id) {
+    activeVisitId = id;
+    qs('#arrive-address').value = '';
+    qs('#arrive-lat').value = '';
+    qs('#arrive-lng').value = '';
+    qs('#gps-preview').textContent = '尚未取得位置';
+    openModal('modal-arrive');
+  }
+
+  function getGps() {
+    const btn = qs('#gps-btn');
+    btn.disabled = true;
+    btn.textContent = '📡 定位中…';
+    if (!navigator.geolocation) {
+      btn.disabled = false; btn.textContent = '📡 取得 GPS 位置';
+      return alert('此瀏覽器不支援 GPS');
+    }
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const lat = pos.coords.latitude.toFixed(7);
+      const lng = pos.coords.longitude.toFixed(7);
+      qs('#arrive-lat').value = lat;
+      qs('#arrive-lng').value = lng;
+      qs('#gps-preview').textContent = `📍 ${lat}, ${lng}  精度 ±${Math.round(pos.coords.accuracy)}m`;
+      btn.disabled = false; btn.textContent = '📡 取得 GPS 位置';
+      // Reverse geocode
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+        const j = await r.json();
+        const addr = j.display_name || '';
+        if (addr && !qs('#arrive-address').value) qs('#arrive-address').value = addr;
+      } catch (_) {}
+    }, err => {
+      btn.disabled = false; btn.textContent = '📡 取得 GPS 位置';
+      alert('無法取得位置：' + err.message);
+    }, { enableHighAccuracy: true, timeout: 15000 });
+  }
+
+  async function submitArrive() {
+    const lat     = qs('#arrive-lat').value || null;
+    const lng     = qs('#arrive-lng').value || null;
+    const address = qs('#arrive-address').value.trim();
+    try {
+      await api(`/api/field-visits/${activeVisitId}/arrive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat, lng, address }),
+      });
+      closeModal('modal-arrive');
+      loadVisits();
+    } catch (e) { alert('抵達打卡失敗：' + e.message); }
+  }
+
+  // ── Complete ──────────────────────────────────────────────
+  function openComplete(id) {
+    activeVisitId = id;
+    qs('#complete-notes').value = '';
+    openModal('modal-complete');
+  }
+
+  async function submitComplete() {
+    const notes = qs('#complete-notes').value.trim();
+    try {
+      await api(`/api/field-visits/${activeVisitId}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes }),
+      });
+      closeModal('modal-complete');
+      loadVisits();
+    } catch (e) { alert('完成打卡失敗：' + e.message); }
+  }
+
+  // ── Photos ────────────────────────────────────────────────
+  function triggerPhoto(id) {
+    activeVisitId = id;
+    qs('#photo-input').value = '';
+    qs('#photo-input').click();
+  }
+
+  async function uploadPhoto(evt) {
+    const file = evt.target.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('photo', file);
+    try {
+      await fetch(`/api/field-visits/${activeVisitId}/photos`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        body: fd,
+      }).then(async r => {
+        if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error || r.status); }
+      });
+      loadVisits();
+    } catch (e) { alert('上傳失敗：' + e.message); }
+  }
+
+  function showImg(url) {
+    qs('#modal-img-src').src = url;
+    openModal('modal-img');
+  }
+
+  // ── Delete ────────────────────────────────────────────────
+  async function doDelete(id) {
+    if (!confirm('確定刪除此記錄？')) return;
+    try {
+      await api(`/api/field-visits/${id}`, { method: 'DELETE' });
+      loadVisits();
+    } catch (e) { alert('刪除失敗：' + e.message); }
+  }
+
+  // ── Start ─────────────────────────────────────────────────
+  init();
+</script>
+</body>
+</html>

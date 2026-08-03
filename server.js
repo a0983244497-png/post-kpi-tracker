@@ -12,6 +12,7 @@ import sessionsRouter       from './routes/sessions.js';
 import funnelRouter         from './routes/funnel.js';
 import contentCalendarRouter from './routes/contentCalendar.js';
 import claudeProxyRouter     from './routes/claudeProxy.js';
+import fieldVisitsRouter     from './routes/fieldVisits.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -76,6 +77,7 @@ app.use('/api', requireAuth, sessionsRouter);
 app.use('/api', requireAuth, funnelRouter);
 app.use('/api/content-calendar', requireAuth, contentCalendarRouter);
 app.use('/api/claude-proxy',    requireAuth, claudeProxyRouter);
+app.use('/api', requireAuth, fieldVisitsRouter);
 
 // ─── 靜態頁面（受 Auth 保護）────────────────────────────
 app.get('/dashboard', requireAuth, (req, res) => {
