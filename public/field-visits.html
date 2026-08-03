@@ -14,6 +14,7 @@
       --success: #16a34a;
       --warning: #d97706;
       --danger: #dc2626;
+      --mgr: #7c3aed;
       --gray-50: #f9fafb;
       --gray-100: #f3f4f6;
       --gray-200: #e5e7eb;
@@ -22,22 +23,25 @@
       --gray-900: #111827;
       --radius: 10px;
       --shadow: 0 1px 4px rgba(0,0,0,.12);
-      --shadow-lg: 0 4px 16px rgba(0,0,0,.15);
     }
 
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--gray-100); color: var(--gray-900); min-height: 100vh; }
 
     /* ── Header ── */
-    .topbar { background: var(--primary); color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 500; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
-    .topbar h1 { font-size: 1.05rem; font-weight: 700; }
-    .topbar a { color: #fff; font-size: .85rem; text-decoration: none; opacity: .85; }
+    .topbar { background: var(--primary); color: #fff; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; position: sticky; top: 0; z-index: 500; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+    .topbar h1 { font-size: 1rem; font-weight: 700; white-space: nowrap; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    .topbar a { color: #fff; font-size: .82rem; text-decoration: none; opacity: .85; }
     .topbar a:hover { opacity: 1; }
+    .mgr-toggle { background: rgba(255,255,255,.18); border: none; color: #fff; font-size: .78rem; font-weight: 700; padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+    .mgr-toggle:hover { background: rgba(255,255,255,.28); }
+    .mgr-toggle.active { background: var(--mgr); }
 
     /* ── Toolbar ── */
-    .toolbar { padding: 12px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: #fff; border-bottom: 1px solid var(--gray-200); }
-    .toolbar select { flex: 1; min-width: 120px; padding: 8px 10px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: .9rem; background: var(--gray-50); }
-    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: none; border-radius: 8px; font-size: .9rem; font-weight: 600; cursor: pointer; transition: background .15s, opacity .15s; white-space: nowrap; }
-    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .toolbar { padding: 10px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: #fff; border-bottom: 1px solid var(--gray-200); }
+    .toolbar select { flex: 1; min-width: 120px; padding: 8px 10px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: .88rem; background: var(--gray-50); }
+    .btn { display: inline-flex; align-items: center; gap: 5px; padding: 8px 13px; border: none; border-radius: 8px; font-size: .88rem; font-weight: 600; cursor: pointer; transition: background .15s, opacity .15s; white-space: nowrap; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
     .btn-primary { background: var(--primary); color: #fff; }
     .btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
     .btn-success { background: var(--success); color: #fff; }
@@ -46,104 +50,126 @@
     .btn-warning:hover:not(:disabled) { background: #b45309; }
     .btn-danger  { background: var(--danger);  color: #fff; }
     .btn-danger:hover:not(:disabled)  { background: #b91c1c; }
-    .btn-sm { padding: 5px 10px; font-size: .8rem; }
+    .btn-mgr     { background: var(--mgr);     color: #fff; }
+    .btn-mgr:hover:not(:disabled)     { background: #6d28d9; }
+    .btn-sm { padding: 5px 9px; font-size: .78rem; }
     .btn-ghost { background: transparent; color: var(--gray-700); border: 1px solid var(--gray-200); }
     .btn-ghost:hover { background: var(--gray-100); }
 
     /* ── Tabs ── */
     .tabs { display: flex; background: #fff; border-bottom: 2px solid var(--gray-200); }
-    .tab { flex: 1; padding: 10px; text-align: center; font-size: .9rem; font-weight: 600; color: var(--gray-500); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color .15s, border-color .15s; }
+    .tab { flex: 1; padding: 10px 6px; text-align: center; font-size: .88rem; font-weight: 600; color: var(--gray-500); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color .15s, border-color .15s; white-space: nowrap; }
     .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab.tab-mgr { color: var(--mgr); }
+    .tab.tab-mgr.active { border-bottom-color: var(--mgr); }
+    .tab-badge { display: inline-block; background: var(--danger); color: #fff; font-size: .65rem; font-weight: 800; padding: 1px 5px; border-radius: 999px; margin-left: 4px; vertical-align: middle; }
 
     /* ── Main Content ── */
     .content { padding: 14px 16px; max-width: 700px; margin: 0 auto; }
 
     /* ── Visit Cards ── */
     .visit-card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 12px; overflow: hidden; }
-    .card-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--gray-100); }
-    .card-header-left { display: flex; align-items: center; gap: 10px; }
-    .staff-badge { background: var(--primary); color: #fff; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .9rem; flex-shrink: 0; }
-    .staff-name { font-weight: 700; font-size: 1rem; }
-    .visit-date { font-size: .8rem; color: var(--gray-500); }
-    .status-badge { padding: 3px 9px; border-radius: 999px; font-size: .75rem; font-weight: 700; }
+    .visit-card.notify-flag { border-left: 3px solid var(--mgr); }
+    .card-header { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; border-bottom: 1px solid var(--gray-100); gap: 8px; }
+    .card-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .staff-badge { background: var(--primary); color: #fff; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+    .staff-name { font-weight: 700; font-size: .95rem; }
+    .visit-date { font-size: .78rem; color: var(--gray-500); }
+    .card-badges { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .status-badge { padding: 3px 8px; border-radius: 999px; font-size: .72rem; font-weight: 700; }
     .status-in_progress { background: #fef3c7; color: #92400e; }
     .status-completed    { background: #d1fae5; color: #065f46; }
+    .notify-badge { background: #ede9fe; color: #5b21b6; padding: 3px 7px; border-radius: 999px; font-size: .68rem; font-weight: 700; }
+    .reviewed-badge { background: #d1fae5; color: #065f46; padding: 3px 7px; border-radius: 999px; font-size: .68rem; font-weight: 700; }
 
-    .card-body { padding: 12px 14px; }
-    .card-body .info-row { display: flex; gap: 8px; margin-bottom: 6px; align-items: flex-start; font-size: .88rem; }
-    .card-body .info-label { color: var(--gray-500); min-width: 52px; flex-shrink: 0; }
+    .card-body { padding: 11px 14px; }
+    .card-body .info-row { display: flex; gap: 8px; margin-bottom: 5px; align-items: flex-start; font-size: .86rem; }
+    .card-body .info-label { color: var(--gray-500); min-width: 60px; flex-shrink: 0; font-size: .8rem; }
     .card-body .info-val { color: var(--gray-900); word-break: break-all; }
+    .planned-times { display: flex; gap: 10px; margin-bottom: 8px; }
+    .planned-chip { background: var(--gray-100); border-radius: 6px; padding: 4px 8px; font-size: .78rem; color: var(--gray-700); }
+    .planned-chip span { font-weight: 700; color: var(--primary); }
+
     .timeline { display: flex; gap: 0; margin: 10px 0; }
     .tl-step { flex: 1; text-align: center; position: relative; }
-    .tl-step::before { content:''; position: absolute; top: 12px; left: 0; right: 0; height: 2px; background: var(--gray-200); z-index: 0; }
+    .tl-step::before { content:''; position: absolute; top: 11px; left: 0; right: 0; height: 2px; background: var(--gray-200); z-index: 0; }
     .tl-step:first-child::before { left: 50%; }
     .tl-step:last-child::before  { right: 50%; }
-    .tl-dot { width: 24px; height: 24px; border-radius: 50%; background: var(--gray-200); border: 2px solid var(--gray-300); margin: 0 auto 4px; position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; font-size: .7rem; }
+    .tl-dot { width: 22px; height: 22px; border-radius: 50%; background: var(--gray-200); border: 2px solid var(--gray-300); margin: 0 auto 4px; position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; font-size: .65rem; }
     .tl-dot.done { background: var(--success); border-color: var(--success); color: #fff; }
-    .tl-label { font-size: .7rem; color: var(--gray-500); }
-    .tl-time  { font-size: .65rem; color: var(--gray-500); margin-top: 2px; }
+    .tl-label { font-size: .68rem; color: var(--gray-500); }
+    .tl-time  { font-size: .62rem; color: var(--gray-500); margin-top: 2px; }
 
-    .card-actions { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 14px; background: var(--gray-50); border-top: 1px solid var(--gray-100); }
+    .card-actions { display: flex; gap: 7px; flex-wrap: wrap; padding: 9px 14px; background: var(--gray-50); border-top: 1px solid var(--gray-100); }
 
     .photos-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-    .photos-row img { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; border: 1px solid var(--gray-200); cursor: pointer; }
-    .add-photo-btn { width: 72px; height: 72px; border-radius: 6px; border: 2px dashed var(--gray-300); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: var(--gray-400); cursor: pointer; background: var(--gray-50); }
-    .add-photo-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .photos-row img { width: 68px; height: 68px; object-fit: cover; border-radius: 6px; border: 1px solid var(--gray-200); cursor: pointer; }
 
     /* ── Map ── */
-    #map-view { display: none; height: calc(100vh - 180px); min-height: 300px; }
+    #map-view { display: none; height: calc(100vh - 185px); min-height: 300px; }
 
     /* ── Modal ── */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: flex-end; justify-content: center; }
     .modal-overlay.open { display: flex; }
-    .modal { background: #fff; width: 100%; max-width: 480px; border-radius: 18px 18px 0 0; padding: 20px 20px 32px; max-height: 90vh; overflow-y: auto; }
+    .modal { background: #fff; width: 100%; max-width: 480px; border-radius: 18px 18px 0 0; padding: 20px 20px 32px; max-height: 92vh; overflow-y: auto; }
     @media(min-width: 500px) { .modal-overlay { align-items: center; } .modal { border-radius: 14px; margin: 16px; } }
-    .modal-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+    .modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
     .modal-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--gray-500); padding: 0 4px; }
-    label { display: block; font-size: .85rem; font-weight: 600; color: var(--gray-700); margin-bottom: 4px; }
-    .form-group { margin-bottom: 14px; }
-    input[type=text], input[type=date], textarea, select.form-select {
-      width: 100%; padding: 9px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: .9rem; font-family: inherit;
+    label { display: block; font-size: .83rem; font-weight: 600; color: var(--gray-700); margin-bottom: 4px; }
+    .form-group { margin-bottom: 13px; }
+    .form-row { display: flex; gap: 10px; }
+    .form-row .form-group { flex: 1; }
+    input[type=text], input[type=date], input[type=time], input[type=password], textarea, select.form-select {
+      width: 100%; padding: 8px 11px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: .88rem; font-family: inherit;
       background: var(--gray-50); color: var(--gray-900);
     }
     input:focus, textarea:focus, select:focus { outline: none; border-color: var(--primary); background: #fff; }
-    textarea { resize: vertical; min-height: 70px; }
+    textarea { resize: vertical; min-height: 65px; }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; }
+    .checkbox-row input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--mgr); }
+    .checkbox-row label { margin: 0; font-size: .88rem; font-weight: 600; color: var(--gray-700); cursor: pointer; }
 
-    /* ── Empty state ── */
-    .empty { text-align: center; color: var(--gray-500); padding: 48px 16px; }
-    .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+    /* ── Empty / Loading ── */
+    .empty { text-align: center; color: var(--gray-500); padding: 44px 16px; }
+    .empty-icon { font-size: 2.2rem; margin-bottom: 10px; }
+    .loading { text-align: center; color: var(--gray-500); padding: 28px; font-size: .9rem; }
 
-    /* ── Loading ── */
-    .loading { text-align: center; color: var(--gray-500); padding: 32px; font-size: .9rem; }
+    /* ── GPS preview ── */
+    .gps-preview { padding: 8px; background: var(--gray-50); border-radius: 8px; font-size: .8rem; color: var(--gray-700); margin-bottom: 10px; min-height: 34px; }
 
-    /* ── Arrive modal confirm GPS ── */
-    .gps-preview { padding: 8px; background: var(--gray-50); border-radius: 8px; font-size: .82rem; color: var(--gray-700); margin-bottom: 10px; min-height: 36px; }
+    /* ── Manager panel ── */
+    .mgr-section-hd { font-size: .75rem; font-weight: 700; color: var(--mgr); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid #ede9fe; }
   </style>
 </head>
 <body>
 
 <div class="topbar">
   <h1>📍 業務外出記錄</h1>
-  <a href="/dashboard">← 主頁</a>
+  <div class="topbar-right">
+    <button class="mgr-toggle" id="mgr-toggle-btn" onclick="toggleManagerMode()">🔐 主管</button>
+    <a href="/index.html">← 主頁</a>
+  </div>
 </div>
 
 <div class="toolbar">
   <select id="filter-staff" onchange="loadVisits()">
     <option value="">全部業務</option>
   </select>
-  <input type="date" id="filter-date" style="flex:1;min-width:120px;padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:.9rem;background:var(--gray-50);" onchange="loadVisits()">
+  <input type="date" id="filter-date" style="flex:1;min-width:118px;padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:.88rem;background:var(--gray-50);" onchange="loadVisits()">
   <button class="btn btn-primary" onclick="openCreateModal()">＋ 新增外出</button>
 </div>
 
-<div class="tabs">
+<div class="tabs" id="tabs-bar">
   <div class="tab active" id="tab-list" onclick="switchTab('list')">清單</div>
   <div class="tab" id="tab-map"  onclick="switchTab('map')">地圖</div>
+  <div class="tab tab-mgr" id="tab-mgr" style="display:none" onclick="switchTab('mgr')">
+    主管待看<span class="tab-badge" id="pending-badge" style="display:none"></span>
+  </div>
 </div>
 
-<div id="list-view" class="content">
-  <div class="loading">載入中…</div>
-</div>
+<div id="list-view" class="content"><div class="loading">載入中…</div></div>
 <div id="map-view"></div>
+<div id="mgr-view" class="content" style="display:none"></div>
 
 <!-- ── 建立外出 Modal ── -->
 <div class="modal-overlay" id="modal-create">
@@ -151,13 +177,15 @@
     <div class="modal-title">新增外出記錄
       <button class="modal-close" onclick="closeModal('modal-create')">×</button>
     </div>
-    <div class="form-group">
-      <label>業務人員</label>
-      <select class="form-select" id="create-staff"></select>
-    </div>
-    <div class="form-group">
-      <label>日期</label>
-      <input type="date" id="create-date">
+    <div class="form-row">
+      <div class="form-group">
+        <label>業務人員</label>
+        <select class="form-select" id="create-staff"></select>
+      </div>
+      <div class="form-group">
+        <label>日期</label>
+        <input type="date" id="create-date">
+      </div>
     </div>
     <div class="form-group">
       <label>客戶名稱</label>
@@ -167,7 +195,21 @@
       <label>拜訪目的</label>
       <input type="text" id="create-purpose" placeholder="例：開戶說明、課後追蹤…">
     </div>
-    <button class="btn btn-primary" style="width:100%" onclick="submitCreate()">建立</button>
+    <div class="form-row">
+      <div class="form-group">
+        <label>預計出發時間</label>
+        <input type="time" id="create-plan-depart">
+      </div>
+      <div class="form-group">
+        <label>預計回來時間</label>
+        <input type="time" id="create-plan-return">
+      </div>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="create-notify-mgr">
+      <label for="create-notify-mgr">🔔 告知主管（Gino）此次外出</label>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="submitCreate()">建立</button>
   </div>
 </div>
 
@@ -177,13 +219,13 @@
     <div class="modal-title">抵達打卡
       <button class="modal-close" onclick="closeModal('modal-arrive')">×</button>
     </div>
-    <p style="font-size:.85rem;color:var(--gray-500);margin-bottom:12px;">點「取得位置」使用 GPS，或手動輸入地址。</p>
+    <p style="font-size:.83rem;color:var(--gray-500);margin-bottom:12px;">點「取得位置」使用 GPS，或手動輸入地址。</p>
     <div class="form-group">
       <div class="gps-preview" id="gps-preview">尚未取得位置</div>
       <button class="btn btn-ghost btn-sm" onclick="getGps()" id="gps-btn">📡 取得 GPS 位置</button>
     </div>
     <div class="form-group">
-      <label>地址（手動輸入或 GPS 後自動填入）</label>
+      <label>地址（GPS 後自動填入，或手動輸入）</label>
       <input type="text" id="arrive-address" placeholder="台北市信義區…">
     </div>
     <input type="hidden" id="arrive-lat">
@@ -206,6 +248,22 @@
   </div>
 </div>
 
+<!-- ── 主管模式解鎖 Modal ── -->
+<div class="modal-overlay" id="modal-mgr-login">
+  <div class="modal">
+    <div class="modal-title" style="color:var(--mgr)">🔐 主管模式
+      <button class="modal-close" onclick="closeModal('modal-mgr-login')">×</button>
+    </div>
+    <p style="font-size:.85rem;color:var(--gray-500);margin-bottom:16px;">輸入主管密碼以檢視待看清單與確認外出。</p>
+    <div class="form-group">
+      <label>主管密碼</label>
+      <input type="password" id="mgr-pw-input" placeholder="請輸入…" onkeydown="if(event.key==='Enter')submitMgrLogin()">
+    </div>
+    <div id="mgr-login-err" style="color:var(--danger);font-size:.82rem;margin-bottom:8px;display:none"></div>
+    <button class="btn btn-mgr" style="width:100%" onclick="submitMgrLogin()">登入主管模式</button>
+  </div>
+</div>
+
 <!-- ── 圖片預覽 Modal ── -->
 <div class="modal-overlay" id="modal-img" onclick="closeModal('modal-img')">
   <img id="modal-img-src" style="max-width:95vw;max-height:90vh;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,.5)">
@@ -215,34 +273,120 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  let allVisits = [];
+  let allVisits    = [];
+  let pendingList  = [];
   let activeVisitId = null;
-  let map = null;
-  let markersLayer = null;
-  let currentTab = 'list';
+  let map = null, markersLayer = null;
+  let currentTab   = 'list';
+  let mgrKey       = sessionStorage.getItem('mgr_key') || '';
+  let isMgr        = false;
 
-  // ── Helpers ──────────────────────────────────────────────
-  function qs(sel) { return document.querySelector(sel); }
+  const qs = sel => document.querySelector(sel);
+
   function fmtTime(ts) {
     if (!ts) return null;
     const d = new Date(ts);
-    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
   }
   function twToday() {
     return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
   }
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
   async function api(path, opts = {}) {
-    const r = await fetch(path, { credentials: 'same-origin', ...opts });
+    const headers = { ...(opts.headers || {}) };
+    if (mgrKey) headers['x-manager-key'] = mgrKey;
+    const r = await fetch(path, { credentials: 'same-origin', ...opts, headers });
     if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || r.status); }
     return r.json();
+  }
+
+  // ── Manager mode ─────────────────────────────────────────
+  function toggleManagerMode() {
+    if (isMgr) {
+      exitMgrMode();
+    } else {
+      qs('#mgr-pw-input').value = '';
+      qs('#mgr-login-err').style.display = 'none';
+      openModal('modal-mgr-login');
+    }
+  }
+
+  async function submitMgrLogin() {
+    const pw = qs('#mgr-pw-input').value;
+    if (!pw) return;
+    // Verify by calling the pending-count endpoint
+    const testHeaders = { 'x-manager-key': pw };
+    const r = await fetch('/api/field-visits/pending-count', { credentials: 'same-origin', headers: testHeaders });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      qs('#mgr-login-err').textContent = e.error || '密碼錯誤';
+      qs('#mgr-login-err').style.display = '';
+      return;
+    }
+    mgrKey = pw;
+    sessionStorage.setItem('mgr_key', pw);
+    isMgr = true;
+    closeModal('modal-mgr-login');
+    qs('#mgr-toggle-btn').classList.add('active');
+    qs('#mgr-toggle-btn').textContent = '✅ 主管';
+    qs('#tab-mgr').style.display = '';
+    await loadPendingCount();
+    if (currentTab === 'list') await loadVisits();
+  }
+
+  function exitMgrMode() {
+    mgrKey = '';
+    sessionStorage.removeItem('mgr_key');
+    isMgr = false;
+    qs('#mgr-toggle-btn').classList.remove('active');
+    qs('#mgr-toggle-btn').textContent = '🔐 主管';
+    qs('#tab-mgr').style.display = 'none';
+    if (currentTab === 'mgr') switchTab('list');
+    qs('#pending-badge').style.display = 'none';
+    loadVisits();
+  }
+
+  async function tryRestoreMgrSession() {
+    if (!mgrKey) return;
+    const r = await fetch('/api/field-visits/pending-count', {
+      credentials: 'same-origin',
+      headers: { 'x-manager-key': mgrKey },
+    });
+    if (r.ok) {
+      isMgr = true;
+      qs('#mgr-toggle-btn').classList.add('active');
+      qs('#mgr-toggle-btn').textContent = '✅ 主管';
+      qs('#tab-mgr').style.display = '';
+      const j = await r.json();
+      updateBadge(j.count);
+    } else {
+      sessionStorage.removeItem('mgr_key');
+      mgrKey = '';
+    }
+  }
+
+  async function loadPendingCount() {
+    if (!isMgr) return;
+    try {
+      const { count } = await api('/api/field-visits/pending-count');
+      updateBadge(count);
+    } catch (_) {}
+  }
+
+  function updateBadge(count) {
+    const badge = qs('#pending-badge');
+    if (count > 0) { badge.textContent = count; badge.style.display = ''; }
+    else badge.style.display = 'none';
+    const tabLabel = qs('#tab-mgr');
+    tabLabel.childNodes[0].textContent = count > 0 ? `主管待看` : '主管待看';
   }
 
   // ── Init ─────────────────────────────────────────────────
   async function init() {
     await loadStaffList();
-    const dateInput = qs('#filter-date');
-    dateInput.value = twToday();
+    qs('#filter-date').value = twToday();
+    await tryRestoreMgrSession();
     await loadVisits();
   }
 
@@ -251,9 +395,23 @@
     const sel   = qs('#filter-staff');
     const cSel  = qs('#create-staff');
     staff.forEach(s => {
-      sel.innerHTML  += `<option value="${s.name}">${s.name}</option>`;
-      cSel.innerHTML += `<option value="${s.name}">${s.name}</option>`;
+      sel.innerHTML  += `<option value="${esc(s.name)}">${esc(s.name)}</option>`;
+      cSel.innerHTML += `<option value="${esc(s.name)}">${esc(s.name)}</option>`;
     });
+  }
+
+  // ── Tabs ─────────────────────────────────────────────────
+  function switchTab(tab) {
+    currentTab = tab;
+    ['list','map','mgr'].forEach(t => {
+      const el = qs('#tab-' + t);
+      if (el) el.classList.toggle('active', t === tab);
+    });
+    qs('#list-view').style.display = tab === 'list' ? '' : 'none';
+    qs('#map-view').style.display  = tab === 'map'  ? 'block' : 'none';
+    qs('#mgr-view').style.display  = tab === 'mgr'  ? '' : 'none';
+    if (tab === 'map') renderMap();
+    if (tab === 'mgr') loadPendingList();
   }
 
   // ── Load Visits ──────────────────────────────────────────
@@ -269,7 +427,7 @@
       renderList();
       if (currentTab === 'map') renderMap();
     } catch (e) {
-      qs('#list-view').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div>${e.message}</div>`;
+      qs('#list-view').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div>${esc(e.message)}</div>`;
     }
   }
 
@@ -280,44 +438,65 @@
       container.innerHTML = '<div class="empty"><div class="empty-icon">📋</div>今日尚無外出記錄</div>';
       return;
     }
-    container.innerHTML = allVisits.map(v => visitCard(v)).join('');
+    container.innerHTML = allVisits.map(v => visitCard(v, false)).join('');
   }
 
-  function visitCard(v) {
-    const initials = v.staff_name.slice(0, 2);
-    const deparDone = !!v.depart_time;
-    const arriDone  = !!v.arrive_time;
-    const compDone  = v.status === 'completed';
+  function plannedTimesHtml(v) {
+    const dp = v.planned_depart_time ? fmtTime(v.planned_depart_time) : null;
+    const rp = v.planned_return_time ? fmtTime(v.planned_return_time) : null;
+    if (!dp && !rp) return '';
+    return `<div class="planned-times">
+      ${dp ? `<div class="planned-chip">預計出發 <span>${dp}</span></div>` : ''}
+      ${rp ? `<div class="planned-chip">預計回來 <span>${rp}</span></div>` : ''}
+    </div>`;
+  }
+
+  function visitCard(v, isMgrView) {
+    const initials   = v.staff_name.slice(0, 2);
+    const deparDone  = !!v.depart_time;
+    const arriDone   = !!v.arrive_time;
+    const compDone   = v.status === 'completed';
+    const notifyFlag = !!v.notify_manager;
+    const reviewed   = !!v.manager_reviewed;
 
     const photos = (v.photo_urls || []).map(url =>
-      `<img src="${url}" onclick="showImg('${url}')" alt="photo">`
+      `<img src="${esc(url)}" onclick="showImg('${esc(url)}')" alt="photo">`
     ).join('');
 
     const actions = [];
-    if (!deparDone) actions.push(`<button class="btn btn-primary btn-sm" onclick="doDepart(${v.id})">出發 →</button>`);
-    if (deparDone && !arriDone) actions.push(`<button class="btn btn-warning btn-sm" onclick="openArrive(${v.id})">抵達打卡</button>`);
-    if (arriDone && !compDone)  actions.push(`<button class="btn btn-success btn-sm" onclick="openComplete(${v.id})">完成拜訪</button>`);
-    actions.push(`<button class="btn btn-ghost btn-sm" onclick="triggerPhoto(${v.id})">📷 上傳照片</button>`);
-    actions.push(`<button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="doDelete(${v.id})">刪除</button>`);
+    if (!isMgrView) {
+      if (!deparDone) actions.push(`<button class="btn btn-primary btn-sm" onclick="doDepart(${v.id})">出發 →</button>`);
+      if (deparDone && !arriDone) actions.push(`<button class="btn btn-warning btn-sm" onclick="openArrive(${v.id})">抵達打卡</button>`);
+      if (arriDone && !compDone)  actions.push(`<button class="btn btn-success btn-sm" onclick="openComplete(${v.id})">完成拜訪</button>`);
+      actions.push(`<button class="btn btn-ghost btn-sm" onclick="triggerPhoto(${v.id})">📷 照片</button>`);
+      actions.push(`<button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="doDelete(${v.id})">刪除</button>`);
+    } else {
+      // manager view — only review action
+      actions.push(`<button class="btn btn-mgr btn-sm" onclick="doReview(${v.id})">✅ 已確認</button>`);
+    }
 
     return `
-    <div class="visit-card" id="card-${v.id}">
+    <div class="visit-card${notifyFlag ? ' notify-flag' : ''}" id="card-${v.id}">
       <div class="card-header">
         <div class="card-header-left">
-          <div class="staff-badge">${initials}</div>
+          <div class="staff-badge">${esc(initials)}</div>
           <div>
-            <div class="staff-name">${v.staff_name}</div>
-            <div class="visit-date">${v.visit_date}</div>
+            <div class="staff-name">${esc(v.staff_name)}</div>
+            <div class="visit-date">${esc(v.visit_date)}</div>
           </div>
         </div>
-        <span class="status-badge status-${v.status}">${v.status === 'completed' ? '已完成' : '進行中'}</span>
+        <div class="card-badges">
+          ${notifyFlag && !reviewed ? `<span class="notify-badge">告知主管</span>` : ''}
+          ${notifyFlag && reviewed  ? `<span class="reviewed-badge">主管已確認</span>` : ''}
+          <span class="status-badge status-${v.status}">${v.status === 'completed' ? '已完成' : '進行中'}</span>
+        </div>
       </div>
       <div class="card-body">
-        ${v.client_name ? `<div class="info-row"><span class="info-label">客戶</span><span class="info-val">${v.client_name}</span></div>` : ''}
-        ${v.purpose     ? `<div class="info-row"><span class="info-label">目的</span><span class="info-val">${v.purpose}</span></div>` : ''}
-        ${v.arrive_address ? `<div class="info-row"><span class="info-label">地址</span><span class="info-val">${v.arrive_address}</span></div>` : ''}
-        ${v.notes       ? `<div class="info-row"><span class="info-label">備註</span><span class="info-val">${v.notes}</span></div>` : ''}
-
+        ${plannedTimesHtml(v)}
+        ${v.client_name    ? `<div class="info-row"><span class="info-label">客戶</span><span class="info-val">${esc(v.client_name)}</span></div>` : ''}
+        ${v.purpose        ? `<div class="info-row"><span class="info-label">目的</span><span class="info-val">${esc(v.purpose)}</span></div>` : ''}
+        ${v.arrive_address ? `<div class="info-row"><span class="info-label">地址</span><span class="info-val">${esc(v.arrive_address)}</span></div>` : ''}
+        ${v.notes          ? `<div class="info-row"><span class="info-label">備註</span><span class="info-val">${esc(v.notes)}</span></div>` : ''}
         <div class="timeline">
           <div class="tl-step">
             <div class="tl-dot ${deparDone ? 'done' : ''}">✓</div>
@@ -335,27 +514,46 @@
             <div class="tl-time">${fmtTime(v.complete_time) || '—'}</div>
           </div>
         </div>
-
-        <div class="photos-row">
-          ${photos}
-        </div>
+        ${photos ? `<div class="photos-row">${photos}</div>` : ''}
       </div>
       <div class="card-actions">${actions.join('')}</div>
     </div>`;
   }
 
-  // ── Tabs ─────────────────────────────────────────────────
-  function switchTab(tab) {
-    currentTab = tab;
-    qs('#tab-list').classList.toggle('active', tab === 'list');
-    qs('#tab-map').classList.toggle('active',  tab === 'map');
-    qs('#list-view').style.display = tab === 'list' ? '' : 'none';
-    qs('#map-view').style.display  = tab === 'map'  ? 'block' : 'none';
-    if (tab === 'map') renderMap();
+  // ── Manager Pending List ──────────────────────────────────
+  async function loadPendingList() {
+    qs('#mgr-view').innerHTML = '<div class="loading">載入中…</div>';
+    try {
+      pendingList = await api('/api/field-visits/pending-review');
+      renderPendingList();
+      updateBadge(pendingList.length);
+    } catch (e) {
+      qs('#mgr-view').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div>${esc(e.message)}</div>`;
+    }
   }
 
+  function renderPendingList() {
+    const container = qs('#mgr-view');
+    if (!pendingList.length) {
+      container.innerHTML = '<div class="empty"><div class="empty-icon">✅</div>目前沒有待確認的外出記錄</div>';
+      return;
+    }
+    container.innerHTML = `
+      <div class="mgr-section-hd" style="margin-top:4px">待確認外出（${pendingList.length} 筆）</div>
+      ${pendingList.map(v => visitCard(v, true)).join('')}
+    `;
+  }
+
+  async function doReview(id) {
+    try {
+      await api(`/api/field-visits/${id}/review`, { method: 'POST' });
+      await loadPendingList();
+      await loadPendingCount();
+    } catch (e) { alert('確認失敗：' + e.message); }
+  }
+
+  // ── Map ───────────────────────────────────────────────────
   function renderMap() {
-    const mapEl = qs('#map-view');
     if (!map) {
       map = L.map('map-view').setView([25.033, 121.565], 12);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -366,18 +564,14 @@
       markersLayer.clearLayers();
       map.invalidateSize();
     }
-
     const withGps = allVisits.filter(v => v.arrive_lat && v.arrive_lng);
     if (!withGps.length) return;
-
     const bounds = [];
     withGps.forEach(v => {
-      const lat = parseFloat(v.arrive_lat);
-      const lng = parseFloat(v.arrive_lng);
+      const lat = parseFloat(v.arrive_lat), lng = parseFloat(v.arrive_lng);
       bounds.push([lat, lng]);
-      L.marker([lat, lng])
-        .addTo(markersLayer)
-        .bindPopup(`<b>${v.staff_name}</b><br>${v.client_name || '（未填客戶）'}<br>${v.arrive_address || ''}`);
+      L.marker([lat, lng]).addTo(markersLayer)
+        .bindPopup(`<b>${esc(v.staff_name)}</b><br>${esc(v.client_name || '（未填客戶）')}<br>${esc(v.arrive_address || '')}`);
     });
     map.fitBounds(bounds, { padding: [30, 30] });
   }
@@ -391,6 +585,9 @@
     qs('#create-date').value = twToday();
     qs('#create-client').value = '';
     qs('#create-purpose').value = '';
+    qs('#create-plan-depart').value = '';
+    qs('#create-plan-return').value = '';
+    qs('#create-notify-mgr').checked = false;
     openModal('modal-create');
   }
 
@@ -399,15 +596,27 @@
     const visit_date  = qs('#create-date').value;
     const client_name = qs('#create-client').value.trim();
     const purpose     = qs('#create-purpose').value.trim();
+    const notify_manager = qs('#create-notify-mgr').checked;
+
+    // Convert time inputs to full ISO timestamps on the visit date
+    function timeToTs(timeVal) {
+      if (!timeVal || !visit_date) return null;
+      return `${visit_date}T${timeVal}:00+08:00`;
+    }
+    const planned_depart_time = timeToTs(qs('#create-plan-depart').value);
+    const planned_return_time = timeToTs(qs('#create-plan-return').value);
+
     if (!staff_name) return alert('請選擇業務人員');
     try {
       await api('/api/field-visits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staff_name, visit_date, client_name, purpose }),
+        body: JSON.stringify({ staff_name, visit_date, client_name, purpose,
+          planned_depart_time, planned_return_time, notify_manager }),
       });
       closeModal('modal-create');
-      loadVisits();
+      await loadVisits();
+      if (isMgr) loadPendingCount();
     } catch (e) { alert('建立失敗：' + e.message); }
   }
 
@@ -431,8 +640,7 @@
 
   function getGps() {
     const btn = qs('#gps-btn');
-    btn.disabled = true;
-    btn.textContent = '📡 定位中…';
+    btn.disabled = true; btn.textContent = '📡 定位中…';
     if (!navigator.geolocation) {
       btn.disabled = false; btn.textContent = '📡 取得 GPS 位置';
       return alert('此瀏覽器不支援 GPS');
@@ -442,14 +650,12 @@
       const lng = pos.coords.longitude.toFixed(7);
       qs('#arrive-lat').value = lat;
       qs('#arrive-lng').value = lng;
-      qs('#gps-preview').textContent = `📍 ${lat}, ${lng}  精度 ±${Math.round(pos.coords.accuracy)}m`;
+      qs('#gps-preview').textContent = `📍 ${lat}, ${lng}  ±${Math.round(pos.coords.accuracy)}m`;
       btn.disabled = false; btn.textContent = '📡 取得 GPS 位置';
-      // Reverse geocode
       try {
         const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
         const j = await r.json();
-        const addr = j.display_name || '';
-        if (addr && !qs('#arrive-address').value) qs('#arrive-address').value = addr;
+        if (j.display_name && !qs('#arrive-address').value) qs('#arrive-address').value = j.display_name;
       } catch (_) {}
     }, err => {
       btn.disabled = false; btn.textContent = '📡 取得 GPS 位置';
@@ -458,8 +664,8 @@
   }
 
   async function submitArrive() {
-    const lat     = qs('#arrive-lat').value || null;
-    const lng     = qs('#arrive-lng').value || null;
+    const lat = qs('#arrive-lat').value || null;
+    const lng = qs('#arrive-lng').value || null;
     const address = qs('#arrive-address').value.trim();
     try {
       await api(`/api/field-visits/${activeVisitId}/arrive`, {
@@ -504,14 +710,13 @@
     if (!file) return;
     const fd = new FormData();
     fd.append('photo', file);
+    const headers = {};
+    if (mgrKey) headers['x-manager-key'] = mgrKey;
     try {
-      await fetch(`/api/field-visits/${activeVisitId}/photos`, {
-        method: 'POST',
-        credentials: 'same-origin',
-        body: fd,
-      }).then(async r => {
-        if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error || r.status); }
+      const r = await fetch(`/api/field-visits/${activeVisitId}/photos`, {
+        method: 'POST', credentials: 'same-origin', headers, body: fd,
       });
+      if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error || r.status); }
       loadVisits();
     } catch (e) { alert('上傳失敗：' + e.message); }
   }

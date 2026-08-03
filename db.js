@@ -236,6 +236,13 @@ export async function initDb() {
       updated_at     TIMESTAMPTZ  DEFAULT NOW()
     )
   `);
+  // Migration: add new columns to field_visits
+  await pool.query(`ALTER TABLE field_visits ADD COLUMN IF NOT EXISTS planned_depart_time TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE field_visits ADD COLUMN IF NOT EXISTS planned_return_time TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE field_visits ADD COLUMN IF NOT EXISTS notify_manager      BOOLEAN DEFAULT FALSE`);
+  await pool.query(`ALTER TABLE field_visits ADD COLUMN IF NOT EXISTS manager_reviewed    BOOLEAN DEFAULT FALSE`);
+  await pool.query(`ALTER TABLE field_visits ADD COLUMN IF NOT EXISTS manager_reviewed_at TIMESTAMPTZ`);
+
 
   // Seed default staff (unconditional, skips if already exists)
   await pool.query(

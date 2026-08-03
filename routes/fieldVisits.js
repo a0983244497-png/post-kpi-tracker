@@ -14,8 +14,15 @@ function configureCloudinary() {
   });
 }
 
+function requireManager(req, res, next) {
+  const mgr = process.env.MANAGER_PASSWORD;
+  if (!mgr) return res.status(500).json({ error: 'MANAGER_PASSWORD 未設定' });
+  const provided = req.headers['x-manager-key'];
+  if (provided !== mgr) return res.status(403).json({ error: '需要主管權限' });
+  next();
+}
+
 // ── GET /api/field-visits ─────────────────────────────────
-// 查詢所有外出記錄，?staff_name= 可篩選
 router.get('/field-visits', async (req, res) => {
   try {
     const { staff_name, date } = req.query;
@@ -35,17 +42,55 @@ router.get('/field-visits', async (req, res) => {
   }
 });
 
+// ── GET /api/field-visits/pending-review ─────────────────
+// 主管專用：notify_manager=true 且 manager_reviewed=false
+router.get('/field-visits/pending-review', requireManager, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM field_visits
+       WHERE notify_manager = TRUE AND manager_reviewed = FALSE
+       ORDER BY created_at DESC`
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error('[FieldVisits] pending-review:', e.message);
+    res.status(500).json({ error: '查詢失敗' });
+  }
+});
+
+// ── GET /api/field-visits/pending-count ──────────────────
+// 主管專用：未確認筆數
+router.get('/field-visits/pending-count', requireManager, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM field_visits
+       WHERE notify_manager = TRUE AND manager_reviewed = FALSE`
+    );
+    res.json({ count: rows[0].count });
+  } catch (e) {
+    console.error('[FieldVisits] pending-count:', e.message);
+    res.status(500).json({ error: '查詢失敗' });
+  }
+});
+
 // ── POST /api/field-visits ────────────────────────────────
-// 建立新外出記錄
 router.post('/field-visits', async (req, res) => {
-  const { staff_name, client_name = '', purpose = '', notes = '', visit_date } = req.body;
+  const {
+    staff_name,
+    client_name = '', purpose = '', notes = '', visit_date,
+    planned_depart_time = null, planned_return_time = null,
+    notify_manager = false,
+  } = req.body;
   if (!staff_name) return res.status(400).json({ error: 'staff_name 必填' });
   try {
     const twToday = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
     const { rows } = await pool.query(
-      `INSERT INTO field_visits (staff_name, visit_date, client_name, purpose, notes)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [staff_name, visit_date || twToday, client_name, purpose, notes]
+      `INSERT INTO field_visits
+         (staff_name, visit_date, client_name, purpose, notes,
+          planned_depart_time, planned_return_time, notify_manager)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [staff_name, visit_date || twToday, client_name, purpose, notes,
+       planned_depart_time || null, planned_return_time || null, !!notify_manager]
     );
     res.status(201).json(rows[0]);
   } catch (e) {
@@ -55,11 +100,10 @@ router.post('/field-visits', async (req, res) => {
 });
 
 // ── PATCH /api/field-visits/:id ──────────────────────────
-// 更新基本資料
 router.patch('/field-visits/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
-  const allowed = ['client_name', 'purpose', 'notes'];
+  const allowed = ['client_name', 'purpose', 'notes', 'planned_depart_time', 'planned_return_time', 'notify_manager'];
   const sets = [];
   const params = [];
   for (const key of allowed) {
@@ -101,7 +145,6 @@ router.post('/field-visits/:id/depart', async (req, res) => {
 });
 
 // ── POST /api/field-visits/:id/arrive ────────────────────
-// body: { lat?, lng?, address? }
 router.post('/field-visits/:id/arrive', async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
@@ -122,7 +165,6 @@ router.post('/field-visits/:id/arrive', async (req, res) => {
 });
 
 // ── POST /api/field-visits/:id/complete ──────────────────
-// body: { notes? }
 router.post('/field-visits/:id/complete', async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
@@ -146,8 +188,27 @@ router.post('/field-visits/:id/complete', async (req, res) => {
   }
 });
 
+// ── POST /api/field-visits/:id/review ────────────────────
+// 主管確認
+router.post('/field-visits/:id/review', requireManager, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
+  try {
+    const { rows } = await pool.query(
+      `UPDATE field_visits
+       SET manager_reviewed = TRUE, manager_reviewed_at = NOW(), updated_at = NOW()
+       WHERE id = $1 RETURNING *`,
+      [id]
+    );
+    if (!rows.length) return res.status(404).json({ error: '找不到記錄' });
+    res.json(rows[0]);
+  } catch (e) {
+    console.error('[FieldVisits] review:', e.message);
+    res.status(500).json({ error: '更新失敗' });
+  }
+});
+
 // ── POST /api/field-visits/:id/photos ────────────────────
-// form-data: file (image)
 router.post('/field-visits/:id/photos', upload.single('photo'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
