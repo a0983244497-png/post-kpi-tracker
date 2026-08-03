@@ -67,6 +67,7 @@ body { background: var(--charcoal); color: var(--text-primary); font-family: var
 .ntab { display: flex; align-items: center; padding: 0 20px; font-size: 12px; font-weight: 700; color: var(--text-muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; letter-spacing: .07em; white-space: nowrap; transition: color var(--t), border-color var(--t); font-family: var(--font-body); text-transform: uppercase; height: 100%; margin-bottom: -1px; }
 .ntab:hover { color: var(--text-secondary); }
 .ntab.active { color: var(--gold); border-bottom-color: var(--gold); }
+.ntab-link { text-decoration: none; text-transform: none; }
 
 /* ===== STATS GRID ===== */
 .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.75rem; }
@@ -247,23 +248,6 @@ select option { background: var(--charcoal-3); }
 .month-selector label { font-size: 12px; color: var(--text-muted); }
 .month-selector input { width: 140px; }
 
-/* ===== RANKING ===== */
-.rank-row-base { display: grid; grid-template-columns: 44px 1fr 72px 92px 76px; gap: 10px; align-items: center; padding: 9px 14px; }
-.rank-hd { font-size: 11px; font-weight: 700; color: var(--text-muted); letter-spacing: .06em; text-transform: uppercase; padding-bottom: 2px; }
-.rank-row { background: var(--charcoal-2); border: 1px solid var(--border); border-left: 4px solid transparent; border-radius: var(--radius-sm); margin-bottom: 5px; transition: border-color var(--t), box-shadow var(--t); box-shadow: var(--shadow-sm); }
-.rank-row:hover { border-color: var(--border-strong); border-left-color: inherit; box-shadow: var(--shadow-glow); }
-.rank-row.rk-gold   { border-left-color: #D4A843; }
-.rank-row.rk-silver { border-left-color: #A8A8B0; }
-.rank-row.rk-bronze { border-left-color: #C07040; }
-.rank-row.rk-bad    { border-left-color: #C44F2B; }
-.rank-num { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--charcoal-4); }
-.rank-num.r1 { color: var(--gold); }
-.rank-num.r2 { color: var(--text-secondary); }
-.rank-num.r3 { color: var(--text-muted); }
-.rank-ttl { font-size: 13px; color: var(--text-primary); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.rank-sname { font-size: 12px; color: var(--text-secondary); }
-.rank-date { font-size: 11px; color: var(--text-muted); }
-.rank-val { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--gold); text-align: right; }
 /* Date range filter */
 .date-range-wrap { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
 .date-range-wrap input { width: 118px; }
@@ -271,15 +255,6 @@ select option { background: var(--charcoal-3); }
 /* Footer */
 .site-footer { background: var(--charcoal-2); border-top: 1px solid var(--border); padding: 18px 2rem; }
 .footer-inner { max-width: 960px; margin: 0 auto; font-size: 12px; color: var(--text-muted); text-align: center; font-family: var(--font-body); }
-/* Ranking subsections */
-.rank-subsec-hd { font-size: 12px; font-weight: 700; padding: 10px 4px 4px; }
-.rank-top { color: var(--gold); }
-.rank-bot { color: #C44F2B; margin-top: 1rem; }
-.rank-row-bad { border-top-color: rgba(196,79,43,.25); border-right-color: rgba(196,79,43,.25); border-bottom-color: rgba(196,79,43,.25); }
-.rank-row-bad:hover { border-top-color: rgba(196,79,43,.5); border-right-color: rgba(196,79,43,.5); border-bottom-color: rgba(196,79,43,.5); }
-.rank-val-bad { color: #C44F2B !important; font-family: var(--font-display); font-size: 14px; font-weight: 700; text-align: right; }
-.rank-num.rb { color: #C44F2B; }
-
 /* ===== GOALS SECTION ===== */
 .goals-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:.75rem; }
 .achieve-card { background:var(--charcoal-2); border:1px solid var(--border); border-radius:var(--radius); padding:.875rem 1.125rem; position:relative; overflow:hidden; }
@@ -307,8 +282,7 @@ select option { background: var(--charcoal-3); }
   .ptab { padding: 10px 14px; font-size: 12px; }
   .ntab { padding: 10px 16px; font-size: 11px; }
   .chart-r2, .chart-r3 { grid-template-columns: 1fr; }
-  .rank-row-base { grid-template-columns: 36px 1fr 56px 76px 60px; gap: 6px; }
-  .date-range-wrap input { width: 98px; }
+.date-range-wrap input { width: 98px; }
   .weekly-fab { display: none; }
 }
 /* FAB — 週報登記 */
@@ -401,8 +375,8 @@ select option { background: var(--charcoal-3); }
     <button class="ntab active" onclick="switchSection('posts')">貼文記錄</button>
     <button class="ntab" onclick="switchSection('weekly')">每週統計</button>
     <button class="ntab" onclick="switchSection('monthly')">月度總覽</button>
-    <button class="ntab" onclick="switchSection('ranking')">排名</button>
     <button class="ntab" onclick="switchSection('course')">新手課</button>
+    <a class="ntab ntab-link" href="/field-visits.html">📍 外出記錄</a>
   </nav>
   <div class="header-right" id="header-count"></div>
 </header>
@@ -709,29 +683,6 @@ select option { background: var(--charcoal-3); }
   </div><!-- /section-monthly -->
 
   <!-- =====================================================
-       SECTION: 排名
-  ====================================================== -->
-  <div id="section-ranking" style="display:none">
-
-    <div class="person-tabs" id="ranking-person-tabs"></div>
-
-    <!-- 流量排名 -->
-    <div class="section-hd">
-      <div class="section-hd-title">貼文流量排名</div>
-      <div class="section-hd-sub" id="ranking-view-sub">依觀看數由高到低</div>
-    </div>
-    <div id="ranking-view-list"></div>
-
-    <!-- 互動率排名 -->
-    <div class="section-hd" style="margin-top:2rem">
-      <div class="section-hd-title">互動率排名</div>
-      <div class="section-hd-sub" id="ranking-er-sub">（讚＋回覆＋轉發＋引用）÷ 觀看數 × 100%</div>
-    </div>
-    <div id="ranking-er-list"></div>
-
-  </div><!-- /section-ranking -->
-
-  <!-- =====================================================
        SECTION: 新手課轉化追蹤
   ====================================================== -->
   <div id="section-course" style="display:none">
@@ -987,7 +938,6 @@ let weeklyStats = [];
 let openIds          = new Set();
 let activeTab        = '';
 let weeklyActiveTab  = '';
-let rankingActiveTab = '';
 let editingId        = null;
 let currentSection   = 'posts';
 let currentPage      = 1;
@@ -1102,7 +1052,7 @@ async function apiFetch(path, opts = {}) {
 // ===== SECTION SWITCHING =====
 function switchSection(name) {
   currentSection = name;
-  const SECTIONS = ['posts','weekly','monthly','ranking','course'];
+  const SECTIONS = ['posts','weekly','monthly','course'];
   SECTIONS.forEach(s => {
     g(`section-${s}`).style.display = s === name ? '' : 'none';
   });
@@ -1113,7 +1063,6 @@ function switchSection(name) {
   if (fab) fab.style.display = name === 'weekly' ? 'flex' : 'none';
   if (name === 'weekly')  renderWeeklySection();
   if (name === 'monthly') renderMonthlySection();
-  if (name === 'ranking') renderRankingSection();
   if (name === 'course')  renderCourseSection();
 }
 
@@ -2446,67 +2395,6 @@ function clearDateFilter() {
   render();
 }
 
-// ===== RANKING =====
-function renderRankingPersonTabs() {
-  const tabs = [{ label: '全部', key: '' }, ...staff.map(s => ({ label: s.name, key: s.name }))];
-  g('ranking-person-tabs').innerHTML = tabs.map(t =>
-    `<button class="ptab${rankingActiveTab === t.key ? ' active' : ''}" onclick="switchRankingTab('${esc(t.key)}')">${esc(t.label)}</button>`
-  ).join('');
-}
-
-function switchRankingTab(key) {
-  rankingActiveTab = key;
-  renderRankingSection();
-}
-
-function renderRankingSection() {
-  renderRankingPersonTabs();
-  const src   = rankingActiveTab ? posts.filter(p => p.name === rankingActiveTab) : posts;
-  const label = rankingActiveTab || '全部';
-  g('ranking-view-sub').textContent = `依觀看數（${label}，共 ${src.length} 筆）`;
-  g('ranking-er-sub').textContent   = `（讚＋回覆＋轉發＋引用）÷ 觀看數 × 100%（${label}）`;
-
-  const byView = [...src].sort((a,b) => b.view - a.view);
-  const byEr   = [...src].filter(p => p.view > 0).sort((a,b) => engRate(b) - engRate(a));
-
-  const HDR = `<div class="rank-hd rank-row-base"><span>排名</span><span>標題</span><span>業務</span><span>日期</span><span style="text-align:right">數值</span></div>`;
-  const EMPTY = '<div class="empty" style="padding:.75rem 0;font-size:13px;color:var(--text-muted)">尚無資料</div>';
-
-  function makeRows(arr, valFn, isBottom) {
-    if (!arr.length) return EMPTY;
-    const slice = isBottom ? [...arr].slice(-5).reverse() : arr.slice(0, 5);
-    const total = arr.length;
-    return slice.map((p, i) => {
-      const pos = isBottom ? (total - i) : (i + 1);
-      const nc  = isBottom ? 'rb' : (i < 3 ? ['r1','r2','r3'][i] : '');
-      const borderCls = isBottom
-        ? 'rk-bad'
-        : (i === 0 ? 'rk-gold' : i === 1 ? 'rk-silver' : i === 2 ? 'rk-bronze' : '');
-      const valHtml = isBottom
-        ? `<span class="rank-val-bad">${valFn(p)}</span>`
-        : `<span class="rank-val">${valFn(p)}</span>`;
-      return `<div class="rank-row rank-row-base${isBottom ? ' rank-row-bad' : ''}${borderCls ? ' '+borderCls : ''}">
-        <span class="rank-num ${nc}">${pos}</span>
-        <span class="rank-ttl" title="${esc(displayTitle(p))}">${esc(displayTitle(p))}</span>
-        <span class="rank-sname">${esc(p.name || '—')}</span>
-        <span class="rank-date">${p.date}</span>
-        ${valHtml}
-      </div>`;
-    }).join('');
-  }
-
-  function renderBlock(arr, valFn, listId) {
-    g(listId).innerHTML =
-      `<div class="rank-subsec-hd rank-top">🏆 TOP 5</div>` + HDR + makeRows(arr, valFn, false) +
-      (arr.length > 5
-        ? `<div class="rank-subsec-hd rank-bot">💀 後段班 5</div>` + HDR + makeRows(arr, valFn, true)
-        : '');
-  }
-
-  renderBlock(byView, p => p.view.toLocaleString(), 'ranking-view-list');
-  renderBlock(byEr,   p => engRate(p).toFixed(2)+'%', 'ranking-er-list');
-}
-
 // ===== DAILY FOLLOWERS =====
 function renderDailyFollowersDropdown() {
   const sel = g('df-name');
@@ -3600,7 +3488,6 @@ function refreshAll() {
   renderStats();
   render();
   buildCharts();
-  if (currentSection === 'ranking') renderRankingSection();
 }
 
 // ===== INIT =====
