@@ -43,7 +43,6 @@ router.get('/field-visits', async (req, res) => {
 });
 
 // ── GET /api/field-visits/pending-review ─────────────────
-// 主管專用：notify_manager=true 且 manager_reviewed=false
 router.get('/field-visits/pending-review', requireManager, async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -59,7 +58,6 @@ router.get('/field-visits/pending-review', requireManager, async (req, res) => {
 });
 
 // ── GET /api/field-visits/pending-count ──────────────────
-// 主管專用：未確認筆數
 router.get('/field-visits/pending-count', requireManager, async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -80,6 +78,7 @@ router.post('/field-visits', async (req, res) => {
     client_name = '', purpose = '', notes = '', visit_date,
     planned_depart_time = null, planned_return_time = null,
     notify_manager = false,
+    expected_address = '',
   } = req.body;
   if (!staff_name) return res.status(400).json({ error: 'staff_name 必填' });
   try {
@@ -87,10 +86,11 @@ router.post('/field-visits', async (req, res) => {
     const { rows } = await pool.query(
       `INSERT INTO field_visits
          (staff_name, visit_date, client_name, purpose, notes,
-          planned_depart_time, planned_return_time, notify_manager)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+          planned_depart_time, planned_return_time, notify_manager, expected_address)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
       [staff_name, visit_date || twToday, client_name, purpose, notes,
-       planned_depart_time || null, planned_return_time || null, !!notify_manager]
+       planned_depart_time || null, planned_return_time || null, !!notify_manager,
+       expected_address || null]
     );
     res.status(201).json(rows[0]);
   } catch (e) {
@@ -103,7 +103,8 @@ router.post('/field-visits', async (req, res) => {
 router.patch('/field-visits/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
-  const allowed = ['client_name', 'purpose', 'notes', 'planned_depart_time', 'planned_return_time', 'notify_manager'];
+  const allowed = ['client_name', 'purpose', 'notes', 'planned_depart_time', 'planned_return_time',
+                   'notify_manager', 'expected_address', 'actual_address'];
   const sets = [];
   const params = [];
   for (const key of allowed) {
@@ -145,16 +146,17 @@ router.post('/field-visits/:id/depart', async (req, res) => {
 });
 
 // ── POST /api/field-visits/:id/arrive ────────────────────
+// body: { actual_address? }  （GPS 欄位已廢棄，不再寫入）
 router.post('/field-visits/:id/arrive', async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
-  const { lat, lng, address = '' } = req.body;
+  const { actual_address = '' } = req.body;
   try {
     const { rows } = await pool.query(
       `UPDATE field_visits
-       SET arrive_time = NOW(), arrive_lat = $2, arrive_lng = $3, arrive_address = $4, updated_at = NOW()
+       SET arrive_time = NOW(), actual_address = $2, updated_at = NOW()
        WHERE id = $1 RETURNING *`,
-      [id, lat || null, lng || null, address]
+      [id, actual_address || null]
     );
     if (!rows.length) return res.status(404).json({ error: '找不到記錄' });
     res.json(rows[0]);
@@ -173,9 +175,7 @@ router.post('/field-visits/:id/complete', async (req, res) => {
     const sets = notes !== undefined
       ? 'complete_time = NOW(), status = $2, notes = $3, updated_at = NOW()'
       : 'complete_time = NOW(), status = $2, updated_at = NOW()';
-    const params = notes !== undefined
-      ? [id, 'completed', notes]
-      : [id, 'completed'];
+    const params = notes !== undefined ? [id, 'completed', notes] : [id, 'completed'];
     const { rows } = await pool.query(
       `UPDATE field_visits SET ${sets} WHERE id = $1 RETURNING *`,
       params
@@ -189,7 +189,6 @@ router.post('/field-visits/:id/complete', async (req, res) => {
 });
 
 // ── POST /api/field-visits/:id/review ────────────────────
-// 主管確認
 router.post('/field-visits/:id/review', requireManager, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
@@ -225,7 +224,6 @@ router.post('/field-visits/:id/photos', upload.single('photo'), async (req, res)
       folder: 'field-visits',
       resource_type: 'image',
     });
-
     const { rows } = await pool.query(
       `UPDATE field_visits
        SET photo_urls = photo_urls || $2::jsonb, updated_at = NOW()

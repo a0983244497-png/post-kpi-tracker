@@ -242,6 +242,9 @@ export async function initDb() {
   await pool.query(`ALTER TABLE field_visits ADD COLUMN IF NOT EXISTS notify_manager      BOOLEAN DEFAULT FALSE`);
   await pool.query(`ALTER TABLE field_visits ADD COLUMN IF NOT EXISTS manager_reviewed    BOOLEAN DEFAULT FALSE`);
   await pool.query(`ALTER TABLE field_visits ADD COLUMN IF NOT EXISTS manager_reviewed_at TIMESTAMPTZ`);
+  // Migration: manual address fields (GPS 欄位保留，新增手動填寫欄位)
+  await pool.query(`ALTER TABLE field_visits ADD COLUMN IF NOT EXISTS expected_address TEXT`);
+  await pool.query(`ALTER TABLE field_visits ADD COLUMN IF NOT EXISTS actual_address   TEXT`);
 
 
   // Seed default staff (unconditional, skips if already exists)

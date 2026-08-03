@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>業務外出記錄</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
     *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -79,14 +78,15 @@
     .status-badge { padding: 3px 8px; border-radius: 999px; font-size: .72rem; font-weight: 700; }
     .status-in_progress { background: #fef3c7; color: #92400e; }
     .status-completed    { background: #d1fae5; color: #065f46; }
-    .notify-badge { background: #ede9fe; color: #5b21b6; padding: 3px 7px; border-radius: 999px; font-size: .68rem; font-weight: 700; }
-    .reviewed-badge { background: #d1fae5; color: #065f46; padding: 3px 7px; border-radius: 999px; font-size: .68rem; font-weight: 700; }
+    .notify-badge  { background: #ede9fe; color: #5b21b6; padding: 3px 7px; border-radius: 999px; font-size: .68rem; font-weight: 700; }
+    .reviewed-badge{ background: #d1fae5; color: #065f46; padding: 3px 7px; border-radius: 999px; font-size: .68rem; font-weight: 700; }
 
     .card-body { padding: 11px 14px; }
-    .card-body .info-row { display: flex; gap: 8px; margin-bottom: 5px; align-items: flex-start; font-size: .86rem; }
-    .card-body .info-label { color: var(--gray-500); min-width: 60px; flex-shrink: 0; font-size: .8rem; }
-    .card-body .info-val { color: var(--gray-900); word-break: break-all; }
-    .planned-times { display: flex; gap: 10px; margin-bottom: 8px; }
+    .info-row { display: flex; gap: 8px; margin-bottom: 5px; align-items: flex-start; font-size: .86rem; }
+    .info-label { color: var(--gray-500); min-width: 60px; flex-shrink: 0; font-size: .8rem; }
+    .info-val { color: var(--gray-900); word-break: break-all; }
+
+    .planned-times { display: flex; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
     .planned-chip { background: var(--gray-100); border-radius: 6px; padding: 4px 8px; font-size: .78rem; color: var(--gray-700); }
     .planned-chip span { font-weight: 700; color: var(--primary); }
 
@@ -104,9 +104,6 @@
 
     .photos-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
     .photos-row img { width: 68px; height: 68px; object-fit: cover; border-radius: 6px; border: 1px solid var(--gray-200); cursor: pointer; }
-
-    /* ── Map ── */
-    #map-view { display: none; height: calc(100vh - 185px); min-height: 300px; }
 
     /* ── Modal ── */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: flex-end; justify-content: center; }
@@ -134,10 +131,7 @@
     .empty-icon { font-size: 2.2rem; margin-bottom: 10px; }
     .loading { text-align: center; color: var(--gray-500); padding: 28px; font-size: .9rem; }
 
-    /* ── GPS preview ── */
-    .gps-preview { padding: 8px; background: var(--gray-50); border-radius: 8px; font-size: .8rem; color: var(--gray-700); margin-bottom: 10px; min-height: 34px; }
-
-    /* ── Manager panel ── */
+    /* ── Manager ── */
     .mgr-section-hd { font-size: .75rem; font-weight: 700; color: var(--mgr); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid #ede9fe; }
   </style>
 </head>
@@ -159,16 +153,14 @@
   <button class="btn btn-primary" onclick="openCreateModal()">＋ 新增外出</button>
 </div>
 
-<div class="tabs" id="tabs-bar">
+<div class="tabs">
   <div class="tab active" id="tab-list" onclick="switchTab('list')">清單</div>
-  <div class="tab" id="tab-map"  onclick="switchTab('map')">地圖</div>
   <div class="tab tab-mgr" id="tab-mgr" style="display:none" onclick="switchTab('mgr')">
     主管待看<span class="tab-badge" id="pending-badge" style="display:none"></span>
   </div>
 </div>
 
 <div id="list-view" class="content"><div class="loading">載入中…</div></div>
-<div id="map-view"></div>
 <div id="mgr-view" class="content" style="display:none"></div>
 
 <!-- ── 建立外出 Modal ── -->
@@ -195,6 +187,10 @@
       <label>拜訪目的</label>
       <input type="text" id="create-purpose" placeholder="例：開戶說明、課後追蹤…">
     </div>
+    <div class="form-group">
+      <label>預計地址</label>
+      <input type="text" id="create-expected-address" placeholder="例：台北市信義區忠孝東路五段…">
+    </div>
     <div class="form-row">
       <div class="form-group">
         <label>預計出發時間</label>
@@ -219,18 +215,11 @@
     <div class="modal-title">抵達打卡
       <button class="modal-close" onclick="closeModal('modal-arrive')">×</button>
     </div>
-    <p style="font-size:.83rem;color:var(--gray-500);margin-bottom:12px;">點「取得位置」使用 GPS，或手動輸入地址。</p>
     <div class="form-group">
-      <div class="gps-preview" id="gps-preview">尚未取得位置</div>
-      <button class="btn btn-ghost btn-sm" onclick="getGps()" id="gps-btn">📡 取得 GPS 位置</button>
+      <label>實際地址（選填）</label>
+      <input type="text" id="arrive-actual-address" placeholder="填寫實際到達地址…">
     </div>
-    <div class="form-group">
-      <label>地址（GPS 後自動填入，或手動輸入）</label>
-      <input type="text" id="arrive-address" placeholder="台北市信義區…">
-    </div>
-    <input type="hidden" id="arrive-lat">
-    <input type="hidden" id="arrive-lng">
-    <button class="btn btn-warning" style="width:100%;margin-top:4px" onclick="submitArrive()">確認抵達</button>
+    <button class="btn btn-warning" style="width:100%" onclick="submitArrive()">確認抵達</button>
   </div>
 </div>
 
@@ -271,12 +260,10 @@
 
 <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none" onchange="uploadPhoto(event)">
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
   let allVisits    = [];
   let pendingList  = [];
   let activeVisitId = null;
-  let map = null, markersLayer = null;
   let currentTab   = 'list';
   let mgrKey       = sessionStorage.getItem('mgr_key') || '';
   let isMgr        = false;
@@ -291,7 +278,9 @@
   function twToday() {
     return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
   }
-  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
 
   async function api(path, opts = {}) {
     const headers = { ...(opts.headers || {}) };
@@ -315,9 +304,10 @@
   async function submitMgrLogin() {
     const pw = qs('#mgr-pw-input').value;
     if (!pw) return;
-    // Verify by calling the pending-count endpoint
-    const testHeaders = { 'x-manager-key': pw };
-    const r = await fetch('/api/field-visits/pending-count', { credentials: 'same-origin', headers: testHeaders });
+    const r = await fetch('/api/field-visits/pending-count', {
+      credentials: 'same-origin',
+      headers: { 'x-manager-key': pw },
+    });
     if (!r.ok) {
       const e = await r.json().catch(() => ({}));
       qs('#mgr-login-err').textContent = e.error || '密碼錯誤';
@@ -331,8 +321,9 @@
     qs('#mgr-toggle-btn').classList.add('active');
     qs('#mgr-toggle-btn').textContent = '✅ 主管';
     qs('#tab-mgr').style.display = '';
-    await loadPendingCount();
-    if (currentTab === 'list') await loadVisits();
+    const j = await r.json();
+    updateBadge(j.count);
+    loadVisits();
   }
 
   function exitMgrMode() {
@@ -368,18 +359,13 @@
 
   async function loadPendingCount() {
     if (!isMgr) return;
-    try {
-      const { count } = await api('/api/field-visits/pending-count');
-      updateBadge(count);
-    } catch (_) {}
+    try { const { count } = await api('/api/field-visits/pending-count'); updateBadge(count); } catch (_) {}
   }
 
   function updateBadge(count) {
     const badge = qs('#pending-badge');
     if (count > 0) { badge.textContent = count; badge.style.display = ''; }
     else badge.style.display = 'none';
-    const tabLabel = qs('#tab-mgr');
-    tabLabel.childNodes[0].textContent = count > 0 ? `主管待看` : '主管待看';
   }
 
   // ── Init ─────────────────────────────────────────────────
@@ -392,8 +378,8 @@
 
   async function loadStaffList() {
     const staff = await api('/api/staff').catch(() => []);
-    const sel   = qs('#filter-staff');
-    const cSel  = qs('#create-staff');
+    const sel  = qs('#filter-staff');
+    const cSel = qs('#create-staff');
     staff.forEach(s => {
       sel.innerHTML  += `<option value="${esc(s.name)}">${esc(s.name)}</option>`;
       cSel.innerHTML += `<option value="${esc(s.name)}">${esc(s.name)}</option>`;
@@ -403,14 +389,12 @@
   // ── Tabs ─────────────────────────────────────────────────
   function switchTab(tab) {
     currentTab = tab;
-    ['list','map','mgr'].forEach(t => {
+    ['list','mgr'].forEach(t => {
       const el = qs('#tab-' + t);
       if (el) el.classList.toggle('active', t === tab);
     });
     qs('#list-view').style.display = tab === 'list' ? '' : 'none';
-    qs('#map-view').style.display  = tab === 'map'  ? 'block' : 'none';
     qs('#mgr-view').style.display  = tab === 'mgr'  ? '' : 'none';
-    if (tab === 'map') renderMap();
     if (tab === 'mgr') loadPendingList();
   }
 
@@ -425,7 +409,6 @@
     try {
       allVisits = await api(url);
       renderList();
-      if (currentTab === 'map') renderMap();
     } catch (e) {
       qs('#list-view').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div>${esc(e.message)}</div>`;
     }
@@ -452,10 +435,10 @@
   }
 
   function visitCard(v, isMgrView) {
-    const initials   = v.staff_name.slice(0, 2);
-    const deparDone  = !!v.depart_time;
-    const arriDone   = !!v.arrive_time;
-    const compDone   = v.status === 'completed';
+    const initials  = v.staff_name.slice(0, 2);
+    const deparDone = !!v.depart_time;
+    const arriDone  = !!v.arrive_time;
+    const compDone  = v.status === 'completed';
     const notifyFlag = !!v.notify_manager;
     const reviewed   = !!v.manager_reviewed;
 
@@ -471,7 +454,6 @@
       actions.push(`<button class="btn btn-ghost btn-sm" onclick="triggerPhoto(${v.id})">📷 照片</button>`);
       actions.push(`<button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="doDelete(${v.id})">刪除</button>`);
     } else {
-      // manager view — only review action
       actions.push(`<button class="btn btn-mgr btn-sm" onclick="doReview(${v.id})">✅ 已確認</button>`);
     }
 
@@ -493,10 +475,11 @@
       </div>
       <div class="card-body">
         ${plannedTimesHtml(v)}
-        ${v.client_name    ? `<div class="info-row"><span class="info-label">客戶</span><span class="info-val">${esc(v.client_name)}</span></div>` : ''}
-        ${v.purpose        ? `<div class="info-row"><span class="info-label">目的</span><span class="info-val">${esc(v.purpose)}</span></div>` : ''}
-        ${v.arrive_address ? `<div class="info-row"><span class="info-label">地址</span><span class="info-val">${esc(v.arrive_address)}</span></div>` : ''}
-        ${v.notes          ? `<div class="info-row"><span class="info-label">備註</span><span class="info-val">${esc(v.notes)}</span></div>` : ''}
+        ${v.client_name       ? `<div class="info-row"><span class="info-label">客戶</span><span class="info-val">${esc(v.client_name)}</span></div>` : ''}
+        ${v.purpose           ? `<div class="info-row"><span class="info-label">目的</span><span class="info-val">${esc(v.purpose)}</span></div>` : ''}
+        ${v.expected_address  ? `<div class="info-row"><span class="info-label">預計地址</span><span class="info-val">${esc(v.expected_address)}</span></div>` : ''}
+        ${v.actual_address    ? `<div class="info-row"><span class="info-label">實際地址</span><span class="info-val">${esc(v.actual_address)}</span></div>` : ''}
+        ${v.notes             ? `<div class="info-row"><span class="info-label">備註</span><span class="info-val">${esc(v.notes)}</span></div>` : ''}
         <div class="timeline">
           <div class="tl-step">
             <div class="tl-dot ${deparDone ? 'done' : ''}">✓</div>
@@ -552,30 +535,6 @@
     } catch (e) { alert('確認失敗：' + e.message); }
   }
 
-  // ── Map ───────────────────────────────────────────────────
-  function renderMap() {
-    if (!map) {
-      map = L.map('map-view').setView([25.033, 121.565], 12);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-      }).addTo(map);
-      markersLayer = L.layerGroup().addTo(map);
-    } else {
-      markersLayer.clearLayers();
-      map.invalidateSize();
-    }
-    const withGps = allVisits.filter(v => v.arrive_lat && v.arrive_lng);
-    if (!withGps.length) return;
-    const bounds = [];
-    withGps.forEach(v => {
-      const lat = parseFloat(v.arrive_lat), lng = parseFloat(v.arrive_lng);
-      bounds.push([lat, lng]);
-      L.marker([lat, lng]).addTo(markersLayer)
-        .bindPopup(`<b>${esc(v.staff_name)}</b><br>${esc(v.client_name || '（未填客戶）')}<br>${esc(v.arrive_address || '')}`);
-    });
-    map.fitBounds(bounds, { padding: [30, 30] });
-  }
-
   // ── Modal helpers ─────────────────────────────────────────
   function openModal(id) { qs('#' + id).classList.add('open'); }
   function closeModal(id) { qs('#' + id).classList.remove('open'); }
@@ -585,6 +544,7 @@
     qs('#create-date').value = twToday();
     qs('#create-client').value = '';
     qs('#create-purpose').value = '';
+    qs('#create-expected-address').value = '';
     qs('#create-plan-depart').value = '';
     qs('#create-plan-return').value = '';
     qs('#create-notify-mgr').checked = false;
@@ -592,13 +552,13 @@
   }
 
   async function submitCreate() {
-    const staff_name  = qs('#create-staff').value;
-    const visit_date  = qs('#create-date').value;
-    const client_name = qs('#create-client').value.trim();
-    const purpose     = qs('#create-purpose').value.trim();
-    const notify_manager = qs('#create-notify-mgr').checked;
+    const staff_name       = qs('#create-staff').value;
+    const visit_date       = qs('#create-date').value;
+    const client_name      = qs('#create-client').value.trim();
+    const purpose          = qs('#create-purpose').value.trim();
+    const expected_address = qs('#create-expected-address').value.trim();
+    const notify_manager   = qs('#create-notify-mgr').checked;
 
-    // Convert time inputs to full ISO timestamps on the visit date
     function timeToTs(timeVal) {
       if (!timeVal || !visit_date) return null;
       return `${visit_date}T${timeVal}:00+08:00`;
@@ -612,7 +572,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ staff_name, visit_date, client_name, purpose,
-          planned_depart_time, planned_return_time, notify_manager }),
+          expected_address, planned_depart_time, planned_return_time, notify_manager }),
       });
       closeModal('modal-create');
       await loadVisits();
@@ -631,47 +591,17 @@
   // ── Arrive ────────────────────────────────────────────────
   function openArrive(id) {
     activeVisitId = id;
-    qs('#arrive-address').value = '';
-    qs('#arrive-lat').value = '';
-    qs('#arrive-lng').value = '';
-    qs('#gps-preview').textContent = '尚未取得位置';
+    qs('#arrive-actual-address').value = '';
     openModal('modal-arrive');
   }
 
-  function getGps() {
-    const btn = qs('#gps-btn');
-    btn.disabled = true; btn.textContent = '📡 定位中…';
-    if (!navigator.geolocation) {
-      btn.disabled = false; btn.textContent = '📡 取得 GPS 位置';
-      return alert('此瀏覽器不支援 GPS');
-    }
-    navigator.geolocation.getCurrentPosition(async pos => {
-      const lat = pos.coords.latitude.toFixed(7);
-      const lng = pos.coords.longitude.toFixed(7);
-      qs('#arrive-lat').value = lat;
-      qs('#arrive-lng').value = lng;
-      qs('#gps-preview').textContent = `📍 ${lat}, ${lng}  ±${Math.round(pos.coords.accuracy)}m`;
-      btn.disabled = false; btn.textContent = '📡 取得 GPS 位置';
-      try {
-        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
-        const j = await r.json();
-        if (j.display_name && !qs('#arrive-address').value) qs('#arrive-address').value = j.display_name;
-      } catch (_) {}
-    }, err => {
-      btn.disabled = false; btn.textContent = '📡 取得 GPS 位置';
-      alert('無法取得位置：' + err.message);
-    }, { enableHighAccuracy: true, timeout: 15000 });
-  }
-
   async function submitArrive() {
-    const lat = qs('#arrive-lat').value || null;
-    const lng = qs('#arrive-lng').value || null;
-    const address = qs('#arrive-address').value.trim();
+    const actual_address = qs('#arrive-actual-address').value.trim();
     try {
       await api(`/api/field-visits/${activeVisitId}/arrive`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat, lng, address }),
+        body: JSON.stringify({ actual_address }),
       });
       closeModal('modal-arrive');
       loadVisits();
