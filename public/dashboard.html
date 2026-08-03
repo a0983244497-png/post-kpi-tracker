@@ -550,7 +550,7 @@ function buildAccordionHTML(iso, ev) {
   const initManual = captionMode === 'manual';
   const footerCaptionHTML = initManual
     ? '<button class="btn btn-primary" onclick="saveManualCaption()">儲存</button>'
-    : '<button class="btn btn-primary" id="gen-caption-btn" onclick="genCaption()">✦ 產出文案</button><button class="btn" onclick="copyCaption()">複製</button>';
+    : '<button class="btn btn-primary" id="gen-caption-btn" onclick="genCaption()">✦ 產出文案</button><button class="btn" onclick="copyCaption()">複製（乾淨版）</button>';
   return `<div class="acc-inner">
     <div class="acc-hdr">
       ${ev.series ? `<div class="acc-series">${ev.series}</div>` : ''}
@@ -656,7 +656,7 @@ function setCaptionMode(mode) {
   if (mode === 'gpt') {
     gptArea.style.display = '';
     manArea.style.display = 'none';
-    footerCaption.innerHTML = '<button class="btn btn-primary" id="gen-caption-btn" onclick="genCaption()">✦ GPT 產出</button><button class="btn" onclick="copyCaption()">複製</button>';
+    footerCaption.innerHTML = '<button class="btn btn-primary" id="gen-caption-btn" onclick="genCaption()">✦ GPT 產出</button><button class="btn" onclick="copyCaption()">複製（乾淨版）</button>';
   } else {
     gptArea.style.display = 'none';
     manArea.style.display = '';
@@ -731,9 +731,22 @@ async function genCaption() {
   }
 }
 
+function cleanCaption(text) {
+  const lines = text.split('\n').map(line => {
+    // 移除張次標記：第1張、第 1 張｜封面 等整行
+    if (/^[^\S\n]*第\s*\d+\s*張/.test(line)) return '';
+    // 移除免責聲明整行（＊ 或 * 開頭）
+    if (/^[^\S\n]*[＊*]/.test(line)) return '';
+    // 移除欄位標記，保留後方內容
+    return line.replace(/^[^\S\n]*(標題|正文|Hook|本文|行動指令|視覺建議)[：:]\s*/, '');
+  });
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 function copyCaption() {
-  const text = captionMode === 'manual' ? manualCaption
+  const raw = captionMode === 'manual' ? manualCaption
     : (document.getElementById('caption-area') || {}).textContent || '';
+  const text = cleanCaption(raw);
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.querySelector('#footer-caption .btn:not(.btn-primary)');
     if (!btn) return;
