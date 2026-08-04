@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Montserrat:wght@500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 /* ===== TOKENS ===== */
 :root{
@@ -176,6 +177,41 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
   .header{padding:0 1rem}
   .img-grid{grid-template-columns:repeat(2,1fr)}
 }
+
+/* ===== SECTION NAV ===== */
+.section-nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;position:sticky;top:57px;z-index:90}
+.snav-btn{font-size:13px;font-weight:600;padding:9px 18px;cursor:pointer;border:none;background:none;color:var(--text-mid);font-family:var(--font);border-bottom:3px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s}
+.snav-btn.on{color:var(--brick);border-bottom-color:var(--brick)}
+.snav-btn:not(.on):hover{color:var(--text);background:var(--sand-light)}
+
+/* ===== MATRIX UI ===== */
+.mx-wrap{max-width:960px;margin:0 auto;padding:1.5rem 2rem;display:flex;flex-direction:column;gap:1.25rem}
+.mx-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem}
+.mx-card h3{font-size:15px;font-weight:700;color:var(--text);margin:0 0 1rem}
+.mx-label{font-size:12px;font-weight:600;color:var(--text-mid);margin-bottom:4px;display:block}
+.mx-input{width:100%;padding:8px 10px;border:1px solid var(--border-strong);border-radius:6px;background:var(--bg);font-size:13px;color:var(--text);font-family:var(--font);box-sizing:border-box;outline:none;transition:border-color .15s}
+.mx-input:focus{border-color:var(--brick)}
+.mx-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.mx-dist-box{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.mx-dist-item{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-mid)}
+.mx-dist-item input{width:60px;padding:6px 8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--bg);font-size:13px;color:var(--text);font-family:var(--font);text-align:center;outline:none}
+.mx-dist-msg{font-size:12px;margin-top:6px}
+.prog-wrap{background:var(--border);border-radius:99px;height:8px;margin:6px 0;overflow:hidden}
+.prog-fill{height:100%;background:var(--brick);border-radius:99px;transition:width .4s ease}
+.prog-text{font-size:12px;color:var(--text-mid);text-align:center;margin-top:4px}
+.type-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;white-space:nowrap;display:inline-block}
+.tb-pure{background:var(--surface-0);color:var(--text-mid);border:1px solid var(--border)}
+.tb-soft{background:rgba(212,184,150,.3);color:var(--brown-mid);border:1px solid var(--sand)}
+.tb-explicit{background:var(--bg-accent);color:var(--brick);border:1px solid rgba(184,83,26,.2)}
+.matrix-table{width:100%;border-collapse:collapse;font-size:13px}
+.matrix-table th{background:var(--surface-0);font-size:11px;font-weight:700;color:var(--text-mid);padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.matrix-table td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+.matrix-preview{white-space:pre-line;line-height:1.7;max-height:4.5em;overflow:hidden;color:var(--text);cursor:pointer}
+.matrix-preview.expanded{max-height:none}
+.mx-toolbar{display:flex;justify-content:flex-end;margin-bottom:10px}
+.bio-table{width:100%;border-collapse:collapse;font-size:13px}
+.bio-table th{background:var(--surface-0);font-size:11px;font-weight:700;color:var(--text-mid);padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)}
+.bio-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
 </style>
 </head>
 <body>
@@ -196,6 +232,14 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
   </div>
 </header>
 
+<!-- Section navigation tabs -->
+<nav class="section-nav">
+  <button class="snav-btn on" id="stab-calendar" onclick="switchSection('calendar')">📅 內容日曆</button>
+  <button class="snav-btn" id="stab-matrix" onclick="switchSection('matrix')">⚡ 批量矩陣</button>
+</nav>
+
+<!-- Calendar section -->
+<div id="section-calendar">
 <div class="layout">
   <div class="left">
     <div class="week-nav">
@@ -211,6 +255,128 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
     <div id="cal-wrap">
       <div class="loading-msg">輸入密碼後按「載入」</div>
     </div>
+  </div>
+</div>
+</div>
+
+<!-- Matrix section -->
+<div id="section-matrix" style="display:none">
+  <div class="mx-wrap">
+
+    <!-- Input card -->
+    <div class="mx-card">
+      <h3>⚡ 批量文案設定</h3>
+      <div class="mx-row" style="margin-bottom:12px">
+        <div style="flex:1;min-width:200px">
+          <label class="mx-label">主題</label>
+          <input id="mx-topic" type="text" class="mx-input" placeholder="例：情緒不穩別摸盤">
+        </div>
+        <div style="width:120px">
+          <label class="mx-label">變體數量</label>
+          <select id="mx-count" class="mx-input" onchange="updateDistributionFromCount()">
+            <option value="10">10 篇</option>
+            <option value="50">50 篇</option>
+            <option value="100" selected>100 篇</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label class="mx-label">補充說明（選填）</label>
+        <textarea id="mx-notes" class="mx-input" style="min-height:60px;resize:vertical" placeholder="切角偏好、語感要求等"></textarea>
+      </div>
+      <div style="margin-bottom:8px">
+        <label class="mx-label">導流分配（三項合計需等於總數量）</label>
+        <div class="mx-dist-box">
+          <div class="mx-dist-item">
+            <input id="mx-pure" type="number" value="40" min="0" oninput="validateDistribution()">
+            <span>純內容</span>
+          </div>
+          <div class="mx-dist-item">
+            <input id="mx-soft" type="number" value="40" min="0" oninput="validateDistribution()">
+            <span>軟導流</span>
+          </div>
+          <div class="mx-dist-item">
+            <input id="mx-explicit" type="number" value="20" min="0" oninput="validateDistribution()">
+            <span>明確導流</span>
+          </div>
+        </div>
+        <div id="mx-dist-msg" class="mx-dist-msg" style="color:var(--text-mid)">✓ 合計 100 篇</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+        <button id="mx-gen-btn" class="btn btn-primary" onclick="generateMatrix()">✦ 批量產出</button>
+        <span style="font-size:11px;color:var(--text-muted)">共 11 次 GPT 呼叫，約需 2–4 分鐘</span>
+      </div>
+    </div>
+
+    <!-- Matrix progress -->
+    <div id="matrix-progress" style="display:none">
+      <div class="mx-card" style="padding:1rem 1.5rem">
+        <div class="prog-wrap"><div id="matrix-prog-bar" class="prog-fill" style="width:0%"></div></div>
+        <div id="matrix-prog-text" class="prog-text">準備中…</div>
+      </div>
+    </div>
+
+    <!-- Matrix results -->
+    <div id="matrix-results" style="display:none">
+      <div class="mx-card" style="padding:1rem 1.5rem">
+        <div class="mx-toolbar">
+          <button class="btn btn-primary" onclick="exportMatrixExcel()">↓ 匯出 Excel</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="matrix-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>導流類型</th>
+                <th>文案（點擊展開/編輯）</th>
+                <th>字數</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="matrix-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bio section -->
+    <div class="mx-card">
+      <h3>🪪 Bio 批量產出</h3>
+      <div style="margin-bottom:12px">
+        <label class="mx-label">群連結（匯出 Excel 時填入，Bio 文字結尾固定寫「群連結 👇」）</label>
+        <input id="bio-group-link" type="text" class="mx-input" placeholder="https://…（實際連結只出現在 Excel，不進入 Bio 文字）">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="bio-gen-btn" class="btn btn-primary" onclick="generateBios()">✦ 產出 100 個 Bio</button>
+        <span style="font-size:11px;color:var(--text-muted)">3 批次 GPT 呼叫，約需 1–2 分鐘</span>
+      </div>
+
+      <!-- Bio progress -->
+      <div id="bio-progress" style="display:none;margin-top:12px">
+        <div class="prog-wrap"><div id="bio-prog-bar" class="prog-fill" style="width:0%"></div></div>
+        <div id="bio-prog-text" class="prog-text">產出中…</div>
+      </div>
+
+      <!-- Bio results -->
+      <div id="bio-results" style="display:none;margin-top:14px">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+          <button class="btn btn-primary" onclick="exportBioExcel()">↓ 匯出 Bio Excel</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="bio-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Bio 文字</th>
+                <th>字數</th>
+              </tr>
+            </thead>
+            <tbody id="bio-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -1013,6 +1179,405 @@ async function downloadZip() {
   } finally {
     btn.textContent = orig; btn.disabled = false;
   }
+}
+
+// ===== SECTION SWITCHER =====
+function switchSection(sec) {
+  document.getElementById('section-calendar').style.display = sec === 'calendar' ? '' : 'none';
+  document.getElementById('section-matrix').style.display = sec === 'matrix' ? '' : 'none';
+  document.querySelectorAll('.snav-btn').forEach(b => b.classList.remove('on'));
+  document.getElementById('stab-' + sec).classList.add('on');
+}
+
+// ===== MATRIX STATE =====
+let matrixVariants = [];
+let matrixTopic = '';
+let matrixNotes = '';
+let bioResults = [];
+
+const LINK_RE = /https?:\/\/[^\s<>"]+|www\.[^\s<>"]+|bit\.ly\/[^\s<>"]+|lin\.ee\/[^\s<>"]+|t\.me\/[^\s<>"]+|linktr\.ee\/[^\s<>"]+/gi;
+const BIO_BANNED = ['保證獲利','穩賺','必賺','零風險','保本','賣課','保證'];
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function stripLinks(text) {
+  return text.replace(LINK_RE, '').replace(/[ \t]{2,}/g, ' ').trim();
+}
+
+function hasBannedWord(text) {
+  return BIO_BANNED.some(w => text.includes(w));
+}
+
+function cleanBannedWords(text) {
+  let r = text;
+  BIO_BANNED.forEach(w => { while (r.includes(w)) r = r.split(w).join(''); });
+  return r.replace(/\s{2,}/g, ' ').trim();
+}
+
+function parseDelimited(text) {
+  const parts = text.split(/===\s*\d+\s*===/);
+  const results = [];
+  for (let i = 1; i < parts.length; i++) {
+    const chunk = parts[i].trim();
+    if (chunk) results.push(chunk);
+  }
+  return results.length ? results : (text.trim() ? [text.trim()] : []);
+}
+
+async function callGPT(prompt, system, maxTokens) {
+  const res = await fetch(API_BASE + CLAUDE_PROXY, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Basic ' + btoa(':' + pw),
+    },
+    body: JSON.stringify({ system: system || SOP_SYSTEM, prompt, type: 'matrix', max_tokens: maxTokens || 2500 }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'HTTP ' + res.status);
+  }
+  const data = await res.json();
+  return data.text || '';
+}
+
+function validateDistribution() {
+  const count = parseInt(document.getElementById('mx-count').value) || 100;
+  const pure = parseInt(document.getElementById('mx-pure').value) || 0;
+  const soft = parseInt(document.getElementById('mx-soft').value) || 0;
+  const expl = parseInt(document.getElementById('mx-explicit').value) || 0;
+  const total = pure + soft + expl;
+  const msg = document.getElementById('mx-dist-msg');
+  if (total !== count) {
+    msg.textContent = '⚠ 合計 ' + total + ' 篇，與 ' + count + ' 篇不符';
+    msg.style.color = '#8A2010';
+    return false;
+  }
+  msg.textContent = '✓ 合計 ' + total + ' 篇';
+  msg.style.color = '#1A6A3A';
+  return true;
+}
+
+function updateDistributionFromCount() {
+  const count = parseInt(document.getElementById('mx-count').value) || 100;
+  const pure = Math.round(count * 0.4);
+  const expl = Math.round(count * 0.2);
+  const soft = count - pure - expl;
+  document.getElementById('mx-pure').value = pure;
+  document.getElementById('mx-soft').value = soft;
+  document.getElementById('mx-explicit').value = expl;
+  validateDistribution();
+}
+
+async function generateMatrix() {
+  if (!validateDistribution()) return;
+  const topic = document.getElementById('mx-topic').value.trim();
+  if (!topic) { alert('請輸入主題'); return; }
+  if (!pw) { alert('請先輸入密碼並按「載入」'); return; }
+
+  matrixTopic = topic;
+  matrixNotes = document.getElementById('mx-notes').value.trim();
+  const matrixCount = parseInt(document.getElementById('mx-count').value) || 100;
+  const pureCount = parseInt(document.getElementById('mx-pure').value) || 0;
+  const softCount = parseInt(document.getElementById('mx-soft').value) || 0;
+  const explCount = parseInt(document.getElementById('mx-explicit').value) || 0;
+  const varPer = matrixCount / 10;
+
+  const progEl = document.getElementById('matrix-progress');
+  const progBar = document.getElementById('matrix-prog-bar');
+  const progText = document.getElementById('matrix-prog-text');
+  const resultsEl = document.getElementById('matrix-results');
+  progEl.style.display = '';
+  resultsEl.style.display = 'none';
+  progBar.style.width = '0%';
+  progText.textContent = '準備中…';
+
+  const genBtn = document.getElementById('mx-gen-btn');
+  genBtn.disabled = true;
+  genBtn.textContent = '產出中…';
+
+  try {
+    // Step 1: 10 core skeletons
+    progText.textContent = '正在產出 10 個核心骨架…';
+    let skelFmt = '';
+    for (let k = 1; k <= 10; k++) skelFmt += '===' + k + '===\n（第' + k + '篇骨架）\n';
+    const skelPrompt = '主題：' + topic + '\n補充說明：' + (matrixNotes || '無') + '\n\n' +
+      '請依照你的文案風格 SOP，為此主題產出 10 個不同切角的 Threads 純文字貼文骨架。\n\n' +
+      '每個骨架：\n- 切角不重複（痛點體驗、反轉觀點、時間序事件、結果分享、對比情境等輪替）\n' +
+      '- 60–120 字，不分張，口語化\n' +
+      '- 嚴禁出現任何連結（http://、https://、群組連結等）\n' +
+      '- 結尾不加任何導流語句\n\n' +
+      '輸出格式（嚴格按照，不要有其他說明文字）：\n' + skelFmt;
+
+    const skelText = await callGPT(skelPrompt, SOP_SYSTEM, 3500);
+    let skeletons = parseDelimited(skelText);
+    while (skeletons.length < 10) skeletons.push(skeletons[0] || topic);
+    skeletons = skeletons.slice(0, 10).map(stripLinks);
+    progBar.style.width = '8%';
+
+    // Step 2: variants for each skeleton
+    const allTexts = [];
+    for (let s = 0; s < 10; s++) {
+      progText.textContent = '產出中 ' + allTexts.length + '/' + matrixCount + '（骨架 ' + (s + 1) + '/10）';
+      progBar.style.width = (8 + s * 9) + '%';
+
+      let varFmt = '';
+      for (let k = 1; k <= varPer; k++) varFmt += '===' + k + '===\n（變體' + k + '）\n';
+      const varPrompt = '以下是一個 Threads 貼文骨架：\n\n' + skeletons[s] + '\n\n' +
+        '請基於此骨架，產出 ' + varPer + ' 篇具有「實質差異」的變體文案。\n\n' +
+        '差異要求（每篇至少改變 2 種以上）：\n' +
+        '- 換開頭句式或情境\n- 調換段落或句子順序\n- 換不同具體數字舉例\n- 換部分用詞（同義但感受不同）\n\n' +
+        '嚴禁出現任何連結（http://、https://、群組連結等）。\n結尾不加任何導流語句（導流結尾由系統自動套用）。\n\n' +
+        '輸出格式（嚴格按照，不要有其他說明）：\n' + varFmt;
+
+      const varText = await callGPT(varPrompt, SOP_SYSTEM, 3500);
+      let variants = parseDelimited(varText);
+      while (variants.length < varPer) variants.push(skeletons[s]);
+      variants = variants.slice(0, varPer).map(stripLinks);
+      allTexts.push(...variants);
+    }
+
+    progBar.style.width = '95%';
+    progText.textContent = '整理中…';
+
+    // Assign traffic types in order
+    const TYPE_SUFFIX = { pure: '', soft: '\n\n（更完整的我放在主頁）', explicit: '\n\n追蹤 @yusheng.zhu.14' };
+    const TYPE_LABEL  = { pure: '純內容', soft: '軟導流', explicit: '明確導流' };
+    const TYPE_CLS    = { pure: 'tb-pure', soft: 'tb-soft', explicit: 'tb-explicit' };
+    const order = [];
+    for (let i = 0; i < pureCount; i++) order.push('pure');
+    for (let i = 0; i < softCount; i++) order.push('soft');
+    for (let i = 0; i < explCount; i++) order.push('explicit');
+
+    matrixVariants = allTexts.slice(0, matrixCount).map((text, i) => {
+      const t = order[i] || 'pure';
+      const content = text + TYPE_SUFFIX[t];
+      return { id: i + 1, type: t, typeLabel: TYPE_LABEL[t], typeCls: TYPE_CLS[t], content, charCount: content.length };
+    });
+
+    progBar.style.width = '100%';
+    progText.textContent = '✓ 完成！共 ' + matrixCount + ' 篇';
+    renderMatrixTable();
+    resultsEl.style.display = '';
+    resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  } catch (e) {
+    progText.textContent = '❌ 產出失敗：' + e.message;
+    console.error('[matrix]', e);
+  } finally {
+    genBtn.disabled = false;
+    genBtn.textContent = '✦ 批量產出';
+  }
+}
+
+function renderMatrixTable() {
+  const tbody = document.getElementById('matrix-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = matrixVariants.map(v =>
+    '<tr id="mrow-' + v.id + '">' +
+      '<td style="width:36px;text-align:center;font-size:11px;color:var(--text-muted);white-space:nowrap">' + String(v.id).padStart(3, '0') + '</td>' +
+      '<td style="width:70px"><span class="type-badge ' + v.typeCls + '">' + v.typeLabel + '</span></td>' +
+      '<td onclick="toggleMEdit(' + v.id + ')">' +
+        '<div id="mprev-' + v.id + '" class="matrix-preview">' + escHtml(v.content) + '</div>' +
+        '<div id="medit-' + v.id + '" style="display:none;padding-top:6px" onclick="event.stopPropagation()">' +
+          '<textarea id="meta-' + v.id + '" style="width:100%;min-height:100px;font-size:13px;line-height:1.7;padding:7px;border:1px solid var(--border-strong);border-radius:6px;background:var(--bg);font-family:var(--font);resize:vertical;box-sizing:border-box;outline:none" oninput="mCharCount(' + v.id + ')">' + escHtml(v.content) + '</textarea>' +
+          '<div style="display:flex;gap:6px;margin-top:4px">' +
+            '<button class="btn btn-primary" style="font-size:11px;padding:3px 10px" onclick="saveMEdit(' + v.id + ')">儲存</button>' +
+            '<button class="btn" style="font-size:11px;padding:3px 10px" onclick="cancelMEdit(' + v.id + ')">取消</button>' +
+          '</div>' +
+        '</div>' +
+      '</td>' +
+      '<td id="mcc-' + v.id + '" style="width:36px;text-align:center;font-size:11px;color:var(--text-muted)">' + v.charCount + '</td>' +
+      '<td style="width:50px;text-align:center"><button class="btn" style="font-size:11px;padding:3px 7px;white-space:nowrap" onclick="event.stopPropagation();regenVariant(' + v.id + ')">重產</button></td>' +
+    '</tr>'
+  ).join('');
+}
+
+function toggleMEdit(id) {
+  const prev = document.getElementById('mprev-' + id);
+  const edit = document.getElementById('medit-' + id);
+  if (!prev || !edit) return;
+  const opening = edit.style.display === 'none';
+  prev.classList.toggle('expanded', opening);
+  edit.style.display = opening ? '' : 'none';
+  if (opening) { const ta = document.getElementById('meta-' + id); if (ta) setTimeout(() => ta.focus(), 0); }
+}
+
+function mCharCount(id) {
+  const ta = document.getElementById('meta-' + id);
+  const cc = document.getElementById('mcc-' + id);
+  if (ta && cc) cc.textContent = ta.value.length;
+}
+
+function saveMEdit(id) {
+  const ta = document.getElementById('meta-' + id);
+  const v = matrixVariants.find(x => x.id === id);
+  if (!ta || !v) return;
+  v.content = ta.value;
+  v.charCount = ta.value.length;
+  const prev = document.getElementById('mprev-' + id);
+  if (prev) { prev.innerHTML = escHtml(v.content); prev.classList.remove('expanded'); }
+  const edit = document.getElementById('medit-' + id);
+  if (edit) edit.style.display = 'none';
+  const cc = document.getElementById('mcc-' + id);
+  if (cc) cc.textContent = v.charCount;
+}
+
+function cancelMEdit(id) {
+  const v = matrixVariants.find(x => x.id === id);
+  const ta = document.getElementById('meta-' + id);
+  if (ta && v) ta.value = v.content;
+  const edit = document.getElementById('medit-' + id);
+  if (edit) edit.style.display = 'none';
+  const prev = document.getElementById('mprev-' + id);
+  if (prev) prev.classList.remove('expanded');
+}
+
+async function regenVariant(id) {
+  const v = matrixVariants.find(x => x.id === id);
+  if (!v || !pw) return;
+  const btn = document.querySelector('#mrow-' + id + ' .btn');
+  if (btn) { btn.textContent = '…'; btn.disabled = true; }
+  try {
+    const suffix = v.type === 'soft' ? '\n\n（更完整的我放在主頁）' : v.type === 'explicit' ? '\n\n追蹤 @yusheng.zhu.14' : '';
+    const baseText = v.content.endsWith(suffix.trim()) ? v.content.slice(0, v.content.length - suffix.length).trim() : v.content;
+    const prompt = '請針對主題「' + matrixTopic + '」，重新產出一篇全新的 Threads 貼文。\n\n' +
+      '參考切角（請用不同切角）：\n' + baseText + '\n\n' +
+      '要求：純文字，60-120 字，嚴禁出現任何連結，結尾不加導流語句。\n只輸出文案本身，不要有說明。';
+    const text = await callGPT(prompt, SOP_SYSTEM, 800);
+    const cleaned = stripLinks(text.trim());
+    v.content = cleaned + suffix;
+    v.charCount = v.content.length;
+    const prev = document.getElementById('mprev-' + id);
+    if (prev) prev.innerHTML = escHtml(v.content);
+    const ta = document.getElementById('meta-' + id);
+    if (ta) ta.value = v.content;
+    const cc = document.getElementById('mcc-' + id);
+    if (cc) cc.textContent = v.charCount;
+  } catch (e) {
+    alert('重新產出失敗：' + e.message);
+  } finally {
+    if (btn) { btn.textContent = '重產'; btn.disabled = false; }
+  }
+}
+
+function exportMatrixExcel() {
+  if (!matrixVariants.length) { alert('尚未產出任何文案'); return; }
+  if (typeof XLSX === 'undefined') { alert('SheetJS 載入中，請稍後再試'); return; }
+  const wb = XLSX.utils.book_new();
+  const rows = [['帳號編號', '發文時間', '文案內容', '導流類型', '主題', '字數']];
+  matrixVariants.forEach((v, i) => {
+    rows.push([String(i + 1).padStart(3, '0'), '', v.content, v.typeLabel, matrixTopic, v.charCount]);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{ wch: 10 }, { wch: 12 }, { wch: 60 }, { wch: 10 }, { wch: 20 }, { wch: 8 }];
+  XLSX.utils.book_append_sheet(wb, ws, '批量矩陣');
+  const d = new Date();
+  const ds = d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
+  XLSX.writeFile(wb, '批量矩陣_' + matrixTopic + '_' + ds + '.xlsx');
+}
+
+// ===== BIO GENERATION =====
+async function generateBios() {
+  if (!pw) { alert('請先輸入密碼並按「載入」'); return; }
+  const progEl = document.getElementById('bio-progress');
+  const progBar = document.getElementById('bio-prog-bar');
+  const progText = document.getElementById('bio-prog-text');
+  const resultsEl = document.getElementById('bio-results');
+  progEl.style.display = '';
+  resultsEl.style.display = 'none';
+  progBar.style.width = '0%';
+  progText.textContent = '產出中…';
+  const genBtn = document.getElementById('bio-gen-btn');
+  genBtn.disabled = true;
+  genBtn.textContent = '產出中…';
+
+  const bioSys = '你是 @yusheng.zhu.14（Gino）的社群帳號 Bio 文案助手。\n' +
+    'Gino 是黃金日內交易講師，有 2.5 年交易經驗，品牌名稱「重心開始」。\n\n' +
+    '【規則】\n' +
+    '- 每個 Bio 不超過 3 行，語言自然口語，貼近台灣用語\n' +
+    '- 結尾統一用「群連結 👇」四個字結尾（不寫實際網址）\n' +
+    '- 嚴禁出現：保證獲利、穩賺、必賺、零風險、保本、賣課\n' +
+    '- 嚴禁出現任何實際連結（http://、https:// 等）\n' +
+    '- 不要出現免責聲明';
+
+  const batches = [
+    { start: 1,  count: 35, styles: '簡潔專業7個、親切口語7個、痛點切入7個、結果導向7個、簡短個性7個' },
+    { start: 36, count: 35, styles: '簡潔專業7個、親切口語7個、痛點切入7個、結果導向7個、簡短個性7個' },
+    { start: 71, count: 30, styles: '簡潔專業6個、親切口語6個、痛點切入6個、結果導向6個、簡短個性6個' },
+  ];
+
+  bioResults = [];
+  try {
+    for (let b = 0; b < batches.length; b++) {
+      const { start, count, styles } = batches[b];
+      progText.textContent = '產出中 ' + bioResults.length + '/100…';
+      progBar.style.width = bioResults.length + '%';
+
+      let bioFmt = '';
+      for (let k = 0; k < count; k++) bioFmt += '===' + (start + k) + '===\n（Bio ' + (start + k) + '，最多3行，結尾要有「群連結 👇」）\n';
+
+      const bioPrompt = '請產出 ' + count + ' 個不同的 Threads 帳號 Bio，編號從 ' + start + ' 到 ' + (start + count - 1) + '。\n\n' +
+        '風格分配：' + styles + '\n\n' +
+        '風格說明：\n1. 簡潔專業：如「黃金交易日常紀錄」\n' +
+        '2. 親切口語：如「做黃金的普通人」\n' +
+        '3. 痛點切入：如「以前也是看盤看到崩潰」\n' +
+        '4. 結果導向：如「兩年交易心得整理」\n' +
+        '5. 簡短個性：如「交易 × 生活」\n\n' +
+        '輸出格式（嚴格按照，不要有其他說明文字）：\n' + bioFmt;
+
+      const bioText = await callGPT(bioPrompt, bioSys, 4000);
+      let bios = parseDelimited(bioText);
+      while (bios.length < count) bios.push(bios[0] || '黃金交易日常紀錄\n群連結 👇');
+      bios = bios.slice(0, count);
+
+      bios.forEach((raw, i) => {
+        let text = stripLinks(raw.trim());
+        if (hasBannedWord(text)) text = cleanBannedWords(text);
+        bioResults.push({ id: start + i, content: text, charCount: text.length });
+      });
+    }
+    progBar.style.width = '100%';
+    progText.textContent = '✓ 完成！共 ' + bioResults.length + ' 個 Bio';
+    renderBioTable();
+    resultsEl.style.display = '';
+    resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    progText.textContent = '❌ 產出失敗：' + e.message;
+    console.error('[bio]', e);
+  } finally {
+    genBtn.disabled = false;
+    genBtn.textContent = '✦ 產出 100 個 Bio';
+  }
+}
+
+function renderBioTable() {
+  const tbody = document.getElementById('bio-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = bioResults.map(b =>
+    '<tr>' +
+      '<td style="width:36px;text-align:center;font-size:11px;color:var(--text-muted)">' + String(b.id).padStart(3, '0') + '</td>' +
+      '<td style="white-space:pre-line;font-size:13px;line-height:1.7">' + escHtml(b.content) + '</td>' +
+      '<td style="width:36px;text-align:center;font-size:11px;color:var(--text-muted)">' + b.charCount + '</td>' +
+    '</tr>'
+  ).join('');
+}
+
+function exportBioExcel() {
+  if (!bioResults.length) { alert('尚未產出任何 Bio'); return; }
+  if (typeof XLSX === 'undefined') { alert('SheetJS 載入中，請稍後再試'); return; }
+  const groupLink = (document.getElementById('bio-group-link')?.value || '').trim();
+  const wb = XLSX.utils.book_new();
+  const rows = [['帳號編號', 'Bio 文字', '群連結']];
+  bioResults.forEach(b => rows.push([String(b.id).padStart(3, '0'), b.content, groupLink]));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{ wch: 10 }, { wch: 50 }, { wch: 30 }];
+  XLSX.utils.book_append_sheet(wb, ws, 'Bio批量');
+  const d = new Date();
+  const ds = d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
+  XLSX.writeFile(wb, 'Bio批量_' + ds + '.xlsx');
 }
 
 // ===== INIT =====
