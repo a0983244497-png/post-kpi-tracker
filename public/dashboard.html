@@ -475,7 +475,26 @@ Gino 是黃金日內交易講師，有 2.5 年交易經驗，之前開過餐廳�
 
 本文（60–100字，說群組實際價值，不賣夢）
 
-行動指令（私訊「關鍵字」或連結在限動）`;
+行動指令（私訊「關鍵字」或連結在限動）
+
+【數字表達｜用金額不用點數】
+虧損、獲利一律用「台幣金額」，不要用「點數」。
+一般人看不懂點數，金額才有感、才看得懂。
+
+正確：「賠了三千多」「回吐快兩千」「賺了五千」「被掃掉一千多」
+錯誤：「80點」「120點」「被掃 100 點」
+
+換算參考（抓感覺用，不寫死）：
+黃金常見單筆虧損金額落在幾百到幾千台幣。
+
+【emoji 限制】
+可用：🤣 😂 🥲 😍 😅
+禁用：💀 👿 ☠️ 這類陰暗或攻擊性的
+每則最多一個 emoji，放句尾。
+
+【輸出前檢查】
+產出後檢查有沒有重複字、贅字，例如「想想」「的的」「了了」。
+確保每句讀起來通順，像正常人說話。`;
 
 // ===== STATE =====
 let pw = '';
@@ -1197,6 +1216,9 @@ let bioResults = [];
 
 const LINK_RE = /https?:\/\/[^\s<>"]+|www\.[^\s<>"]+|bit\.ly\/[^\s<>"]+|lin\.ee\/[^\s<>"]+|t\.me\/[^\s<>"]+|linktr\.ee\/[^\s<>"]+/gi;
 const BIO_BANNED = ['保證獲利','穩賺','必賺','零風險','保本','賣課','保證'];
+// 連續兩個相同中文字符（的的、想想、了了 等）
+const REPEAT_CHAR_RE = /([一-鿿])\1/;
+function hasRepeatChars(text) { return REPEAT_CHAR_RE.test(text); }
 
 function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1354,7 +1376,7 @@ async function generateMatrix() {
     matrixVariants = allTexts.slice(0, matrixCount).map((text, i) => {
       const t = order[i] || 'pure';
       const content = text + TYPE_SUFFIX[t];
-      return { id: i + 1, type: t, typeLabel: TYPE_LABEL[t], typeCls: TYPE_CLS[t], content, charCount: content.length };
+      return { id: i + 1, type: t, typeLabel: TYPE_LABEL[t], typeCls: TYPE_CLS[t], content, charCount: content.length, hasRepeat: hasRepeatChars(content) };
     });
 
     progBar.style.width = '100%';
@@ -1377,7 +1399,10 @@ function renderMatrixTable() {
   if (!tbody) return;
   tbody.innerHTML = matrixVariants.map(v =>
     '<tr id="mrow-' + v.id + '">' +
-      '<td style="width:36px;text-align:center;font-size:11px;color:var(--text-muted);white-space:nowrap">' + String(v.id).padStart(3, '0') + '</td>' +
+      '<td style="width:36px;text-align:center;font-size:11px;white-space:nowrap">' +
+        '<span style="color:var(--text-muted)">' + String(v.id).padStart(3, '0') + '</span>' +
+        (v.hasRepeat ? '<br><span style="color:#B8531A;font-size:10px" title="疑似重複字，建議人工確認">⚠</span>' : '') +
+      '</td>' +
       '<td style="width:70px"><span class="type-badge ' + v.typeCls + '">' + v.typeLabel + '</span></td>' +
       '<td onclick="toggleMEdit(' + v.id + ')">' +
         '<div id="mprev-' + v.id + '" class="matrix-preview">' + escHtml(v.content) + '</div>' +
@@ -1417,12 +1442,18 @@ function saveMEdit(id) {
   if (!ta || !v) return;
   v.content = ta.value;
   v.charCount = ta.value.length;
+  v.hasRepeat = hasRepeatChars(v.content);
   const prev = document.getElementById('mprev-' + id);
   if (prev) { prev.innerHTML = escHtml(v.content); prev.classList.remove('expanded'); }
   const edit = document.getElementById('medit-' + id);
   if (edit) edit.style.display = 'none';
   const cc = document.getElementById('mcc-' + id);
   if (cc) cc.textContent = v.charCount;
+  // update repeat warning
+  const idCell = document.querySelector('#mrow-' + id + ' td:first-child span:last-child');
+  // re-render just the number cell
+  const numCell = document.querySelector('#mrow-' + id + ' td:first-child');
+  if (numCell) numCell.innerHTML = '<span style="color:var(--text-muted)">' + String(v.id).padStart(3,'0') + '</span>' + (v.hasRepeat ? '<br><span style="color:#B8531A;font-size:10px" title="疑似重複字，建議人工確認">⚠</span>' : '');
 }
 
 function cancelMEdit(id) {
@@ -1450,12 +1481,15 @@ async function regenVariant(id) {
     const cleaned = stripLinks(text.trim());
     v.content = cleaned + suffix;
     v.charCount = v.content.length;
+    v.hasRepeat = hasRepeatChars(v.content);
     const prev = document.getElementById('mprev-' + id);
     if (prev) prev.innerHTML = escHtml(v.content);
     const ta = document.getElementById('meta-' + id);
     if (ta) ta.value = v.content;
     const cc = document.getElementById('mcc-' + id);
     if (cc) cc.textContent = v.charCount;
+    const numCell = document.querySelector('#mrow-' + id + ' td:first-child');
+    if (numCell) numCell.innerHTML = '<span style="color:var(--text-muted)">' + String(v.id).padStart(3,'0') + '</span>' + (v.hasRepeat ? '<br><span style="color:#B8531A;font-size:10px" title="疑似重複字，建議人工確認">⚠</span>' : '');
   } catch (e) {
     alert('重新產出失敗：' + e.message);
   } finally {
