@@ -22,8 +22,8 @@
   --sand:#D4B896;
   --sand-light:#EAD9C4;
   --text:#3A2010;
-  --text-mid:rgba(58,32,16,.6);
-  --text-muted:rgba(58,32,16,.35);
+  --text-mid:rgba(58,32,16,.72);
+  --text-muted:rgba(58,32,16,.50);
   --border:rgba(58,32,16,.1);
   --border-strong:rgba(58,32,16,.2);
   --border-accent:#B8531A;
@@ -117,6 +117,7 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 .btn:hover{background:var(--sand-light)}
 .btn-primary{background:var(--brick);border-color:var(--brick);color:#fff;font-weight:500}
 .btn-primary:hover{background:#9A3F0E}
+.btn:disabled,.btn-primary:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
 
 /* ===== IMAGE PANE ===== */
 .img-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:8px 0;min-height:80px}
@@ -168,6 +169,11 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 .day-selector-name{font-size:12px;font-weight:500;color:var(--text);margin-top:4px}
 .day-selector-meta{font-size:11px;color:var(--text-muted);margin-top:2px}
 
+/* ===== REDUCED MOTION ===== */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-duration:.01ms !important;animation-duration:.01ms !important}
+}
+
 /* ===== RESPONSIVE ===== */
 @media(max-width:600px){
   .cal-grid{grid-template-columns:repeat(4,1fr)}
@@ -179,7 +185,7 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 }
 
 /* ===== SECTION NAV ===== */
-.section-nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;position:sticky;top:57px;z-index:90}
+.section-nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;position:sticky;top:56px;z-index:90}
 .snav-btn{font-size:13px;font-weight:600;padding:9px 18px;cursor:pointer;border:none;background:none;color:var(--text-mid);font-family:var(--font);border-bottom:3px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s}
 .snav-btn.on{color:var(--brick);border-bottom-color:var(--brick)}
 .snav-btn:not(.on):hover{color:var(--text);background:var(--sand-light)}
@@ -206,7 +212,8 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 .matrix-table{width:100%;border-collapse:collapse;font-size:13px}
 .matrix-table th{background:var(--surface-0);font-size:11px;font-weight:700;color:var(--text-mid);padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
 .matrix-table td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top}
-.matrix-preview{white-space:pre-line;line-height:1.7;max-height:4.5em;overflow:hidden;color:var(--text);cursor:pointer}
+.matrix-preview{white-space:pre-line;line-height:1.7;max-height:4.5em;overflow:hidden;color:var(--text);cursor:pointer;padding:4px;margin:-4px;border-radius:4px;transition:background .15s}
+.matrix-preview:hover{background:rgba(58,32,16,.04)}
 .matrix-preview.expanded{max-height:none}
 .mx-toolbar{display:flex;justify-content:flex-end;margin-bottom:10px}
 .bio-table{width:100%;border-collapse:collapse;font-size:13px}
@@ -234,8 +241,8 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 
 <!-- Section navigation tabs -->
 <nav class="section-nav">
-  <button class="snav-btn on" id="stab-calendar" onclick="switchSection('calendar')">📅 內容日曆</button>
-  <button class="snav-btn" id="stab-matrix" onclick="switchSection('matrix')">⚡ 批量矩陣</button>
+  <button class="snav-btn on" id="stab-calendar" onclick="switchSection('calendar')"><span aria-hidden="true">📅</span> 內容日曆</button>
+  <button class="snav-btn" id="stab-matrix" onclick="switchSection('matrix')"><span aria-hidden="true">⚡</span> 批量矩陣</button>
 </nav>
 
 <!-- Calendar section -->
@@ -243,9 +250,9 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 <div class="layout">
   <div class="left">
     <div class="week-nav">
-      <button class="wnav-btn" onclick="changeNav(-1)">&#8592;</button>
+      <button class="wnav-btn" onclick="changeNav(-1)" aria-label="上一週">&#8592;</button>
       <div class="week-label" id="week-label">—</div>
-      <button class="wnav-btn" onclick="changeNav(1)">&#8594;</button>
+      <button class="wnav-btn" onclick="changeNav(1)" aria-label="下一週">&#8594;</button>
       <div class="view-toggle">
         <button class="vtab on" id="vtab-week" onclick="setView('week')">週</button>
         <button class="vtab" id="vtab-month" onclick="setView('month')">月</button>
@@ -268,11 +275,11 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
       <h3>⚡ 批量文案設定</h3>
       <div class="mx-row" style="margin-bottom:12px">
         <div style="flex:1;min-width:200px">
-          <label class="mx-label">主題</label>
+          <label class="mx-label" for="mx-topic">主題</label>
           <input id="mx-topic" type="text" class="mx-input" placeholder="例：情緒不穩別摸盤">
         </div>
         <div style="width:120px">
-          <label class="mx-label">變體數量</label>
+          <label class="mx-label" for="mx-count">變體數量</label>
           <select id="mx-count" class="mx-input" onchange="updateDistributionFromCount()">
             <option value="10">10 篇</option>
             <option value="50">50 篇</option>
@@ -281,11 +288,11 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
         </div>
       </div>
       <div style="margin-bottom:12px">
-        <label class="mx-label">補充說明（選填）</label>
+        <label class="mx-label" for="mx-notes">補充說明（選填）</label>
         <textarea id="mx-notes" class="mx-input" style="min-height:60px;resize:vertical" placeholder="切角偏好、語感要求等"></textarea>
       </div>
       <div style="margin-bottom:8px">
-        <label class="mx-label">導流分配（三項合計需等於總數量）</label>
+        <label class="mx-label" id="lbl-dist">導流分配（三項合計需等於總數量）</label>
         <div class="mx-dist-box">
           <div class="mx-dist-item">
             <input id="mx-pure" type="number" value="40" min="0" oninput="validateDistribution()">
@@ -343,8 +350,9 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
     <div class="mx-card">
       <h3>🪪 Bio 批量產出</h3>
       <div style="margin-bottom:12px">
-        <label class="mx-label">群連結（匯出 Excel 時填入，Bio 文字結尾固定寫「群連結 👇」）</label>
-        <input id="bio-group-link" type="text" class="mx-input" placeholder="https://…（實際連結只出現在 Excel，不進入 Bio 文字）">
+        <label class="mx-label" for="bio-group-link">群連結</label>
+        <input id="bio-group-link" type="text" class="mx-input" placeholder="https://...">
+        <p style="font-size:11px;color:var(--text-muted);margin-top:4px">此連結只出現在匯出的 Excel，Bio 文字結尾自動寫「群連結 👇」</p>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button id="bio-gen-btn" class="btn btn-primary" onclick="generateBios()">✦ 產出 100 個 Bio</button>
@@ -528,7 +536,9 @@ const TYPE_BADGE = {single:'b-single',carousel:'b-carousel',cta:'b-cta'};
 
 function setConn(live, msg) {
   document.getElementById('conn-dot').className = 'conn-dot' + (live ? ' live' : '');
-  document.getElementById('conn-label').textContent = msg;
+  const lbl = document.getElementById('conn-label');
+  lbl.textContent = msg;
+  lbl.style.color = live ? '#4CAF50' : '';
 }
 
 // ===== VIEW CONTROL =====
@@ -1200,6 +1210,22 @@ async function downloadZip() {
   }
 }
 
+// ===== TOAST =====
+function showToast(msg, duration) {
+  duration = duration || 3500;
+  let t = document.getElementById('__toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '__toast';
+    t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--brown);color:#fff;font-size:13px;padding:10px 16px;border-radius:8px;z-index:9999;opacity:0;transition:opacity .25s;pointer-events:none;max-width:280px;line-height:1.5;box-shadow:0 4px 16px rgba(0,0,0,.25)';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function(){ t.style.opacity = '0'; }, duration);
+}
+
 // ===== SECTION SWITCHER =====
 function switchSection(sec) {
   document.getElementById('section-calendar').style.display = sec === 'calendar' ? '' : 'none';
@@ -1384,6 +1410,7 @@ async function generateMatrix() {
     renderMatrixTable();
     resultsEl.style.display = '';
     resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    showToast('✓ ' + matrixCount + ' 篇文案產出完成');
 
   } catch (e) {
     progText.textContent = '❌ 產出失敗：' + e.message;
@@ -1490,6 +1517,7 @@ async function regenVariant(id) {
     if (cc) cc.textContent = v.charCount;
     const numCell = document.querySelector('#mrow-' + id + ' td:first-child');
     if (numCell) numCell.innerHTML = '<span style="color:var(--text-muted)">' + String(v.id).padStart(3,'0') + '</span>' + (v.hasRepeat ? '<br><span style="color:#B8531A;font-size:10px" title="疑似重複字，建議人工確認">⚠</span>' : '');
+    showToast('↺ 第 ' + String(id).padStart(3,'0') + ' 篇重新產出完成');
   } catch (e) {
     alert('重新產出失敗：' + e.message);
   } finally {
@@ -1511,6 +1539,7 @@ function exportMatrixExcel() {
   const d = new Date();
   const ds = d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
   XLSX.writeFile(wb, '批量矩陣_' + matrixTopic + '_' + ds + '.xlsx');
+  showToast('↓ Excel 已下載（' + matrixVariants.length + ' 篇）');
 }
 
 // ===== BIO GENERATION =====
@@ -1578,6 +1607,7 @@ async function generateBios() {
     renderBioTable();
     resultsEl.style.display = '';
     resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    showToast('✓ ' + bioResults.length + ' 個 Bio 產出完成');
   } catch (e) {
     progText.textContent = '❌ 產出失敗：' + e.message;
     console.error('[bio]', e);
@@ -1612,6 +1642,7 @@ function exportBioExcel() {
   const d = new Date();
   const ds = d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
   XLSX.writeFile(wb, 'Bio批量_' + ds + '.xlsx');
+  showToast('↓ Bio Excel 已下載（' + bioResults.length + ' 個）');
 }
 
 // ===== INIT =====
