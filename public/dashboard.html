@@ -986,8 +986,8 @@ function buildSlideDiv(slide, total, layout) {
   const base = 'width:1080px;height:1350px;position:relative;background:linear-gradient(to bottom,#F5EFE5,#EAE0D0);font-family:\'Noto Sans TC\',sans-serif;overflow:hidden;';
   const leftBar = '<div style="position:absolute;left:0;top:0;width:10px;height:1350px;background:#B8531A"></div>';
   const pageNum = `<div style="position:absolute;bottom:50px;right:60px;text-align:right;font-family:'Montserrat',sans-serif">
-    <div style="font-size:24px;color:rgba(58,32,16,.25);font-weight:500;line-height:1.2">${index}/${total}</div>
-    <div style="font-size:20px;color:rgba(58,32,16,.2);letter-spacing:1px">@yusheng.zhu.14</div>
+    <div style="font-size:22px;color:rgba(58,32,16,.3);font-weight:500;line-height:1.2">${index}/${total}</div>
+    <div style="font-size:22px;color:rgba(58,32,16,.3);font-weight:500;letter-spacing:1px">@yusheng.zhu.14</div>
   </div>`;
   if (layout === 'cover') {
     return `<div style="${base}">
@@ -995,11 +995,11 @@ function buildSlideDiv(slide, total, layout) {
       <div style="position:absolute;width:800px;height:800px;border-radius:50%;background:radial-gradient(circle,rgba(234,217,196,.5),rgba(212,184,150,.2));right:-200px;bottom:-200px"></div>
       <div style="position:absolute;width:560px;height:560px;border-radius:50%;background:rgba(234,217,196,.3);right:-80px;bottom:-80px"></div>
       <div style="position:absolute;top:230px;left:28px;font-family:'Montserrat',sans-serif;font-size:220px;font-weight:900;color:#B8531A;opacity:.08;line-height:1;user-select:none">"</div>
-      <div style="position:absolute;left:88px;top:180px;width:928px;bottom:120px;display:flex;flex-direction:column">
-        <div style="font-size:26px;color:#B8531A;letter-spacing:3px;font-weight:500;margin-bottom:28px;flex-shrink:0">${series}</div>
-        <div style="font-size:52px;font-weight:700;color:#3A2010;line-height:1.3;margin-bottom:36px;word-break:break-word;overflow-wrap:break-word;flex-shrink:0;max-width:928px">${safeTitle}</div>
-        <div style="width:60px;height:5px;background:#B8531A;border-radius:2.5px;margin-bottom:36px;flex-shrink:0"></div>
-        <div class="slide-body" style="flex:1;font-size:28px;color:rgba(58,32,16,.6);line-height:1.7;word-break:break-word;overflow-wrap:break-word;overflow:hidden;max-width:928px">${safeBody}</div>
+      <div style="position:absolute;left:88px;top:0;width:928px;height:1080px;display:flex;flex-direction:column;justify-content:center;padding:80px 0 280px;box-sizing:border-box">
+        <div style="font-size:26px;color:#B8531A;letter-spacing:3px;font-weight:500;margin-bottom:16px;flex-shrink:0">${series}</div>
+        <div style="font-size:52px;font-weight:700;color:#3A2010;line-height:1.3;margin-bottom:24px;word-break:break-word;overflow-wrap:break-word;flex-shrink:0;max-width:928px">${safeTitle}</div>
+        <div style="width:60px;height:5px;background:#B8531A;border-radius:2.5px;margin-bottom:24px;flex-shrink:0"></div>
+        <div class="slide-body" style="font-size:32px;color:rgba(58,32,16,.82);line-height:1.7;word-break:break-word;overflow-wrap:break-word;overflow:hidden;max-width:928px;max-height:400px">${safeBody}</div>
       </div>
       ${pageNum}
     </div>`;
@@ -1010,9 +1010,9 @@ function buildSlideDiv(slide, total, layout) {
       ${leftBar}
       <div style="position:absolute;top:80px;left:88px;font-size:26px;color:#B8531A;letter-spacing:3px;font-weight:500">${series}</div>
       <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 80px 120px">
-        <div style="font-size:44px;font-weight:700;color:#3A2010;line-height:1.3;text-align:center;word-break:break-word;overflow-wrap:break-word;margin-bottom:40px">${safeTitle}</div>
-        <div style="width:200px;height:4px;background:#B8531A;border-radius:2px;margin-bottom:40px;flex-shrink:0"></div>
-        <div class="slide-body" style="font-size:28px;color:rgba(58,32,16,.6);line-height:1.7;text-align:center;word-break:break-word;overflow-wrap:break-word;overflow:hidden;max-height:400px">${safeBody}</div>
+        <div style="font-size:44px;font-weight:700;color:#3A2010;line-height:1.3;text-align:center;word-break:break-word;overflow-wrap:break-word;margin-bottom:20px">${safeTitle}</div>
+        <div style="width:200px;height:4px;background:#B8531A;border-radius:2px;margin-bottom:6px;flex-shrink:0"></div>
+        <div class="slide-body" style="font-size:32px;color:rgba(58,32,16,.82);line-height:1.7;text-align:center;word-break:break-word;overflow-wrap:break-word;overflow:hidden;max-height:400px">${safeBody}</div>
       </div>
       ${pageNum}
     </div>`;
@@ -1021,11 +1021,11 @@ function buildSlideDiv(slide, total, layout) {
   // content layout (middle slides)
   return `<div style="${base}">
     ${leftBar}
-    <div style="position:absolute;left:88px;top:180px;width:928px;bottom:120px;display:flex;flex-direction:column">
-      <div style="font-size:26px;color:#B8531A;letter-spacing:3px;font-weight:500;margin-bottom:28px;flex-shrink:0">${series}</div>
-      <div style="font-size:44px;font-weight:700;color:#3A2010;line-height:1.3;margin-bottom:36px;word-break:break-word;overflow-wrap:break-word;flex-shrink:0;max-width:928px">${safeTitle}</div>
-      <div style="width:60px;height:5px;background:#B8531A;border-radius:2.5px;margin-bottom:36px;flex-shrink:0"></div>
-      <div class="slide-body" style="flex:1;font-size:28px;color:rgba(58,32,16,.6);line-height:1.7;word-break:break-word;overflow-wrap:break-word;overflow:hidden;max-width:928px">${safeBody}</div>
+    <div style="position:absolute;left:88px;top:0;right:60px;bottom:120px;display:flex;flex-direction:column;justify-content:center">
+      <div style="font-size:26px;color:#B8531A;letter-spacing:3px;font-weight:500;margin-bottom:16px;flex-shrink:0">${series}</div>
+      <div style="font-size:44px;font-weight:700;color:#3A2010;line-height:1.3;margin-bottom:20px;word-break:break-word;overflow-wrap:break-word;flex-shrink:0;max-width:928px">${safeTitle}</div>
+      <div style="width:60px;height:5px;background:#B8531A;border-radius:2.5px;margin-bottom:24px;flex-shrink:0"></div>
+      <div class="slide-body" style="font-size:32px;color:rgba(58,32,16,.82);line-height:1.7;word-break:break-word;overflow-wrap:break-word;overflow:hidden;max-width:928px;max-height:500px">${safeBody}</div>
     </div>
     ${pageNum}
   </div>`;
@@ -1038,7 +1038,7 @@ function fitBodyFontSize(bodyEl) {
   const styleMaxH = parseInt(bodyEl.style.maxHeight);
   const maxH = (styleMaxH > 0) ? styleMaxH : bodyEl.clientHeight;
   if (!maxH) return;
-  const sizes = [28, 24, 20, 18];
+  const sizes = [32, 28, 24, 20, 18];
   for (const sz of sizes) {
     bodyEl.style.fontSize = sz + 'px';
     bodyEl.style.lineHeight = '1.7';
