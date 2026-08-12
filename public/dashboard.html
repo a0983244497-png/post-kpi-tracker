@@ -209,6 +209,12 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
 .tb-pure{background:var(--surface-0);color:var(--text-mid);border:1px solid var(--border)}
 .tb-soft{background:rgba(212,184,150,.3);color:var(--brown-mid);border:1px solid var(--sand)}
 .tb-explicit{background:var(--bg-accent);color:var(--brick);border:1px solid rgba(184,83,26,.2)}
+.persona-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;white-space:nowrap;display:inline-block}
+.persona-a{background:rgba(58,110,165,.12);color:#3A6EA5;border:1px solid rgba(58,110,165,.3)}
+.persona-b{background:rgba(60,140,90,.12);color:#3C8C5A;border:1px solid rgba(60,140,90,.3)}
+.persona-c{background:rgba(122,74,42,.12);color:var(--brown-mid);border:1px solid rgba(122,74,42,.3)}
+.persona-d{background:var(--bg-accent);color:var(--brick);border:1px solid rgba(184,83,26,.3)}
+.persona-e{background:rgba(198,64,120,.12);color:#C64078;border:1px solid rgba(198,64,120,.3)}
 .matrix-table{width:100%;border-collapse:collapse;font-size:13px}
 .matrix-table th{background:var(--surface-0);font-size:11px;font-weight:700;color:var(--text-mid);padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
 .matrix-table td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top}
@@ -336,6 +342,7 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
               <tr>
                 <th>#</th>
                 <th>導流類型</th>
+                <th>人設</th>
                 <th>文案（點擊展開/編輯）</th>
                 <th>字數</th>
                 <th>操作</th>
@@ -410,6 +417,19 @@ const SOP_SYSTEM = `你是 Gino（@yusheng.zhu.14）的 Threads 文案助理，�
 
 【身份設定】
 Gino 是黃金日內交易講師，有 2.5 年交易經驗，之前開過餐廳。語氣像在跟朋友聊天，偶爾帶乾話感，不裝專業、不說教。寫的是真實發生在自己身上的事，不是在舉例說明道理。
+
+【五種人設｜依帳號分配，每篇文案只套用其中一種】
+人設A｜新手小白：交易3–6個月新手，常做錯、被掃損但認真學。口吻真實有點慌、會問問題、不裝懂。金額幾百到兩千。不要講得太專業、用術語、給建議。
+
+人設B｜上班族兼職交易：有正職工作，時間有限只能抓重點時段做。口吻務實、忙碌，常講「沒時間盯盤」。金額幾百到三千。
+
+人設C｜有經驗的散戶：交易2–3年，有自己方法，穩定不炫耀。口吻沉穩、自嘲，偶爾分享心得但不說教。金額一千到五千。
+
+人設D｜曾大賠又爬起來的老手：交易3年以上，早期爆過倉大賠過，現在重視風控。口吻過來人、有故事、講風控不恐嚇。金額兩千到八千。
+
+人設E｜情緒派真性情：交易1–2年，情緒起伏大很有戲。口吻浮誇、搞笑、情緒外露、多用emoji。金額幾百到三千。
+
+每篇只能套用一種人設，寫作時要讓讀者感覺這是五個不同的人在發文，不能讓五種人設用同一種語氣。
 
 【強制慣用詞｜每張正文至少用一個】
 「好家在我有設停損」「這把直接被掃光」「二話不說直接反手」「行情在來回刷」「拿好拿滿」「兄弟姊妹們」「各位恭喜」「真的好家在」「差點中風」「被兩頭雙巴」「空單拿好拿滿」「脆友們」「硬做」「被洗出去」「二話不說關螢幕」
@@ -1266,6 +1286,16 @@ function hasRepeatChars(text) { return REPEAT_CHAR_RE.test(text); }
 const MATRIX_BANNED_WORDS = ['保證','穩賺','必賺','包你','穩定獲利','穩定報酬','跟著做','跟我做','跟單','帶你賺','帶單','報明牌','月入','翻倍','翻幾倍','財富自由','躺著賺','輕鬆賺','日賺','一定漲','一定跌','絕對','鐵定','包中'];
 function getMatrixViolations(text) { return MATRIX_BANNED_WORDS.filter(w => text.includes(w)); }
 
+// 帳號人設固定對照表（依帳號編號固定分配，不洗牌）
+function getPersonaForAccount(accountNum) {
+  const n = accountNum > 100 ? ((accountNum - 1) % 100) + 1 : accountNum;
+  if (n <= 30) return 'A';
+  if (n <= 55) return 'B';
+  if (n <= 80) return 'C';
+  if (n <= 90) return 'D';
+  return 'E';
+}
+
 function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
@@ -1392,7 +1422,10 @@ async function generateMatrix() {
       progBar.style.width = (8 + s * 9) + '%';
 
       let varFmt = '';
-      for (let k = 1; k <= varPer; k++) varFmt += '===' + k + '===\n（變體' + k + '）\n';
+      for (let k = 1; k <= varPer; k++) {
+        const accountNum = s * varPer + k;
+        varFmt += '===' + k + '===（這是帳號' + accountNum + '，請用人設' + getPersonaForAccount(accountNum) + '的口吻與情境寫這篇）\n（變體' + k + '）\n';
+      }
       const varPrompt = '以下是一個 Threads 貼文骨架：\n\n' + skeletons[s] + '\n\n' +
         '請基於此骨架，產出 ' + varPer + ' 篇具有「實質差異」的變體文案。\n\n' +
         '差異要求（每篇至少改變 2 種以上）：\n' +
@@ -1422,7 +1455,7 @@ async function generateMatrix() {
     matrixVariants = allTexts.slice(0, matrixCount).map((text, i) => {
       const t = order[i] || 'pure';
       const content = text + TYPE_SUFFIX[t];
-      return { id: i + 1, type: t, typeLabel: TYPE_LABEL[t], typeCls: TYPE_CLS[t], content, charCount: content.length, hasRepeat: hasRepeatChars(content), violations: getMatrixViolations(content) };
+      return { id: i + 1, type: t, typeLabel: TYPE_LABEL[t], typeCls: TYPE_CLS[t], content, charCount: content.length, hasRepeat: hasRepeatChars(content), violations: getMatrixViolations(content), persona: getPersonaForAccount(i + 1) };
     });
 
     progBar.style.width = '100%';
@@ -1453,6 +1486,7 @@ function renderMatrixTable() {
         (v.violations && v.violations.length ? '<br><span style="color:#8A2010;font-size:10px" title="命中違規詞，需處理後再匯出">' + escHtml(v.violations.join('、')) + '</span>' : '') +
       '</td>' +
       '<td style="width:70px"><span class="type-badge ' + v.typeCls + '">' + v.typeLabel + '</span></td>' +
+      '<td style="width:44px"><span class="persona-badge persona-' + v.persona.toLowerCase() + '">' + v.persona + '</span></td>' +
       '<td onclick="toggleMEdit(' + v.id + ')">' +
         '<div id="mprev-' + v.id + '" class="matrix-preview">' + escHtml(v.content) + '</div>' +
         '<div id="medit-' + v.id + '" style="display:none;padding-top:6px" onclick="event.stopPropagation()">' +
@@ -1528,6 +1562,7 @@ async function regenVariant(id) {
     const suffix = v.type === 'soft' ? '\n\n（更完整的我放在主頁）' : v.type === 'explicit' ? '\n\n追蹤 @yusheng.zhu.14' : '';
     const baseText = v.content.endsWith(suffix.trim()) ? v.content.slice(0, v.content.length - suffix.length).trim() : v.content;
     const prompt = '請針對主題「' + matrixTopic + '」，重新產出一篇全新的 Threads 貼文。\n\n' +
+      '這是帳號' + id + '，請用人設' + getPersonaForAccount(id) + '的口吻與情境寫這篇\n\n' +
       '參考切角（請用不同切角）：\n' + baseText + '\n\n' +
       '要求：純文字，60-120 字，嚴禁出現任何連結，結尾不加導流語句。\n只輸出文案本身，不要有說明。';
     const text = await callGPT(prompt, SOP_SYSTEM, 800);
@@ -1577,12 +1612,12 @@ function exportMatrixExcel() {
   if (!matrixVariants.length) { alert('尚未產出任何文案'); return; }
   if (typeof XLSX === 'undefined') { alert('SheetJS 載入中，請稍後再試'); return; }
   const wb = XLSX.utils.book_new();
-  const rows = [['帳號編號', '發文時間', '文案內容', '導流類型', '主題', '字數']];
+  const rows = [['帳號編號', '發文時間', '文案內容', '導流類型', '人設', '主題', '字數']];
   matrixVariants.forEach((v, i) => {
-    rows.push([String(i + 1).padStart(3, '0'), '', v.content, v.typeLabel, matrixTopic, v.charCount]);
+    rows.push([String(i + 1).padStart(3, '0'), '', v.content, v.typeLabel, v.persona, matrixTopic, v.charCount]);
   });
   const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [{ wch: 10 }, { wch: 12 }, { wch: 60 }, { wch: 10 }, { wch: 20 }, { wch: 8 }];
+  ws['!cols'] = [{ wch: 10 }, { wch: 12 }, { wch: 60 }, { wch: 10 }, { wch: 8 }, { wch: 20 }, { wch: 8 }];
   XLSX.utils.book_append_sheet(wb, ws, '批量矩陣');
   const d = new Date();
   const ds = d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
