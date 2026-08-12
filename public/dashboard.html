@@ -326,8 +326,9 @@ body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:1
     <!-- Matrix results -->
     <div id="matrix-results" style="display:none">
       <div class="mx-card" style="padding:1rem 1.5rem">
+        <div id="matrix-violation-banner" class="err-box" style="display:none"></div>
         <div class="mx-toolbar">
-          <button class="btn btn-primary" onclick="exportMatrixExcel()">↓ 匯出 Excel</button>
+          <button id="mx-export-btn" class="btn btn-primary" onclick="exportMatrixExcel()">↓ 匯出 Excel</button>
         </div>
         <div style="overflow-x:auto">
           <table class="matrix-table">
@@ -1261,6 +1262,10 @@ const BIO_BANNED = ['保證獲利','穩賺','必賺','零風險','保本','賣�
 const REPEAT_CHAR_RE = /([一-鿿])\1/;
 function hasRepeatChars(text) { return REPEAT_CHAR_RE.test(text); }
 
+// 批量矩陣專用違規詞（獨立於 BIO_BANNED，不共用）
+const MATRIX_BANNED_WORDS = ['保證','穩賺','必賺','包你','穩定獲利','穩定報酬','跟著做','跟我做','跟單','帶你賺','帶單','報明牌','月入','翻倍','翻幾倍','財富自由','躺著賺','輕鬆賺','日賺','一定漲','一定跌','絕對','鐵定','包中'];
+function getMatrixViolations(text) { return MATRIX_BANNED_WORDS.filter(w => text.includes(w)); }
+
 function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
@@ -1417,12 +1422,13 @@ async function generateMatrix() {
     matrixVariants = allTexts.slice(0, matrixCount).map((text, i) => {
       const t = order[i] || 'pure';
       const content = text + TYPE_SUFFIX[t];
-      return { id: i + 1, type: t, typeLabel: TYPE_LABEL[t], typeCls: TYPE_CLS[t], content, charCount: content.length, hasRepeat: hasRepeatChars(content) };
+      return { id: i + 1, type: t, typeLabel: TYPE_LABEL[t], typeCls: TYPE_CLS[t], content, charCount: content.length, hasRepeat: hasRepeatChars(content), violations: getMatrixViolations(content) };
     });
 
     progBar.style.width = '100%';
     progText.textContent = '✓ 完成！共 ' + matrixCount + ' 篇';
     renderMatrixTable();
+    updateMatrixExportGate();
     resultsEl.style.display = '';
     resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     showToast('✓ ' + matrixCount + ' 篇文案產出完成');
@@ -1440,10 +1446,11 @@ function renderMatrixTable() {
   const tbody = document.getElementById('matrix-tbody');
   if (!tbody) return;
   tbody.innerHTML = matrixVariants.map(v =>
-    '<tr id="mrow-' + v.id + '">' +
+    '<tr id="mrow-' + v.id + '"' + (v.violations && v.violations.length ? ' style="background:#FEE8E4"' : '') + '>' +
       '<td style="width:36px;text-align:center;font-size:11px;white-space:nowrap">' +
         '<span style="color:var(--text-muted)">' + String(v.id).padStart(3, '0') + '</span>' +
         (v.hasRepeat ? '<br><span style="color:#B8531A;font-size:10px" title="疑似重複字，建議人工確認">⚠</span>' : '') +
+        (v.violations && v.violations.length ? '<br><span style="color:#8A2010;font-size:10px" title="命中違規詞，需處理後再匯出">' + escHtml(v.violations.join('、')) + '</span>' : '') +
       '</td>' +
       '<td style="width:70px"><span class="type-badge ' + v.typeCls + '">' + v.typeLabel + '</span></td>' +
       '<td onclick="toggleMEdit(' + v.id + ')">' +
@@ -1485,6 +1492,7 @@ function saveMEdit(id) {
   v.content = ta.value;
   v.charCount = ta.value.length;
   v.hasRepeat = hasRepeatChars(v.content);
+  v.violations = getMatrixViolations(v.content);
   const prev = document.getElementById('mprev-' + id);
   if (prev) { prev.innerHTML = escHtml(v.content); prev.classList.remove('expanded'); }
   const edit = document.getElementById('medit-' + id);
@@ -1495,7 +1503,10 @@ function saveMEdit(id) {
   const idCell = document.querySelector('#mrow-' + id + ' td:first-child span:last-child');
   // re-render just the number cell
   const numCell = document.querySelector('#mrow-' + id + ' td:first-child');
-  if (numCell) numCell.innerHTML = '<span style="color:var(--text-muted)">' + String(v.id).padStart(3,'0') + '</span>' + (v.hasRepeat ? '<br><span style="color:#B8531A;font-size:10px" title="疑似重複字，建議人工確認">⚠</span>' : '');
+  if (numCell) numCell.innerHTML = '<span style="color:var(--text-muted)">' + String(v.id).padStart(3,'0') + '</span>' + (v.hasRepeat ? '<br><span style="color:#B8531A;font-size:10px" title="疑似重複字，建議人工確認">⚠</span>' : '') + (v.violations.length ? '<br><span style="color:#8A2010;font-size:10px" title="命中違規詞，需處理後再匯出">' + escHtml(v.violations.join('、')) + '</span>' : '');
+  const row = document.getElementById('mrow-' + id);
+  if (row) row.style.background = v.violations.length ? '#FEE8E4' : '';
+  updateMatrixExportGate();
 }
 
 function cancelMEdit(id) {
@@ -1524,6 +1535,7 @@ async function regenVariant(id) {
     v.content = cleaned + suffix;
     v.charCount = v.content.length;
     v.hasRepeat = hasRepeatChars(v.content);
+    v.violations = getMatrixViolations(v.content);
     const prev = document.getElementById('mprev-' + id);
     if (prev) prev.innerHTML = escHtml(v.content);
     const ta = document.getElementById('meta-' + id);
@@ -1531,7 +1543,10 @@ async function regenVariant(id) {
     const cc = document.getElementById('mcc-' + id);
     if (cc) cc.textContent = v.charCount;
     const numCell = document.querySelector('#mrow-' + id + ' td:first-child');
-    if (numCell) numCell.innerHTML = '<span style="color:var(--text-muted)">' + String(v.id).padStart(3,'0') + '</span>' + (v.hasRepeat ? '<br><span style="color:#B8531A;font-size:10px" title="疑似重複字，建議人工確認">⚠</span>' : '');
+    if (numCell) numCell.innerHTML = '<span style="color:var(--text-muted)">' + String(v.id).padStart(3,'0') + '</span>' + (v.hasRepeat ? '<br><span style="color:#B8531A;font-size:10px" title="疑似重複字，建議人工確認">⚠</span>' : '') + (v.violations.length ? '<br><span style="color:#8A2010;font-size:10px" title="命中違規詞，需處理後再匯出">' + escHtml(v.violations.join('、')) + '</span>' : '');
+    const row = document.getElementById('mrow-' + id);
+    if (row) row.style.background = v.violations.length ? '#FEE8E4' : '';
+    updateMatrixExportGate();
     showToast('↺ 第 ' + String(id).padStart(3,'0') + ' 篇重新產出完成');
   } catch (e) {
     alert('重新產出失敗：' + e.message);
@@ -1540,7 +1555,25 @@ async function regenVariant(id) {
   }
 }
 
+function updateMatrixExportGate() {
+  const banner = document.getElementById('matrix-violation-banner');
+  const exportBtn = document.getElementById('mx-export-btn');
+  const offenders = matrixVariants.filter(v => v.violations && v.violations.length);
+  if (offenders.length) {
+    const lines = offenders.map(v => '- ' + String(v.id).padStart(3, '0') + '：出現「' + escHtml(v.violations.join('、')) + '」');
+    if (banner) {
+      banner.innerHTML = '偵測到 ' + offenders.length + ' 篇含違規詞，請處理後再匯出：<br>' + lines.join('<br>');
+      banner.style.display = '';
+    }
+    if (exportBtn) exportBtn.disabled = true;
+  } else {
+    if (banner) banner.style.display = 'none';
+    if (exportBtn) exportBtn.disabled = false;
+  }
+}
+
 function exportMatrixExcel() {
+  if (matrixVariants.some(v => v.violations && v.violations.length)) { alert('還有文案含違規詞，請先處理'); return; }
   if (!matrixVariants.length) { alert('尚未產出任何文案'); return; }
   if (typeof XLSX === 'undefined') { alert('SheetJS 載入中，請稍後再試'); return; }
   const wb = XLSX.utils.book_new();
