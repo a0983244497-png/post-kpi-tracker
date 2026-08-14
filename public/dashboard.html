@@ -1282,8 +1282,13 @@ const REPEAT_CHAR_RE = /([一-鿿])\1/;
 function hasRepeatChars(text) { return REPEAT_CHAR_RE.test(text); }
 
 // 批量矩陣專用違規詞（獨立於 BIO_BANNED，不共用）
-const MATRIX_BANNED_WORDS = ['保證','穩賺','必賺','包你','穩定獲利','穩定報酬','跟著做','跟我做','跟單','帶你賺','帶單','報明牌','月入','翻倍','翻幾倍','財富自由','躺著賺','輕鬆賺','日賺','一定漲','一定跌','絕對','鐵定','包中'];
-function getMatrixViolations(text) { return MATRIX_BANNED_WORDS.filter(w => text.includes(w)); }
+const MATRIX_BANNED_WORDS = ['保證獲利','保證賺','保證回本','保證翻倍','穩賺','穩賺不賠','必賺','跟著做','跟我做','跟單','帶你賺','帶單','報明牌','包你賺','包你獲利','月入','翻倍','翻幾倍','財富自由','躺著賺','輕鬆賺','日賺','一定漲','一定跌','絕對賺','鐵定賺','包中'];
+const MATRIX_WHITELIST = ['保證金'];
+function getMatrixViolations(text) {
+  let scanText = text;
+  MATRIX_WHITELIST.forEach(w => { while (scanText.includes(w)) scanText = scanText.split(w).join(''); });
+  return MATRIX_BANNED_WORDS.filter(w => scanText.includes(w));
+}
 
 // 帳號人設固定對照表（依帳號編號固定分配，不洗牌）
 function getPersonaForAccount(accountNum) {
@@ -1301,6 +1306,13 @@ function escHtml(s) {
 
 function stripLinks(text) {
   return text.replace(LINK_RE, '').replace(/[ \t]{2,}/g, ' ').trim();
+}
+
+function stripInstructionLeaks(text) {
+  return text.split('\n').filter(line => {
+    const t = line.trim();
+    return !(t.startsWith('（這是帳號') || t.startsWith('（請用人設') || t.startsWith('（用人設') || /^（這是.*寫這篇）/.test(t));
+  }).join('\n').trim();
 }
 
 function hasBannedWord(text) {
@@ -1421,9 +1433,11 @@ async function generateMatrix() {
       progBar.style.width = (8 + s * 9) + '%';
 
       let varFmt = '';
+      for (let k = 1; k <= varPer; k++) varFmt += '===' + k + '===\n（變體' + k + '）\n';
+      let personaInstructions = '本批次每篇對應的人設（僅供你撰寫時參考語氣風格，這段說明文字本身絕對不能出現在任何一篇的輸出內容裡）：\n';
       for (let k = 1; k <= varPer; k++) {
         const accountNum = s * varPer + k;
-        varFmt += '===' + k + '===（這是帳號' + accountNum + '，請用人設' + getPersonaForAccount(accountNum) + '的口吻與情境寫這篇）\n（變體' + k + '）\n';
+        personaInstructions += '第' + k + '篇（帳號' + accountNum + '）＝人設' + getPersonaForAccount(accountNum) + '\n';
       }
       const varPrompt = '以下是一個 Threads 貼文骨架：\n\n' + skeletons[s] + '\n\n' +
         '請基於此骨架，產出 ' + varPer + ' 篇具有「實質差異」的變體文案。\n\n' +
@@ -1432,10 +1446,10 @@ async function generateMatrix() {
         '嚴禁出現任何連結（http://、https://、群組連結等）。\n結尾不加任何導流語句（導流結尾由系統自動套用）。\n\n' +
         '輸出格式（嚴格按照，不要有其他說明）：\n' + varFmt;
 
-      const varText = await callGPT(varPrompt, SOP_SYSTEM, 3500);
+      const varText = await callGPT(varPrompt, SOP_SYSTEM + '\n\n' + personaInstructions, 3500);
       let variants = parseDelimited(varText);
       while (variants.length < varPer) variants.push(skeletons[s]);
-      variants = variants.slice(0, varPer).map(stripLinks);
+      variants = variants.slice(0, varPer).map(stripLinks).map(stripInstructionLeaks);
       allTexts.push(...variants);
     }
 
@@ -1561,11 +1575,11 @@ async function regenVariant(id) {
     const suffix = v.type === 'soft' ? '\n\n（更完整的我放在主頁）' : v.type === 'explicit' ? '\n\n追蹤 @yusheng.zhu.14' : '';
     const baseText = v.content.endsWith(suffix.trim()) ? v.content.slice(0, v.content.length - suffix.length).trim() : v.content;
     const prompt = '請針對主題「' + matrixTopic + '」，重新產出一篇全新的 Threads 貼文。\n\n' +
-      '這是帳號' + id + '，請用人設' + getPersonaForAccount(id) + '的口吻與情境寫這篇\n\n' +
       '參考切角（請用不同切角）：\n' + baseText + '\n\n' +
       '要求：純文字，60-120 字，嚴禁出現任何連結，結尾不加導流語句。\n只輸出文案本身，不要有說明。';
-    const text = await callGPT(prompt, SOP_SYSTEM, 800);
-    const cleaned = stripLinks(text.trim());
+    const personaInstruction = '這篇對應人設' + getPersonaForAccount(id) + '，僅供參考語氣，不要把這句話寫進內容';
+    const text = await callGPT(prompt, SOP_SYSTEM + '\n\n' + personaInstruction, 800);
+    const cleaned = stripInstructionLeaks(stripLinks(text.trim()));
     v.content = cleaned + suffix;
     v.charCount = v.content.length;
     v.hasRepeat = hasRepeatChars(v.content);
