@@ -371,7 +371,6 @@
   // ── Init ─────────────────────────────────────────────────
   async function init() {
     await loadStaffList();
-    qs('#filter-date').value = twToday();
     await tryRestoreMgrSession();
     await loadVisits();
   }
@@ -418,7 +417,7 @@
   function renderList() {
     const container = qs('#list-view');
     if (!allVisits.length) {
-      container.innerHTML = '<div class="empty"><div class="empty-icon">📋</div>今日尚無外出記錄</div>';
+      container.innerHTML = '<div class="empty"><div class="empty-icon">📋</div>尚無外出記錄</div>';
       return;
     }
     container.innerHTML = allVisits.map(v => visitCard(v, false)).join('');

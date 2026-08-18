@@ -32,7 +32,7 @@ router.get('/field-visits', async (req, res) => {
     if (date)       { params.push(date);        conditions.push(`visit_date = $${params.length}`); }
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
     const { rows } = await pool.query(
-      `SELECT * FROM field_visits ${where} ORDER BY created_at DESC`,
+      `SELECT * FROM field_visits ${where} ORDER BY visit_date DESC, created_at DESC`,
       params
     );
     res.json(rows);
