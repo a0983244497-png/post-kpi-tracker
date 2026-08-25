@@ -90,11 +90,13 @@
 
   function buildWatermarkDataUri(text) {
     const safe = String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='320' height='200'>
-      <text x='0' y='110' font-size='16' fill='rgba(90,90,90,0.15)' font-family='sans-serif' transform='rotate(-30 160 100)'>${safe}</text>
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='520' height='520'>
+      <text x='40' y='280' font-size='22' fill='rgba(90,90,90,0.08)' font-family='sans-serif' transform='rotate(-30 260 260)'>${safe}</text>
     </svg>`;
     return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
   }
+
+  const BRAND_WATERMARK_URL = buildWatermarkDataUri('重心開始');
 
   async function init() {
     const statusEl = qs('#status');
@@ -128,14 +130,11 @@
       return;
     }
 
-    const watermarkText = (me.name || '') + ' ' + (me.email || '');
-    const watermarkUrl = buildWatermarkDataUri(watermarkText);
-
     try {
       const pdf = await pdfjsLib.getDocument({ data: fileBuf }).promise;
       qs('#title-text').textContent = '課程閱讀';
       statusEl.textContent = '';
-      await renderAllPages(pdf, watermarkUrl);
+      await renderAllPages(pdf, BRAND_WATERMARK_URL);
     } catch (e) {
       statusEl.textContent = 'PDF 解析失敗：' + e.message;
       statusEl.classList.add('error');
