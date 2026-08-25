@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>課程管理後台</title>
+<style>
+  *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success: #16a34a;
+    --warning: #d97706;
+    --danger: #dc2626;
+    --mgr: #7c3aed;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-500: #6b7280;
+    --gray-700: #374151;
+    --gray-900: #111827;
+    --radius: 10px;
+    --shadow: 0 1px 4px rgba(0,0,0,.12);
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--gray-100); color: var(--gray-900); min-height: 100vh; }
+
+  .topbar { background: var(--mgr); color: #fff; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 500; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+  .topbar h1 { font-size: 1rem; font-weight: 700; }
+  .logout-btn { background: rgba(255,255,255,.18); border: none; color: #fff; font-size: .78rem; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+  .logout-btn:hover { background: rgba(255,255,255,.28); }
+
+  .content { padding: 16px; max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  .card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
+  .card h2 { font-size: .92rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .card .badge { font-size: .68rem; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: var(--danger); color: #fff; }
+
+  textarea { width: 100%; min-height: 100px; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: .85rem; background: var(--gray-50); font-family: inherit; resize: vertical; margin-bottom: 8px; }
+  input[type=text], input[type=email], select { padding: 8px 10px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: .85rem; background: var(--gray-50); }
+  input[type=password] { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: .92rem; background: var(--gray-50); }
+
+  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 8px 14px; border: none; border-radius: 8px; font-size: .85rem; font-weight: 700; cursor: pointer; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-danger  { background: var(--danger);  color: #fff; }
+  .btn-sm { padding: 5px 10px; font-size: .78rem; }
+  .btn-ghost { background: var(--gray-100); color: var(--gray-700); }
+
+  table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--gray-100); vertical-align: top; }
+  th { color: var(--gray-500); font-weight: 600; font-size: .75rem; white-space: nowrap; }
+  .row-actions { display: flex; gap: 6px; }
+
+  .status-pill { padding: 2px 8px; border-radius: 999px; font-size: .7rem; font-weight: 700; display: inline-block; }
+  .status-active   { background: #d1fae5; color: #065f46; }
+  .status-disabled { background: var(--gray-100); color: var(--gray-500); }
+  .status-pending  { background: #fef3c7; color: #92400e; }
+  .status-approved { background: #d1fae5; color: #065f46; }
+  .status-rejected { background: #fee2e2; color: #991b1b; }
+
+  .msg { font-size: .8rem; margin-top: 6px; }
+  .msg.ok  { color: var(--success); }
+  .msg.err { color: var(--danger); }
+  .muted { color: var(--gray-500); font-size: .82rem; }
+
+  .access-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .pdf-checklist { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .pdf-checklist label { display: flex; align-items: center; gap: 6px; font-size: .85rem; }
+  .placeholder-box { background: var(--gray-50); border: 1px dashed var(--gray-200); border-radius: 8px; padding: 14px; text-align: center; color: var(--gray-500); font-size: .82rem; }
+
+  /* Manager login modal */
+  #modal-mgr { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+  #modal-mgr .box { background: #fff; border-radius: var(--radius); padding: 24px 20px; max-width: 320px; width: 100%; }
+  #modal-mgr h2 { font-size: 1rem; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+<div id="modal-mgr">
+  <div class="box">
+    <h2>課程管理後台</h2>
+    <input id="mgr-pw" type="password" placeholder="主管密碼" autocomplete="current-password">
+    <div id="mgr-err" class="msg err" style="display:none"></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="submitMgrLogin()">登入</button>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+  <div class="topbar">
+    <h1>課程管理後台</h1>
+    <button class="logout-btn" onclick="exitMgr()">登出</button>
+  </div>
+
+  <div class="content">
+    <!-- 名單匯入 -->
+    <div class="card">
+      <h2>📋 名單匯入</h2>
+      <p class="muted" style="margin-bottom:8px">每行格式：姓名,email,TradingView名稱</p>
+      <textarea id="import-csv" placeholder="王小明,ming@example.com,MingTrader&#10;陳小美,mei@example.com,MeiFX"></textarea>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="file" id="import-file" accept=".csv,text/csv,text/plain" onchange="handleFileUpload()">
+        <button class="btn btn-primary" onclick="submitImport()">匯入</button>
+      </div>
+      <div id="import-msg" class="msg" style="display:none"></div>
+    </div>
+
+    <!-- 待審核申請 -->
+    <div class="card">
+      <h2>🕐 待審核申請 <span id="pending-badge" class="badge" style="display:none">0</span></h2>
+      <div id="applications-list" class="muted">載入中…</div>
+    </div>
+
+    <!-- 學員列表 -->
+    <div class="card">
+      <h2>👥 學員列表</h2>
+      <div id="students-list" class="muted">載入中…</div>
+    </div>
+
+    <!-- 權限開通 -->
+    <div class="card">
+      <h2>🔑 權限開通</h2>
+      <div class="access-row">
+        <select id="access-student"><option value="">選擇學員…</option></select>
+        <button class="btn btn-success btn-sm" onclick="saveAccess()">儲存</button>
+      </div>
+      <div id="pdf-checklist" class="pdf-checklist"></div>
+      <div id="access-msg" class="msg" style="display:none"></div>
+      <div class="placeholder-box">📄 PDF 上傳功能第二階段開放</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const qs = sel => document.querySelector(sel);
+  let mgrKey = sessionStorage.getItem('course_mgr_key') || '';
+  let students = [];
+  let pdfs = [];
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  async function api(path, opts = {}) {
+    const headers = { 'x-manager-key': mgrKey, ...(opts.headers || {}) };
+    const r = await fetch(path, { credentials: 'same-origin', ...opts, headers });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || String(r.status)); }
+    return r.json();
+  }
+
+  async function submitMgrLogin() {
+    const pw = qs('#mgr-pw').value;
+    if (!pw) return;
+    mgrKey = pw;
+    try {
+      await api('/api/course/admin/students');
+      sessionStorage.setItem('course_mgr_key', pw);
+      qs('#modal-mgr').style.display = 'none';
+      qs('#app').style.display = '';
+      loadAll();
+    } catch (e) {
+      qs('#mgr-err').textContent = '密碼錯誤';
+      qs('#mgr-err').style.display = '';
+      mgrKey = '';
+    }
+  }
+
+  function exitMgr() {
+    mgrKey = '';
+    sessionStorage.removeItem('course_mgr_key');
+    qs('#app').style.display = 'none';
+    qs('#modal-mgr').style.display = 'flex';
+    qs('#mgr-pw').value = '';
+  }
+
+  async function tryRestore() {
+    if (!mgrKey) return;
+    try {
+      await api('/api/course/admin/students');
+      qs('#modal-mgr').style.display = 'none';
+      qs('#app').style.display = '';
+      loadAll();
+    } catch (e) {
+      mgrKey = '';
+      sessionStorage.removeItem('course_mgr_key');
+    }
+  }
+
+  function loadAll() {
+    loadApplications();
+    loadStudents();
+    loadPdfs();
+  }
+
+  // ── 名單匯入 ──────────────────────────────────
+  function handleFileUpload() {
+    const file = qs('#import-file').files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { qs('#import-csv').value = reader.result; };
+    reader.readAsText(file);
+  }
+
+  async function submitImport() {
+    const csv = qs('#import-csv').value.trim();
+    const msgEl = qs('#import-msg');
+    msgEl.style.display = 'none';
+    if (!csv) { msgEl.textContent = '請貼上 CSV 內容或選擇檔案'; msgEl.className = 'msg err'; msgEl.style.display = ''; return; }
+    try {
+      const r = await api('/api/course/admin/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ csv }) });
+      msgEl.textContent = `✓ 匯入完成，新增 ${r.created} 筆，跳過 ${r.skipped} 筆`;
+      msgEl.className = 'msg ok';
+      msgEl.style.display = '';
+      qs('#import-csv').value = '';
+      qs('#import-file').value = '';
+      loadStudents();
+    } catch (e) {
+      msgEl.textContent = '匯入失敗：' + e.message;
+      msgEl.className = 'msg err';
+      msgEl.style.display = '';
+    }
+  }
+
+  // ── 待審核申請 ──────────────────────────────────
+  async function loadApplications() {
+    const el = qs('#applications-list');
+    try {
+      const apps = await api('/api/course/admin/applications?status=pending');
+      const badge = qs('#pending-badge');
+      if (apps.length) { badge.textContent = apps.length; badge.style.display = ''; }
+      else badge.style.display = 'none';
+
+      if (!apps.length) { el.innerHTML = '<div class="muted">目前沒有待審核的申請</div>'; return; }
+      el.innerHTML = `<table><thead><tr><th>姓名</th><th>Email</th><th>TV 名稱</th><th>備註</th><th>申請時間</th><th>操作</th></tr></thead><tbody>` +
+        apps.map(a => `<tr>
+          <td>${esc(a.name)}</td>
+          <td>${esc(a.email)}</td>
+          <td>${esc(a.tv_name)}</td>
+          <td>${esc(a.note || '—')}</td>
+          <td>${new Date(a.created_at).toLocaleString('zh-TW')}</td>
+          <td class="row-actions">
+            <button class="btn btn-success btn-sm" onclick="reviewApp(${a.id},'approve')">核准</button>
+            <button class="btn btn-danger btn-sm" onclick="reviewApp(${a.id},'reject')">駁回</button>
+          </td>
+        </tr>`).join('') + `</tbody></table>`;
+    } catch (e) {
+      el.innerHTML = `<div class="msg err">載入失敗：${esc(e.message)}</div>`;
+    }
+  }
+
+  async function reviewApp(id, action) {
+    try {
+      await api(`/api/course/admin/applications/${id}/${action}`, { method: 'POST' });
+      loadApplications();
+      loadStudents();
+    } catch (e) {
+      alert('操作失敗：' + e.message);
+    }
+  }
+
+  // ── 學員列表 ──────────────────────────────────
+  async function loadStudents() {
+    const el = qs('#students-list');
+    try {
+      students = await api('/api/course/admin/students');
+      if (!students.length) { el.innerHTML = '<div class="muted">尚無學員</div>'; }
+      else {
+        el.innerHTML = `<table><thead><tr><th>姓名</th><th>Email</th><th>TV 名稱</th><th>狀態</th><th>來源</th><th>建立時間</th></tr></thead><tbody>` +
+          students.map(s => `<tr>
+            <td>${esc(s.name)}</td>
+            <td>${esc(s.email)}</td>
+            <td>${esc(s.tv_name)}</td>
+            <td><span class="status-pill status-${s.status}">${s.status === 'active' ? '啟用' : '停用'}</span></td>
+            <td>${s.source === 'import' ? '名單匯入' : '申請通過'}</td>
+            <td>${new Date(s.created_at).toLocaleDateString('zh-TW')}</td>
+          </tr>`).join('') + `</tbody></table>`;
+      }
+      const sel = qs('#access-student');
+      sel.innerHTML = '<option value="">選擇學員…</option>' + students.map(s => `<option value="${s.id}">${esc(s.name)}（${esc(s.email)}）</option>`).join('');
+    } catch (e) {
+      el.innerHTML = `<div class="msg err">載入失敗：${esc(e.message)}</div>`;
+    }
+  }
+
+  // ── 權限開通 ──────────────────────────────────
+  async function loadPdfs() {
+    const el = qs('#pdf-checklist');
+    try {
+      pdfs = await api('/api/course/admin/pdfs');
+      if (!pdfs.length) { el.innerHTML = '<div class="muted">目前尚無 PDF（第二階段開放上傳後才會有課程可勾選）</div>'; return; }
+      el.innerHTML = pdfs.map(p => `<label><input type="checkbox" value="${p.id}" class="pdf-check"> ${esc(p.title)}</label>`).join('');
+    } catch (e) {
+      el.innerHTML = `<div class="msg err">載入失敗：${esc(e.message)}</div>`;
+    }
+  }
+
+  async function saveAccess() {
+    const studentId = qs('#access-student').value;
+    const msgEl = qs('#access-msg');
+    msgEl.style.display = 'none';
+    if (!studentId) { msgEl.textContent = '請先選擇學員'; msgEl.className = 'msg err'; msgEl.style.display = ''; return; }
+    const pdfIds = Array.from(document.querySelectorAll('.pdf-check:checked')).map(el => Number(el.value));
+    try {
+      await api('/api/course/admin/access', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ student_id: Number(studentId), pdf_ids: pdfIds }) });
+      msgEl.textContent = `✓ 已儲存，開通 ${pdfIds.length} 篇`;
+      msgEl.className = 'msg ok';
+      msgEl.style.display = '';
+    } catch (e) {
+      msgEl.textContent = '儲存失敗：' + e.message;
+      msgEl.className = 'msg err';
+      msgEl.style.display = '';
+    }
+  }
+
+  qs('#mgr-pw').addEventListener('keydown', e => { if (e.key === 'Enter') submitMgrLogin(); });
+  tryRestore();
+</script>
+</body>
+</html>

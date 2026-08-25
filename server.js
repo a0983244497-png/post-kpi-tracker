@@ -1,4 +1,5 @@
 import express from 'express';
+import session from 'express-session';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { initDb } from './db.js';
@@ -13,6 +14,7 @@ import funnelRouter         from './routes/funnel.js';
 import contentCalendarRouter from './routes/contentCalendar.js';
 import claudeProxyRouter     from './routes/claudeProxy.js';
 import fieldVisitsRouter     from './routes/fieldVisits.js';
+import courseRouter          from './routes/course.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -65,6 +67,16 @@ app.use((req, res, next) => {
 
 // ─── Middleware ───────────────────────────────────────────
 app.use(express.json());
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'course-pdf-dev-secret-change-me',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { httpOnly: true, maxAge: 30 * 24 * 3600 * 1000 },
+}));
+
+// ─── 課程 PDF 閱讀系統 API（獨立一套，不走 TEAM_PASSWORD）───
+// 必須掛在下面 requireAuth 保護的 /api 路由「之前」，否則會被團隊密碼擋下
+app.use('/api/course', courseRouter);
 
 // ─── API 路由（受 Auth 保護）─────────────────────────────
 app.use('/api', requireAuth, postsRouter);
@@ -83,6 +95,14 @@ app.use('/api', requireAuth, fieldVisitsRouter);
 app.get('/dashboard', requireAuth, (req, res) => {
   res.sendFile(join(__dirname, 'public', 'dashboard.html'));
 });
+
+// ─── 課程 PDF 閱讀系統頁面（不受團隊密碼保護，學員/申請人不會有 TEAM_PASSWORD）
+for (const page of ['course-login.html', 'course-apply.html', 'course.html', 'course-admin.html']) {
+  app.get('/' + page, (req, res) => {
+    res.sendFile(join(__dirname, 'public', page));
+  });
+}
+
 app.use(requireAuth, express.static(join(__dirname, 'public')));
 
 // ─── 啟動 ─────────────────────────────────────────────────

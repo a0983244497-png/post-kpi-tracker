@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>課程學員登入</title>
+<style>
+  *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --danger: #dc2626;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-500: #6b7280;
+    --gray-700: #374151;
+    --gray-900: #111827;
+    --radius: 10px;
+    --shadow: 0 1px 4px rgba(0,0,0,.12);
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--gray-100); color: var(--gray-900); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px 24px; width: 100%; max-width: 380px; }
+  .card h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 4px; text-align: center; }
+  .card p.sub { font-size: .82rem; color: var(--gray-500); text-align: center; margin-bottom: 22px; }
+  label { display: block; font-size: .82rem; color: var(--gray-700); margin-bottom: 5px; font-weight: 600; }
+  input { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: .92rem; background: var(--gray-50); margin-bottom: 14px; }
+  input:focus { outline: none; border-color: var(--primary); }
+  .btn { width: 100%; padding: 11px; border: none; border-radius: 8px; font-size: .92rem; font-weight: 700; cursor: pointer; background: var(--primary); color: #fff; transition: background .15s; }
+  .btn:hover { background: var(--primary-dark); }
+  .btn:disabled { opacity: .6; cursor: not-allowed; }
+  .err { font-size: .82rem; color: var(--danger); margin-bottom: 12px; display: none; }
+  .apply-link { text-align: center; margin-top: 18px; font-size: .82rem; }
+  .apply-link a { color: var(--primary); text-decoration: none; }
+  .apply-link a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>課程學員登入</h1>
+  <p class="sub">使用 Email 與 TradingView 名稱登入</p>
+
+  <div id="err" class="err"></div>
+
+  <label for="email">Email</label>
+  <input id="email" type="email" autocomplete="username" placeholder="you@example.com">
+
+  <label for="password">TradingView 名稱</label>
+  <input id="password" type="password" autocomplete="current-password" placeholder="密碼即為你的 TradingView 名稱">
+
+  <button id="login-btn" class="btn" onclick="doLogin()">登入</button>
+
+  <div class="apply-link">不在名單內？<a href="/course-apply.html">申請開通</a></div>
+</div>
+
+<script>
+  const qs = sel => document.querySelector(sel);
+
+  async function doLogin() {
+    const email = qs('#email').value.trim();
+    const password = qs('#password').value;
+    const errEl = qs('#err');
+    const btn = qs('#login-btn');
+    errEl.style.display = 'none';
+
+    if (!email || !password) {
+      errEl.textContent = '請輸入 Email 與 TradingView 名稱';
+      errEl.style.display = '';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '登入中…';
+    try {
+      const r = await fetch('/api/course/login', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        throw new Error(e.error || '登入失敗');
+      }
+      location.href = '/course.html';
+    } catch (e) {
+      errEl.textContent = e.message;
+      errEl.style.display = '';
+      btn.disabled = false;
+      btn.textContent = '登入';
+    }
+  }
+
+  qs('#password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+</script>
+</body>
+</html>

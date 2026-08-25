@@ -247,6 +247,52 @@ export async function initDb() {
   await pool.query(`ALTER TABLE field_visits ADD COLUMN IF NOT EXISTS actual_address   TEXT`);
 
 
+  // ── 課程 PDF 閱讀系統（第一階段：資料庫 + 學員登入 + 名單匯入 + 申請審核）──
+  // 命名用 pdf_ 前綴，避免跟既有的 course_students（出席/漏斗追蹤用）撞名
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pdf_students (
+      id         SERIAL PRIMARY KEY,
+      email      VARCHAR(200) UNIQUE NOT NULL,
+      name       VARCHAR(100) NOT NULL,
+      tv_name    VARCHAR(100) NOT NULL,
+      status     VARCHAR(20)  DEFAULT 'active',
+      source     VARCHAR(20)  DEFAULT 'import',
+      created_at TIMESTAMPTZ  DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pdf_pdfs (
+      id         SERIAL PRIMARY KEY,
+      title      VARCHAR(200) NOT NULL,
+      file_url   VARCHAR(500) DEFAULT '',
+      sort_order INTEGER      DEFAULT 0,
+      created_at TIMESTAMPTZ  DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pdf_access (
+      id         SERIAL PRIMARY KEY,
+      student_id INTEGER NOT NULL REFERENCES pdf_students(id) ON DELETE CASCADE,
+      pdf_id     INTEGER NOT NULL REFERENCES pdf_pdfs(id)     ON DELETE CASCADE,
+      granted_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(student_id, pdf_id)
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pdf_applications (
+      id         SERIAL PRIMARY KEY,
+      email      VARCHAR(200) NOT NULL,
+      name       VARCHAR(100) NOT NULL,
+      tv_name    VARCHAR(100) NOT NULL,
+      note       TEXT         DEFAULT '',
+      status     VARCHAR(20)  DEFAULT 'pending',
+      created_at TIMESTAMPTZ  DEFAULT NOW()
+    )
+  `);
+
   // Seed default staff (unconditional, skips if already exists)
   await pool.query(
     `INSERT INTO staff (name) VALUES ('Gino'),('Darren'),('Josh'),('Jenna'),('路克') ON CONFLICT (name) DO NOTHING`

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>申請開通課程</title>
+<style>
+  *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success: #16a34a;
+    --danger: #dc2626;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-500: #6b7280;
+    --gray-700: #374151;
+    --gray-900: #111827;
+    --radius: 10px;
+    --shadow: 0 1px 4px rgba(0,0,0,.12);
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--gray-100); color: var(--gray-900); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px 24px; width: 100%; max-width: 400px; }
+  .card h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 4px; text-align: center; }
+  .card p.sub { font-size: .82rem; color: var(--gray-500); text-align: center; margin-bottom: 22px; }
+  label { display: block; font-size: .82rem; color: var(--gray-700); margin-bottom: 5px; font-weight: 600; }
+  input, textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: .92rem; background: var(--gray-50); margin-bottom: 14px; font-family: inherit; }
+  textarea { resize: vertical; min-height: 70px; }
+  input:focus, textarea:focus { outline: none; border-color: var(--primary); }
+  .btn { width: 100%; padding: 11px; border: none; border-radius: 8px; font-size: .92rem; font-weight: 700; cursor: pointer; background: var(--primary); color: #fff; transition: background .15s; }
+  .btn:hover { background: var(--primary-dark); }
+  .btn:disabled { opacity: .6; cursor: not-allowed; }
+  .err { font-size: .82rem; color: var(--danger); margin-bottom: 12px; display: none; }
+  .back-link { text-align: center; margin-top: 18px; font-size: .82rem; }
+  .back-link a { color: var(--primary); text-decoration: none; }
+  .back-link a:hover { text-decoration: underline; }
+
+  .done { display: none; text-align: center; }
+  .done-icon { font-size: 2.4rem; margin-bottom: 10px; }
+  .done h2 { font-size: 1.05rem; font-weight: 700; color: var(--success); margin-bottom: 6px; }
+  .done p { font-size: .85rem; color: var(--gray-500); line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div id="form-view">
+    <h1>申請開通課程</h1>
+    <p class="sub">填寫資料送出後，將由管理員審核</p>
+
+    <div id="err" class="err"></div>
+
+    <label for="name">姓名</label>
+    <input id="name" type="text" placeholder="你的姓名">
+
+    <label for="email">Email</label>
+    <input id="email" type="email" placeholder="you@example.com">
+
+    <label for="tv_name">TradingView 名稱</label>
+    <input id="tv_name" type="text" placeholder="你的 TradingView 顯示名稱">
+
+    <label for="note">備註（選填）</label>
+    <textarea id="note" placeholder="例如：怎麼認識課程的、購買憑證等"></textarea>
+
+    <button id="apply-btn" class="btn" onclick="submitApply()">送出申請</button>
+
+    <div class="back-link"><a href="/course-login.html">← 返回登入</a></div>
+  </div>
+
+  <div id="done-view" class="done">
+    <div class="done-icon">✅</div>
+    <h2>申請已送出，待審核</h2>
+    <p>審核通過後即可用此 Email 與 TradingView 名稱登入。</p>
+    <div class="back-link" style="margin-top:16px"><a href="/course-login.html">← 返回登入</a></div>
+  </div>
+</div>
+
+<script>
+  const qs = sel => document.querySelector(sel);
+
+  async function submitApply() {
+    const name = qs('#name').value.trim();
+    const email = qs('#email').value.trim();
+    const tv_name = qs('#tv_name').value.trim();
+    const note = qs('#note').value.trim();
+    const errEl = qs('#err');
+    const btn = qs('#apply-btn');
+    errEl.style.display = 'none';
+
+    if (!name || !email || !tv_name) {
+      errEl.textContent = '請填寫姓名、Email、TradingView 名稱';
+      errEl.style.display = '';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '送出中…';
+    try {
+      const r = await fetch('/api/course/apply', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, tv_name, note }),
+      });
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        throw new Error(e.error || '申請失敗');
+      }
+      qs('#form-view').style.display = 'none';
+      qs('#done-view').style.display = 'block';
+    } catch (e) {
+      errEl.textContent = e.message;
+      errEl.style.display = '';
+      btn.disabled = false;
+      btn.textContent = '送出申請';
+    }
+  }
+</script>
+</body>
+</html>
