@@ -155,11 +155,17 @@
       const scale = Math.min(2, containerWidth / baseViewport.width);
       const viewport = page.getViewport({ scale });
 
+      // 依裝置像素密度提高 canvas 實際繪製解析度，避免高密度螢幕（手機 Retina）放大模糊
+      const outputScale = Math.min(window.devicePixelRatio || 1, 2);
+      const renderViewport = page.getViewport({ scale: scale * outputScale });
+
       const canvas = document.createElement('canvas');
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
+      canvas.width = renderViewport.width;
+      canvas.height = renderViewport.height;
+      canvas.style.width = viewport.width + 'px';
+      canvas.style.height = viewport.height + 'px';
       const ctx = canvas.getContext('2d');
-      await page.render({ canvasContext: ctx, viewport }).promise;
+      await page.render({ canvasContext: ctx, viewport: renderViewport }).promise;
 
       const wrap = document.createElement('div');
       wrap.className = 'page-wrap';
