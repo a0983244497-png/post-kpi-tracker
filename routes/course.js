@@ -1,7 +1,27 @@
 import express from 'express';
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
+import { randomUUID } from 'crypto';
 import pool from '../db.js';
 
 const router = express.Router();
+
+// ── PDF 實體檔案儲存（Railway Volume，本機開發可用 PDF_STORAGE_DIR 覆蓋）──
+const PDF_STORAGE_DIR = process.env.PDF_STORAGE_DIR || '/data/pdfs';
+fs.mkdirSync(PDF_STORAGE_DIR, { recursive: true });
+
+const pdfUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, PDF_STORAGE_DIR),
+    filename: (req, file, cb) => cb(null, `${Date.now()}-${randomUUID()}.pdf`),
+  }),
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== 'application/pdf') return cb(new Error('只接受 PDF 檔案'));
+    cb(null, true);
+  },
+});
 
 function requireManager(req, res, next) {
   const mgr = process.env.MANAGER_PASSWORD;
@@ -72,6 +92,33 @@ router.get('/my-pdfs', requireStudent, async (req, res) => {
     res.json(rows);
   } catch (e) {
     console.error('[Course] my-pdfs:', e.message);
+    res.status(500).json({ error: '伺服器錯誤' });
+  }
+});
+
+// GET /api/course/pdf/:id/file — 實際吐 PDF 位元流，必須先驗證登入 + 開通權限
+router.get('/pdf/:id/file', requireStudent, async (req, res) => {
+  const pdfId = parseInt(req.params.id);
+  try {
+    const { rows } = await pool.query(
+      `SELECT p.file_url
+       FROM pdf_access a
+       JOIN pdf_pdfs p ON p.id = a.pdf_id
+       WHERE a.student_id = $1 AND a.pdf_id = $2`,
+      [req.session.studentId, pdfId]
+    );
+    if (!rows.length) return res.status(403).json({ error: '無權限存取此檔案' });
+
+    const filename = path.basename(rows[0].file_url || '');
+    const filePath = path.join(PDF_STORAGE_DIR, filename);
+    if (!filename || !fs.existsSync(filePath)) return res.status(404).json({ error: '檔案不存在' });
+
+    res.set('Content-Type', 'application/pdf');
+    res.set('Content-Disposition', 'inline');
+    res.set('Cache-Control', 'no-store');
+    fs.createReadStream(filePath).pipe(res);
+  } catch (e) {
+    console.error('[Course] pdf file:', e.message);
     res.status(500).json({ error: '伺服器錯誤' });
   }
 });
@@ -208,7 +255,7 @@ router.post('/admin/applications/:id/reject', requireManager, async (req, res) =
   }
 });
 
-// ── 管理端：PDF 列表（第二階段才有上傳）────────────────────
+// ── 管理端：PDF 列表 ────────────────────────────────────────
 router.get('/admin/pdfs', requireManager, async (req, res) => {
   try {
     const { rows } = await pool.query(`SELECT * FROM pdf_pdfs ORDER BY sort_order ASC, id ASC`);
@@ -216,6 +263,75 @@ router.get('/admin/pdfs', requireManager, async (req, res) => {
   } catch (e) {
     console.error('[Course] admin/pdfs:', e.message);
     res.status(500).json({ error: '伺服器錯誤' });
+  }
+});
+
+// ── 管理端：PDF 上傳（存 Railway Volume）────────────────────
+router.post('/admin/pdfs/upload', requireManager, (req, res) => {
+  pdfUpload.single('file')(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.message || '上傳失敗' });
+    if (!req.file) return res.status(400).json({ error: '請選擇 PDF 檔案' });
+
+    const title = (req.body.title || '').trim();
+    if (!title) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ error: '請填寫標題' });
+    }
+
+    try {
+      const { rows: maxRows } = await pool.query(`SELECT COALESCE(MAX(sort_order), 0) AS max_sort FROM pdf_pdfs`);
+      const nextSort = maxRows[0].max_sort + 1;
+      const { rows } = await pool.query(
+        `INSERT INTO pdf_pdfs (title, file_url, sort_order) VALUES ($1,$2,$3) RETURNING *`,
+        [title, req.file.filename, nextSort]
+      );
+      res.json(rows[0]);
+    } catch (e) {
+      console.error('[Course] pdf upload:', e.message);
+      fs.unlink(req.file.path, () => {});
+      res.status(500).json({ error: '儲存失敗' });
+    }
+  });
+});
+
+// ── 管理端：刪除 PDF（含實體檔案，pdf_access 靠 ON DELETE CASCADE 連帶清除）──
+router.delete('/admin/pdfs/:id', requireManager, async (req, res) => {
+  const id = parseInt(req.params.id);
+  try {
+    const { rows } = await pool.query(`DELETE FROM pdf_pdfs WHERE id = $1 RETURNING *`, [id]);
+    if (!rows.length) return res.status(404).json({ error: 'PDF 不存在' });
+
+    const filename = path.basename(rows[0].file_url || '');
+    if (filename) {
+      fs.unlink(path.join(PDF_STORAGE_DIR, filename), () => {}); // 檔案不存在也不報錯
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[Course] pdf delete:', e.message);
+    res.status(500).json({ error: '刪除失敗' });
+  }
+});
+
+// ── 管理端：修改 PDF 標題 / 排序 ────────────────────────────
+router.patch('/admin/pdfs/:id', requireManager, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { title, sort_order } = req.body;
+  const updates = [];
+  const params = [];
+  if (title !== undefined) { params.push(String(title).trim()); updates.push(`title = $${params.length}`); }
+  if (sort_order !== undefined) { params.push(Number(sort_order)); updates.push(`sort_order = $${params.length}`); }
+  if (!updates.length) return res.status(400).json({ error: '沒有可更新的欄位' });
+  params.push(id);
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE pdf_pdfs SET ${updates.join(', ')} WHERE id = $${params.length} RETURNING *`, params
+    );
+    if (!rows.length) return res.status(404).json({ error: 'PDF 不存在' });
+    res.json(rows[0]);
+  } catch (e) {
+    console.error('[Course] pdf patch:', e.message);
+    res.status(500).json({ error: '更新失敗' });
   }
 });
 

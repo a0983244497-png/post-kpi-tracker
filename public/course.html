@@ -91,7 +91,7 @@
   }
 
   function openPdf(id) {
-    alert('閱讀功能即將開放');
+    location.href = '/course-reader.html?id=' + encodeURIComponent(id);
   }
 
   async function doLogout() {

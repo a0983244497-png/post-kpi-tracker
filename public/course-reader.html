@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>課程閱讀</title>
+<style>
+  *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #2563eb;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-500: #6b7280;
+    --gray-900: #111827;
+    --danger: #dc2626;
+    --shadow: 0 1px 4px rgba(0,0,0,.12);
+  }
+
+  html, body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--gray-100);
+    color: var(--gray-900);
+    min-height: 100vh;
+    /* 停用文字選取，提高轉傳成本 */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+  }
+
+  /* 列印也印不出內容 */
+  @media print {
+    body { display: none !important; }
+  }
+
+  .topbar { background: var(--primary); color: #fff; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; position: sticky; top: 0; z-index: 500; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+  .topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .back-btn { background: rgba(255,255,255,.18); border: none; color: #fff; font-size: .8rem; font-weight: 700; padding: 6px 10px; border-radius: 6px; cursor: pointer; flex-shrink: 0; }
+  .back-btn:hover { background: rgba(255,255,255,.28); }
+  .title-text { font-size: .92rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .progress-text { font-size: .78rem; opacity: .85; flex-shrink: 0; }
+
+  .viewer { max-width: 900px; margin: 20px auto; padding: 0 12px 40px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+
+  .page-wrap { position: relative; box-shadow: var(--shadow); background: #fff; line-height: 0; }
+  .page-wrap canvas { display: block; max-width: 100%; height: auto; }
+
+  .watermark-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-repeat: repeat;
+  }
+
+  .status { text-align: center; padding: 60px 20px; color: var(--gray-500); font-size: .9rem; }
+  .status.error { color: var(--danger); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <button class="back-btn" onclick="location.href='/course.html'">← 返回</button>
+    <div class="title-text" id="title-text">載入中…</div>
+  </div>
+  <div class="progress-text" id="progress-text"></div>
+</div>
+
+<div class="viewer" id="viewer">
+  <div class="status" id="status">載入中…</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  const qs = sel => document.querySelector(sel);
+  const params = new URLSearchParams(location.search);
+  const pdfId = params.get('id');
+
+  // ── 防護措施（盡力而為，重點是提高轉傳成本）──────────────
+  document.addEventListener('contextmenu', e => e.preventDefault());
+  document.addEventListener('keydown', e => {
+    const key = e.key.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && (key === 'p' || key === 's')) {
+      e.preventDefault();
+    }
+  });
+  document.addEventListener('dragstart', e => e.preventDefault());
+
+  function buildWatermarkDataUri(text) {
+    const safe = String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='320' height='200'>
+      <text x='0' y='110' font-size='16' fill='rgba(90,90,90,0.15)' font-family='sans-serif' transform='rotate(-30 160 100)'>${safe}</text>
+    </svg>`;
+    return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+  }
+
+  async function init() {
+    const statusEl = qs('#status');
+    if (!pdfId) {
+      statusEl.textContent = '缺少 PDF 編號';
+      statusEl.classList.add('error');
+      return;
+    }
+
+    let me;
+    try {
+      me = await fetchJson('/api/course/me');
+    } catch (e) {
+      location.href = '/course-login.html';
+      return;
+    }
+
+    let fileBuf;
+    try {
+      const resp = await fetch('/api/course/pdf/' + encodeURIComponent(pdfId) + '/file', { credentials: 'same-origin' });
+      if (!resp.ok) {
+        const errMsg = resp.status === 403 ? '沒有這份 PDF 的閱讀權限'
+          : resp.status === 404 ? '檔案不存在'
+          : '載入失敗';
+        throw new Error(errMsg);
+      }
+      fileBuf = await resp.arrayBuffer();
+    } catch (e) {
+      statusEl.textContent = e.message || '載入失敗';
+      statusEl.classList.add('error');
+      return;
+    }
+
+    const watermarkText = (me.name || '') + ' ' + (me.email || '');
+    const watermarkUrl = buildWatermarkDataUri(watermarkText);
+
+    try {
+      const pdf = await pdfjsLib.getDocument({ data: fileBuf }).promise;
+      qs('#title-text').textContent = '課程閱讀';
+      statusEl.textContent = '';
+      await renderAllPages(pdf, watermarkUrl);
+    } catch (e) {
+      statusEl.textContent = 'PDF 解析失敗：' + e.message;
+      statusEl.classList.add('error');
+    }
+  }
+
+  async function renderAllPages(pdf, watermarkUrl) {
+    const viewerEl = qs('#viewer');
+    const progressEl = qs('#progress-text');
+    viewerEl.innerHTML = '';
+
+    const containerWidth = Math.min(900, window.innerWidth - 24);
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      progressEl.textContent = `渲染中 ${pageNum}/${pdf.numPages}`;
+      const page = await pdf.getPage(pageNum);
+      const baseViewport = page.getViewport({ scale: 1 });
+      const scale = Math.min(2, containerWidth / baseViewport.width);
+      const viewport = page.getViewport({ scale });
+
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d');
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'page-wrap';
+      wrap.style.width = viewport.width + 'px';
+      wrap.style.height = viewport.height + 'px';
+      wrap.appendChild(canvas);
+
+      const overlay = document.createElement('div');
+      overlay.className = 'watermark-overlay';
+      overlay.style.backgroundImage = `url("${watermarkUrl}")`;
+      wrap.appendChild(overlay);
+
+      viewerEl.appendChild(wrap);
+    }
+
+    progressEl.textContent = `共 ${pdf.numPages} 頁`;
+  }
+
+  async function fetchJson(path) {
+    const r = await fetch(path, { credentials: 'same-origin' });
+    if (!r.ok) throw new Error(String(r.status));
+    return r.json();
+  }
+
+  init();
+</script>
+</body>
+</html>

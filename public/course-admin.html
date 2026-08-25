@@ -66,7 +66,6 @@
   .access-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
   .pdf-checklist { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
   .pdf-checklist label { display: flex; align-items: center; gap: 6px; font-size: .85rem; }
-  .placeholder-box { background: var(--gray-50); border: 1px dashed var(--gray-200); border-radius: 8px; padding: 14px; text-align: center; color: var(--gray-500); font-size: .82rem; }
 
   /* Manager login modal */
   #modal-mgr { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
@@ -116,6 +115,18 @@
       <div id="students-list" class="muted">載入中…</div>
     </div>
 
+    <!-- PDF 管理 -->
+    <div class="card">
+      <h2>📄 PDF 管理</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <input type="text" id="pdf-title" placeholder="PDF 標題" style="flex:1;min-width:160px">
+        <input type="file" id="pdf-file" accept="application/pdf">
+        <button class="btn btn-primary btn-sm" onclick="uploadPdf()">上傳</button>
+      </div>
+      <div id="pdf-upload-msg" class="msg" style="display:none"></div>
+      <div id="pdf-manage-list" class="muted">載入中…</div>
+    </div>
+
     <!-- 權限開通 -->
     <div class="card">
       <h2>🔑 權限開通</h2>
@@ -125,7 +136,6 @@
       </div>
       <div id="pdf-checklist" class="pdf-checklist"></div>
       <div id="access-msg" class="msg" style="display:none"></div>
-      <div class="placeholder-box">📄 PDF 上傳功能第二階段開放</div>
     </div>
   </div>
 </div>
@@ -281,15 +291,65 @@
     }
   }
 
-  // ── 權限開通 ──────────────────────────────────
+  // ── PDF 管理 + 權限開通清單 ──────────────────────
   async function loadPdfs() {
-    const el = qs('#pdf-checklist');
+    const checklistEl = qs('#pdf-checklist');
+    const manageEl = qs('#pdf-manage-list');
     try {
       pdfs = await api('/api/course/admin/pdfs');
-      if (!pdfs.length) { el.innerHTML = '<div class="muted">目前尚無 PDF（第二階段開放上傳後才會有課程可勾選）</div>'; return; }
-      el.innerHTML = pdfs.map(p => `<label><input type="checkbox" value="${p.id}" class="pdf-check"> ${esc(p.title)}</label>`).join('');
+      if (!pdfs.length) {
+        checklistEl.innerHTML = '<div class="muted">目前尚無 PDF，請先在上方上傳</div>';
+        manageEl.innerHTML = '<div class="muted">尚未上傳任何 PDF</div>';
+        return;
+      }
+      checklistEl.innerHTML = pdfs.map(p => `<label><input type="checkbox" value="${p.id}" class="pdf-check"> ${esc(p.title)}</label>`).join('');
+      manageEl.innerHTML = `<table><thead><tr><th>標題</th><th>上傳時間</th><th>操作</th></tr></thead><tbody>` +
+        pdfs.map(p => `<tr>
+          <td>${esc(p.title)}</td>
+          <td>${new Date(p.created_at).toLocaleString('zh-TW')}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="deletePdf(${p.id})">刪除</button></td>
+        </tr>`).join('') + `</tbody></table>`;
     } catch (e) {
-      el.innerHTML = `<div class="msg err">載入失敗：${esc(e.message)}</div>`;
+      const msg = `<div class="msg err">載入失敗：${esc(e.message)}</div>`;
+      checklistEl.innerHTML = msg;
+      manageEl.innerHTML = msg;
+    }
+  }
+
+  async function uploadPdf() {
+    const title = qs('#pdf-title').value.trim();
+    const fileInput = qs('#pdf-file');
+    const file = fileInput.files[0];
+    const msgEl = qs('#pdf-upload-msg');
+    msgEl.style.display = 'none';
+    if (!title) { msgEl.textContent = '請輸入標題'; msgEl.className = 'msg err'; msgEl.style.display = ''; return; }
+    if (!file) { msgEl.textContent = '請選擇 PDF 檔案'; msgEl.className = 'msg err'; msgEl.style.display = ''; return; }
+
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('title', title);
+    try {
+      await api('/api/course/admin/pdfs/upload', { method: 'POST', body: fd });
+      msgEl.textContent = '✓ 上傳成功';
+      msgEl.className = 'msg ok';
+      msgEl.style.display = '';
+      qs('#pdf-title').value = '';
+      fileInput.value = '';
+      loadPdfs();
+    } catch (e) {
+      msgEl.textContent = '上傳失敗：' + e.message;
+      msgEl.className = 'msg err';
+      msgEl.style.display = '';
+    }
+  }
+
+  async function deletePdf(id) {
+    if (!confirm('確定刪除此 PDF？已開通的學員將立即失去閱讀權限。')) return;
+    try {
+      await api(`/api/course/admin/pdfs/${id}`, { method: 'DELETE' });
+      loadPdfs();
+    } catch (e) {
+      alert('刪除失敗：' + e.message);
     }
   }
 

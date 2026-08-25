@@ -97,7 +97,7 @@ app.get('/dashboard', requireAuth, (req, res) => {
 });
 
 // ─── 課程 PDF 閱讀系統頁面（不受團隊密碼保護，學員/申請人不會有 TEAM_PASSWORD）
-for (const page of ['course-login.html', 'course-apply.html', 'course.html', 'course-admin.html']) {
+for (const page of ['course-login.html', 'course-apply.html', 'course.html', 'course-admin.html', 'course-reader.html']) {
   app.get('/' + page, (req, res) => {
     res.sendFile(join(__dirname, 'public', page));
   });
