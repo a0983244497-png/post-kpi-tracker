@@ -64,8 +64,33 @@
   .muted { color: var(--gray-500); font-size: .82rem; }
 
   .access-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
-  .pdf-checklist { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-  .pdf-checklist label { display: flex; align-items: center; gap: 6px; font-size: .85rem; }
+
+  /* 系列分組 */
+  .series-group { border: 1px solid var(--gray-200); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+  .series-group-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--gray-50); font-weight: 700; font-size: .85rem; }
+  .series-group-body { padding: 2px 10px; }
+  .pdf-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; font-size: .85rem; border-bottom: 1px solid var(--gray-100); gap: 10px; }
+  .pdf-toggle-row:last-child { border-bottom: none; }
+  .pdf-toggle-row span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* 開關 */
+  .switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .slider { position: absolute; inset: 0; background: var(--gray-200); border-radius: 999px; cursor: pointer; transition: background .15s; }
+  .switch .slider::before { content: ""; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: transform .15s; }
+  .switch input:checked + .slider { background: var(--success); }
+  .switch input:checked + .slider::before { transform: translateX(18px); }
+
+  /* 依學員 / 依系列 分頁籤 */
+  .access-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .access-tab { padding: 7px 14px; border: 1px solid var(--gray-200); background: var(--gray-50); border-radius: 8px; font-size: .82rem; font-weight: 700; cursor: pointer; color: var(--gray-700); }
+  .access-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  .access-student-results { max-height: 200px; overflow-y: auto; border: 1px solid var(--gray-200); border-radius: 8px; margin: 8px 0; }
+  .access-student-row { padding: 8px 10px; font-size: .85rem; cursor: pointer; border-bottom: 1px solid var(--gray-100); }
+  .access-student-row:last-child { border-bottom: none; }
+  .access-student-row:hover { background: var(--gray-100); }
+  .access-student-name { font-weight: 700; font-size: .9rem; margin: 10px 0 6px; }
 
   /* Manager login modal */
   #modal-mgr { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
@@ -120,22 +145,44 @@
       <h2>📄 PDF 管理</h2>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
         <input type="text" id="pdf-title" placeholder="PDF 標題" style="flex:1;min-width:160px">
+        <select id="pdf-series-select"><option value="">未分類</option></select>
+        <input type="number" id="pdf-episode-no" placeholder="篇號" style="width:70px" min="0">
         <input type="file" id="pdf-file" accept="application/pdf">
         <button class="btn btn-primary btn-sm" onclick="uploadPdf()">上傳</button>
       </div>
       <div id="pdf-upload-msg" class="msg" style="display:none"></div>
+
+      <div class="access-row" style="margin-top:4px">
+        <input type="text" id="new-series-name" placeholder="新增系列名稱">
+        <button class="btn btn-ghost btn-sm" onclick="createSeries()">＋ 新增系列</button>
+      </div>
+
       <div id="pdf-manage-list" class="muted">載入中…</div>
     </div>
 
     <!-- 權限開通 -->
     <div class="card">
       <h2>🔑 權限開通</h2>
-      <div class="access-row">
-        <select id="access-student"><option value="">選擇學員…</option></select>
-        <button class="btn btn-success btn-sm" onclick="saveAccess()">儲存</button>
+      <div class="access-tabs">
+        <button class="access-tab active" id="tab-by-student" onclick="switchAccessMode('student')">依學員開通</button>
+        <button class="access-tab" id="tab-by-series" onclick="switchAccessMode('series')">依系列開通</button>
       </div>
-      <div id="pdf-checklist" class="pdf-checklist"></div>
-      <div id="access-msg" class="msg" style="display:none"></div>
+
+      <!-- 模式一：依學員開通 -->
+      <div id="access-mode-student">
+        <input type="text" id="access-student-search" placeholder="搜尋學員姓名或 email…" oninput="searchAccessStudents()" style="width:100%">
+        <div id="access-student-results" class="access-student-results"></div>
+        <div id="access-student-detail"></div>
+      </div>
+
+      <!-- 模式二：依系列開通 -->
+      <div id="access-mode-series" style="display:none">
+        <div class="access-row">
+          <select id="access-series-select" onchange="loadSeriesAccessView()"><option value="">選擇系列…</option></select>
+        </div>
+        <input type="text" id="access-series-student-search" placeholder="搜尋學員姓名或 email…" oninput="renderSeriesAccessList()" style="width:100%;margin-bottom:8px">
+        <div id="access-series-list"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -144,7 +191,10 @@
   const qs = sel => document.querySelector(sel);
   let mgrKey = sessionStorage.getItem('course_mgr_key') || '';
   let students = [];
-  let pdfs = [];
+  let seriesData = { series: [], unclassified: [] };
+  let selectedAccessStudent = null;
+  let _lastSearchResults = [];
+  let seriesAccessMap = {};
 
   function esc(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -198,7 +248,8 @@
   function loadAll() {
     loadApplications();
     loadStudents();
-    loadPdfs();
+    loadSeriesData();
+    searchAccessStudents();
   }
 
   // ── 名單匯入 ──────────────────────────────────
@@ -284,35 +335,82 @@
             <td>${new Date(s.created_at).toLocaleDateString('zh-TW')}</td>
           </tr>`).join('') + `</tbody></table>`;
       }
-      const sel = qs('#access-student');
-      sel.innerHTML = '<option value="">選擇學員…</option>' + students.map(s => `<option value="${s.id}">${esc(s.name)}（${esc(s.email)}）</option>`).join('');
     } catch (e) {
       el.innerHTML = `<div class="msg err">載入失敗：${esc(e.message)}</div>`;
     }
   }
 
-  // ── PDF 管理 + 權限開通清單 ──────────────────────
-  async function loadPdfs() {
-    const checklistEl = qs('#pdf-checklist');
-    const manageEl = qs('#pdf-manage-list');
+  // ── PDF 管理（依系列分組）──────────────────────
+  async function loadSeriesData() {
     try {
-      pdfs = await api('/api/course/admin/pdfs');
-      if (!pdfs.length) {
-        checklistEl.innerHTML = '<div class="muted">目前尚無 PDF，請先在上方上傳</div>';
-        manageEl.innerHTML = '<div class="muted">尚未上傳任何 PDF</div>';
-        return;
-      }
-      checklistEl.innerHTML = pdfs.map(p => `<label><input type="checkbox" value="${p.id}" class="pdf-check"> ${esc(p.title)}</label>`).join('');
-      manageEl.innerHTML = `<table><thead><tr><th>標題</th><th>上傳時間</th><th>操作</th></tr></thead><tbody>` +
-        pdfs.map(p => `<tr>
-          <td>${esc(p.title)}</td>
-          <td>${new Date(p.created_at).toLocaleString('zh-TW')}</td>
-          <td><button class="btn btn-danger btn-sm" onclick="deletePdf(${p.id})">刪除</button></td>
-        </tr>`).join('') + `</tbody></table>`;
+      seriesData = await api('/api/course/admin/series');
     } catch (e) {
-      const msg = `<div class="msg err">載入失敗：${esc(e.message)}</div>`;
-      checklistEl.innerHTML = msg;
-      manageEl.innerHTML = msg;
+      seriesData = { series: [], unclassified: [] };
+    }
+    renderPdfManageList();
+    populateSeriesSelect();
+    if (selectedAccessStudent) selectAccessStudent(selectedAccessStudent);
+  }
+
+  function findPdfById(pdfId) {
+    const all = seriesData.series.flatMap(s => s.pdfs).concat(seriesData.unclassified);
+    return all.find(p => p.id === pdfId);
+  }
+  function findPdfEpisodeNo(pdfId) { return findPdfById(pdfId)?.episode_no || 0; }
+  function findPdfSeriesId(pdfId) { return findPdfById(pdfId)?.series_id ?? null; }
+
+  function seriesOptionsHtmlFor(selectedId) {
+    let html = `<option value="" ${selectedId == null ? 'selected' : ''}>未分類</option>`;
+    html += seriesData.series.map(s =>
+      `<option value="${s.id}" ${String(s.id) === String(selectedId) ? 'selected' : ''}>${esc(s.name)}</option>`
+    ).join('');
+    return html;
+  }
+
+  function renderPdfManageList() {
+    const el = qs('#pdf-manage-list');
+    const groups = [...seriesData.series, { id: null, name: '未分類', pdfs: seriesData.unclassified }];
+    const html = groups.map(g => {
+      if (!g.pdfs.length) return '';
+      return `<div class="series-group">
+        <div class="series-group-header"><span>${esc(g.name)}（${g.pdfs.length}）</span></div>
+        <table><thead><tr><th>標題</th><th>系列</th><th>篇號</th><th>上傳時間</th><th>操作</th></tr></thead><tbody>` +
+          g.pdfs.map(p => `<tr>
+            <td>${esc(p.title)}</td>
+            <td><select onchange="updatePdfSeriesId(${p.id}, this.value)">${seriesOptionsHtmlFor(p.series_id)}</select></td>
+            <td><input type="number" value="${p.episode_no || 0}" style="width:56px" min="0" onchange="updatePdfEpisodeNo(${p.id}, this.value)"></td>
+            <td>${new Date(p.created_at).toLocaleString('zh-TW')}</td>
+            <td><button class="btn btn-danger btn-sm" onclick="deletePdf(${p.id})">刪除</button></td>
+          </tr>`).join('') +
+        `</tbody></table>
+      </div>`;
+    }).join('');
+    el.innerHTML = html || '<div class="muted">尚未上傳任何 PDF</div>';
+  }
+
+  function populateSeriesSelect() {
+    const optionsHtml = seriesData.series.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+
+    const uploadSel = qs('#pdf-series-select');
+    if (uploadSel) uploadSel.innerHTML = '<option value="">未分類</option>' + optionsHtml;
+
+    const accessSel = qs('#access-series-select');
+    if (accessSel) {
+      const prevVal = accessSel.value;
+      accessSel.innerHTML = '<option value="">選擇系列…</option>' + optionsHtml;
+      if (prevVal && seriesData.series.some(s => String(s.id) === prevVal)) accessSel.value = prevVal;
+    }
+  }
+
+  async function createSeries() {
+    const name = qs('#new-series-name').value.trim();
+    if (!name) return;
+    try {
+      await api('/api/course/admin/series', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+      qs('#new-series-name').value = '';
+      await loadSeriesData();
+    } catch (e) {
+      alert('新增系列失敗：' + e.message);
     }
   }
 
@@ -320,6 +418,8 @@
     const title = qs('#pdf-title').value.trim();
     const fileInput = qs('#pdf-file');
     const file = fileInput.files[0];
+    const seriesId = qs('#pdf-series-select').value;
+    const episodeNo = qs('#pdf-episode-no').value;
     const msgEl = qs('#pdf-upload-msg');
     msgEl.style.display = 'none';
     if (!title) { msgEl.textContent = '請輸入標題'; msgEl.className = 'msg err'; msgEl.style.display = ''; return; }
@@ -328,14 +428,17 @@
     const fd = new FormData();
     fd.append('file', file);
     fd.append('title', title);
+    if (seriesId) fd.append('series_id', seriesId);
+    if (episodeNo) fd.append('episode_no', episodeNo);
     try {
       await api('/api/course/admin/pdfs/upload', { method: 'POST', body: fd });
       msgEl.textContent = '✓ 上傳成功';
       msgEl.className = 'msg ok';
       msgEl.style.display = '';
       qs('#pdf-title').value = '';
+      qs('#pdf-episode-no').value = '';
       fileInput.value = '';
-      loadPdfs();
+      loadSeriesData();
     } catch (e) {
       msgEl.textContent = '上傳失敗：' + e.message;
       msgEl.className = 'msg err';
@@ -347,31 +450,178 @@
     if (!confirm('確定刪除此 PDF？已開通的學員將立即失去閱讀權限。')) return;
     try {
       await api(`/api/course/admin/pdfs/${id}`, { method: 'DELETE' });
-      loadPdfs();
+      loadSeriesData();
     } catch (e) {
       alert('刪除失敗：' + e.message);
     }
   }
 
-  async function saveAccess() {
-    const studentId = qs('#access-student').value;
-    const msgEl = qs('#access-msg');
-    msgEl.style.display = 'none';
-    if (!studentId) { msgEl.textContent = '請先選擇學員'; msgEl.className = 'msg err'; msgEl.style.display = ''; return; }
-    const pdfIds = Array.from(document.querySelectorAll('.pdf-check:checked')).map(el => Number(el.value));
+  async function updatePdfSeriesId(pdfId, newSeriesId) {
     try {
-      await api('/api/course/admin/access', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ student_id: Number(studentId), pdf_ids: pdfIds }) });
-      msgEl.textContent = `✓ 已儲存，開通 ${pdfIds.length} 篇`;
-      msgEl.className = 'msg ok';
-      msgEl.style.display = '';
+      await api(`/api/course/admin/pdfs/${pdfId}/series`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ series_id: newSeriesId ? Number(newSeriesId) : null, episode_no: findPdfEpisodeNo(pdfId) }),
+      });
+      await loadSeriesData();
     } catch (e) {
-      msgEl.textContent = '儲存失敗：' + e.message;
-      msgEl.className = 'msg err';
-      msgEl.style.display = '';
+      alert('更新失敗：' + e.message);
+      await loadSeriesData();
     }
   }
 
+  async function updatePdfEpisodeNo(pdfId, newEpisodeNo) {
+    try {
+      await api(`/api/course/admin/pdfs/${pdfId}/series`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ series_id: findPdfSeriesId(pdfId), episode_no: Number(newEpisodeNo) || 0 }),
+      });
+      await loadSeriesData();
+    } catch (e) {
+      alert('更新失敗：' + e.message);
+      await loadSeriesData();
+    }
+  }
+
+  // ── 權限開通：模式切換 ──────────────────────────
+  function switchAccessMode(mode) {
+    qs('#tab-by-student').classList.toggle('active', mode === 'student');
+    qs('#tab-by-series').classList.toggle('active', mode === 'series');
+    qs('#access-mode-student').style.display = mode === 'student' ? '' : 'none';
+    qs('#access-mode-series').style.display = mode === 'series' ? '' : 'none';
+  }
+
+  // ── 權限開通：依學員 ────────────────────────────
+  async function searchAccessStudents() {
+    const q = qs('#access-student-search').value.trim();
+    const resultsEl = qs('#access-student-results');
+    try {
+      const list = await api('/api/course/admin/students' + (q ? '?q=' + encodeURIComponent(q) : ''));
+      _lastSearchResults = list;
+      resultsEl.innerHTML = list.length
+        ? list.map(s => `<div class="access-student-row" data-id="${s.id}">${esc(s.name)}（${esc(s.email)}）</div>`).join('')
+        : '<div class="muted" style="padding:8px 10px">找不到符合的學員</div>';
+    } catch (e) {
+      resultsEl.innerHTML = `<div class="msg err">${esc(e.message)}</div>`;
+    }
+  }
+
+  async function selectAccessStudent(student) {
+    selectedAccessStudent = student;
+    const detailEl = qs('#access-student-detail');
+    detailEl.innerHTML = '<div class="muted">載入中…</div>';
+    try {
+      const { pdf_ids } = await api(`/api/course/admin/access/by-student/${student.id}`);
+      const ownedSet = new Set(pdf_ids);
+      detailEl.innerHTML = renderStudentSeriesToggles(student, ownedSet);
+    } catch (e) {
+      detailEl.innerHTML = `<div class="msg err">${esc(e.message)}</div>`;
+    }
+  }
+
+  function renderStudentSeriesToggles(student, ownedSet) {
+    const groups = [...seriesData.series, { id: null, name: '未分類', pdfs: seriesData.unclassified }];
+    let html = `<div class="access-student-name">${esc(student.name)}（${esc(student.email)}）</div>`;
+    let any = false;
+    for (const g of groups) {
+      if (!g.pdfs.length) continue;
+      any = true;
+      const allOwned = g.pdfs.every(p => ownedSet.has(p.id));
+      html += `<div class="series-group">
+        <div class="series-group-header">
+          <span>${esc(g.name)}</span>
+          ${g.id !== null ? `<label class="switch"><input type="checkbox" ${allOwned ? 'checked' : ''} onchange="onToggleSeries(${student.id}, ${g.id}, this.checked)"><span class="slider"></span></label>` : ''}
+        </div>
+        <div class="series-group-body">
+          ${g.pdfs.map(p => `<div class="pdf-toggle-row">
+            <span>${esc(p.title)}</span>
+            <label class="switch"><input type="checkbox" ${ownedSet.has(p.id) ? 'checked' : ''} onchange="onTogglePdf(${student.id}, ${p.id}, this.checked)"><span class="slider"></span></label>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    }
+    return any ? html : html + '<div class="muted">目前尚無任何 PDF</div>';
+  }
+
+  async function onTogglePdf(studentId, pdfId, grant) {
+    try {
+      await api('/api/course/admin/access/toggle', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: studentId, pdf_id: pdfId, grant }),
+      });
+    } catch (e) {
+      alert('操作失敗：' + e.message);
+    }
+    if (selectedAccessStudent && selectedAccessStudent.id === studentId) selectAccessStudent(selectedAccessStudent);
+  }
+
+  async function onToggleSeries(studentId, seriesId, grant) {
+    try {
+      await api('/api/course/admin/access/toggle-series', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: studentId, series_id: seriesId, grant }),
+      });
+    } catch (e) {
+      alert('操作失敗：' + e.message);
+    }
+    if (selectedAccessStudent && selectedAccessStudent.id === studentId) selectAccessStudent(selectedAccessStudent);
+  }
+
+  // ── 權限開通：依系列 ────────────────────────────
+  async function loadSeriesAccessView() {
+    const seriesId = qs('#access-series-select').value;
+    const listEl = qs('#access-series-list');
+    if (!seriesId) { listEl.innerHTML = ''; return; }
+    listEl.innerHTML = '<div class="muted">載入中…</div>';
+    try {
+      seriesAccessMap = await api(`/api/course/admin/access/by-series/${seriesId}`);
+      await renderSeriesAccessList();
+    } catch (e) {
+      listEl.innerHTML = `<div class="msg err">${esc(e.message)}</div>`;
+    }
+  }
+
+  async function renderSeriesAccessList() {
+    const seriesId = qs('#access-series-select').value;
+    if (!seriesId) return;
+    const q = qs('#access-series-student-search').value.trim();
+    const listEl = qs('#access-series-list');
+    try {
+      const list = await api('/api/course/admin/students' + (q ? '?q=' + encodeURIComponent(q) : ''));
+      const group = seriesData.series.find(s => String(s.id) === String(seriesId));
+      const pdfIds = group ? group.pdfs.map(p => p.id) : [];
+      listEl.innerHTML = list.length ? list.map(s => {
+        const allOwned = pdfIds.length > 0 && pdfIds.every(pid => (seriesAccessMap[pid] || []).includes(s.id));
+        return `<div class="pdf-toggle-row">
+          <span>${esc(s.name)}（${esc(s.email)}）</span>
+          <label class="switch"><input type="checkbox" ${allOwned ? 'checked' : ''} onchange="onToggleSeriesForStudent(${s.id}, ${seriesId}, this.checked)"><span class="slider"></span></label>
+        </div>`;
+      }).join('') : '<div class="muted">找不到符合的學員</div>';
+    } catch (e) {
+      listEl.innerHTML = `<div class="msg err">${esc(e.message)}</div>`;
+    }
+  }
+
+  async function onToggleSeriesForStudent(studentId, seriesId, grant) {
+    try {
+      await api('/api/course/admin/access/toggle-series', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: studentId, series_id: Number(seriesId), grant }),
+      });
+      seriesAccessMap = await api(`/api/course/admin/access/by-series/${seriesId}`);
+    } catch (e) {
+      alert('操作失敗：' + e.message);
+    }
+    await renderSeriesAccessList();
+  }
+
   qs('#mgr-pw').addEventListener('keydown', e => { if (e.key === 'Enter') submitMgrLogin(); });
+  qs('#access-student-results').addEventListener('click', e => {
+    const row = e.target.closest('.access-student-row');
+    if (!row) return;
+    const id = Number(row.dataset.id);
+    const student = _lastSearchResults.find(s => s.id === id);
+    if (student) selectAccessStudent(student);
+  });
   tryRestore();
 </script>
 </body>

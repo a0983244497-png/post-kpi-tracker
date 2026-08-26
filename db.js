@@ -293,6 +293,66 @@ export async function initDb() {
     )
   `);
 
+  // ── 課程 PDF：系列分組 ──────────────────────────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pdf_series (
+      id         SERIAL PRIMARY KEY,
+      name       VARCHAR(100) NOT NULL,
+      sort_order INTEGER      DEFAULT 0,
+      created_at TIMESTAMPTZ  DEFAULT NOW()
+    )
+  `);
+  await pool.query(`ALTER TABLE pdf_pdfs ADD COLUMN IF NOT EXISTS series_id  INTEGER REFERENCES pdf_series(id)`);
+  await pool.query(`ALTER TABLE pdf_pdfs ADD COLUMN IF NOT EXISTS episode_no INTEGER DEFAULT 0`);
+
+  // Seed default series（先查再插，避免重複）
+  const DEFAULT_SERIES = [
+    { name: '交易心理系列', sort_order: 1 },
+    { name: '基礎系列',     sort_order: 2 },
+    { name: '進階系列',     sort_order: 3 },
+  ];
+  for (const s of DEFAULT_SERIES) {
+    const { rows: existingSeries } = await pool.query(`SELECT id FROM pdf_series WHERE name = $1`, [s.name]);
+    if (!existingSeries.length) {
+      await pool.query(`INSERT INTO pdf_series (name, sort_order) VALUES ($1,$2)`, [s.name, s.sort_order]);
+    }
+  }
+
+  // 一次性資料歸位（每次啟動都跑，冪等：只處理 series_id 仍為 NULL 的 PDF）
+  {
+    const { rows: seriesRows } = await pool.query(`SELECT id, name FROM pdf_series`);
+    const seriesIdByName = {};
+    for (const row of seriesRows) seriesIdByName[row.name] = row.id;
+
+    const CN_NUM_LIST = [['十',10],['九',9],['八',8],['七',7],['六',6],['五',5],['四',4],['三',3],['二',2],['一',1]];
+    const parseEpisodeNo = (title) => {
+      const arabicMatch = title.match(/\d+/);
+      if (arabicMatch) return parseInt(arabicMatch[0], 10);
+      for (const [cn, num] of CN_NUM_LIST) {
+        if (title.includes(cn)) return num;
+      }
+      return 0;
+    };
+    const KEYWORD_TO_SERIES = [
+      ['心理', '交易心理系列'],
+      ['基礎', '基礎系列'],
+      ['進階', '進階系列'],
+    ];
+
+    const { rows: unclassified } = await pool.query(`SELECT id, title FROM pdf_pdfs WHERE series_id IS NULL`);
+    for (const pdf of unclassified) {
+      const matched = KEYWORD_TO_SERIES.find(([kw]) => pdf.title.includes(kw));
+      if (!matched) continue; // 歸不到任何系列，維持 NULL（未分類）
+      const seriesId = seriesIdByName[matched[1]];
+      if (!seriesId) continue;
+      const episodeNo = parseEpisodeNo(pdf.title);
+      await pool.query(
+        `UPDATE pdf_pdfs SET series_id = $1, episode_no = $2 WHERE id = $3`,
+        [seriesId, episodeNo, pdf.id]
+      );
+    }
+  }
+
   // Seed default staff (unconditional, skips if already exists)
   await pool.query(
     `INSERT INTO staff (name) VALUES ('Gino'),('Darren'),('Josh'),('Jenna'),('路克') ON CONFLICT (name) DO NOTHING`

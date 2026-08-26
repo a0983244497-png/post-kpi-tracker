@@ -26,6 +26,8 @@
   .logout-btn:hover { background: rgba(255,255,255,.28); }
 
   .content { padding: 16px; max-width: 640px; margin: 0 auto; }
+  .series-section { margin-bottom: 20px; }
+  .series-heading { font-size: .8rem; font-weight: 700; color: var(--gray-500); letter-spacing: .04em; margin-bottom: 8px; padding-left: 2px; }
   .pdf-card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; transition: box-shadow .15s; }
   .pdf-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,.14); }
   .pdf-title { font-weight: 600; font-size: .95rem; }
@@ -82,9 +84,23 @@
         listEl.innerHTML = '<div class="empty"><div class="empty-icon">📚</div>目前尚未開通任何課程<br>請聯繫管理員開通權限</div>';
         return;
       }
-      listEl.innerHTML = pdfs.map(p =>
-        `<div class="pdf-card" onclick="openPdf(${p.id})"><span class="pdf-title">${esc(p.title)}</span><span class="pdf-arrow">›</span></div>`
-      ).join('');
+
+      // 依系列分組（後端已依系列排序，未分類排最後）
+      const groups = {};
+      const order = [];
+      for (const p of pdfs) {
+        const key = p.series_id ?? 'none';
+        if (!groups[key]) { groups[key] = { name: p.series_name || '未分類', items: [] }; order.push(key); }
+        groups[key].items.push(p);
+      }
+
+      listEl.innerHTML = order.map(key => {
+        const g = groups[key];
+        return `<div class="series-section">
+          <div class="series-heading">${esc(g.name)}</div>
+          ${g.items.map(p => `<div class="pdf-card" onclick="openPdf(${p.id})"><span class="pdf-title">${esc(p.title)}</span><span class="pdf-arrow">›</span></div>`).join('')}
+        </div>`;
+      }).join('');
     } catch (e) {
       listEl.innerHTML = `<div class="empty">載入失敗：${esc(e.message)}</div>`;
     }
