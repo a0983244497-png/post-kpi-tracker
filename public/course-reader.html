@@ -46,7 +46,9 @@
   .zoom-btn:hover { background: rgba(255,255,255,.28); }
   .zoom-label { font-size: .78rem; opacity: .9; min-width: 36px; text-align: center; flex-shrink: 0; }
 
-  .viewer { max-width: 900px; margin: 20px auto; padding: 0 12px 40px; display: flex; flex-direction: column; align-items: center; gap: 14px; overflow-x: auto; }
+  /* 外層固定寬度、負責橫向捲動；.viewer 本身依內容寬度伸縮（縮放後會比外層寬，靠外層捲動看到完整內容） */
+  .viewer-scroll { max-width: 900px; margin: 20px auto; padding: 0 12px 40px; overflow-x: auto; }
+  .viewer { min-width: 100%; width: max-content; display: flex; flex-direction: column; align-items: center; gap: 14px; }
 
   .page-wrap { position: relative; box-shadow: var(--shadow); background: #fff; line-height: 0; margin: 0 auto; flex-shrink: 0; }
   .page-wrap canvas { display: block; }
@@ -79,8 +81,10 @@
   </div>
 </div>
 
-<div class="viewer" id="viewer">
-  <div class="status" id="status">載入中…</div>
+<div class="viewer-scroll" id="viewer-scroll">
+  <div class="viewer" id="viewer">
+    <div class="status" id="status">載入中…</div>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -230,10 +234,11 @@
     const progressEl = qs('#progress-text');
     viewerEl.innerHTML = '';
 
-    // 基礎顯示寬度以容器可用寬度為準（扣除左右 padding），讓 PDF 一進來就填滿閱讀區
-    const cs = getComputedStyle(viewerEl);
+    // 基礎顯示寬度以「外層固定寬度捲動容器」為準（不能量測 .viewer 自己，它的寬度會隨縮放後的內容變動）
+    const scrollEl = qs('#viewer-scroll');
+    const cs = getComputedStyle(scrollEl);
     const paddingX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
-    const containerWidth = Math.max(100, viewerEl.clientWidth - paddingX);
+    const containerWidth = Math.max(100, scrollEl.clientWidth - paddingX);
     const outputScale = Math.min(window.devicePixelRatio || 1, 2);
 
     for (let pageNum = 1; pageNum <= currentPdf.numPages; pageNum++) {
