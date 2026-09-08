@@ -189,20 +189,83 @@ router.post('/admin/import', requireManager, async (req, res) => {
   }
 });
 
-// ── 管理端：學員列表（支援 ?q= 依姓名/email 模糊搜尋）──────
+// ── 管理端：學員列表（?q= 依姓名/email 模糊搜尋、?page / ?pageSize 分頁）──
 router.get('/admin/students', requireManager, async (req, res) => {
   try {
     const { q } = req.query;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const pageSize = Math.min(1000, Math.max(1, parseInt(req.query.pageSize) || 20));
     const params = [];
     let where = '';
     if (q) { params.push(`%${q}%`); where = 'WHERE name ILIKE $1 OR email ILIKE $1'; }
-    const { rows } = await pool.query(
-      `SELECT * FROM pdf_students ${where} ORDER BY created_at DESC`, params
+
+    const { rows: countRows } = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM pdf_students ${where}`, params
     );
-    res.json(rows);
+    const total = countRows[0].total;
+
+    params.push(pageSize, (page - 1) * pageSize);
+    const { rows } = await pool.query(
+      `SELECT * FROM pdf_students ${where} ORDER BY created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
+    );
+    res.json({ students: rows, total, page, pageSize });
   } catch (e) {
     console.error('[Course] admin/students:', e.message);
     res.status(500).json({ error: '伺服器錯誤' });
+  }
+});
+
+// ── 管理端：更新學員（姓名 / email / TV 名稱 / 狀態）──────
+router.patch('/admin/students/:id', requireManager, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { name, email, tv_name, status } = req.body;
+  try {
+    if (email !== undefined) {
+      const { rows: dup } = await pool.query(
+        `SELECT id FROM pdf_students WHERE LOWER(TRIM(email)) = $1 AND id <> $2`,
+        [norm(email), id]
+      );
+      if (dup.length) return res.status(400).json({ error: '此 email 已被其他學員使用' });
+    }
+
+    const updates = [];
+    const params = [];
+    if (name !== undefined)    { params.push(String(name).trim());    updates.push(`name = $${params.length}`); }
+    if (email !== undefined)   { params.push(String(email).trim());   updates.push(`email = $${params.length}`); }
+    if (tv_name !== undefined) { params.push(String(tv_name).trim()); updates.push(`tv_name = $${params.length}`); }
+    if (status !== undefined)  { params.push(String(status).trim());  updates.push(`status = $${params.length}`); }
+    if (!updates.length) return res.status(400).json({ error: '沒有可更新的欄位' });
+    params.push(id);
+
+    const { rows } = await pool.query(
+      `UPDATE pdf_students SET ${updates.join(', ')} WHERE id = $${params.length} RETURNING *`, params
+    );
+    if (!rows.length) return res.status(404).json({ error: '學員不存在' });
+    res.json(rows[0]);
+  } catch (e) {
+    console.error('[Course] student patch:', e.message);
+    res.status(500).json({ error: '更新失敗' });
+  }
+});
+
+// ── 管理端：刪除學員（連帶清除該學員的 pdf_access 紀錄）──────
+router.delete('/admin/students/:id', requireManager, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(`DELETE FROM pdf_access WHERE student_id = $1`, [id]);
+    const { rows } = await client.query(`DELETE FROM pdf_students WHERE id = $1 RETURNING *`, [id]);
+    await client.query('COMMIT');
+    if (!rows.length) return res.status(404).json({ error: '學員不存在' });
+    res.json({ ok: true });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('[Course] student delete:', e.message);
+    res.status(500).json({ error: '刪除失敗' });
+  } finally {
+    client.release();
   }
 });
 

@@ -109,6 +109,23 @@
   </div>
 </div>
 
+<div id="modal-student-edit" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);align-items:center;justify-content:center;z-index:1000;padding:20px">
+  <div style="background:#fff;border-radius:var(--radius);padding:24px 20px;max-width:340px;width:100%">
+    <h2 style="font-size:1rem;margin-bottom:14px">編輯學員</h2>
+    <label class="muted" style="display:block;margin-bottom:3px">姓名</label>
+    <input type="text" id="edit-student-name" style="width:100%;margin-bottom:10px">
+    <label class="muted" style="display:block;margin-bottom:3px">Email</label>
+    <input type="email" id="edit-student-email" style="width:100%;margin-bottom:10px">
+    <label class="muted" style="display:block;margin-bottom:3px">TradingView 名稱</label>
+    <input type="text" id="edit-student-tv" style="width:100%;margin-bottom:10px">
+    <div id="edit-student-msg" class="msg err" style="display:none"></div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button class="btn btn-primary" style="flex:1" onclick="saveStudentEdit()">存檔</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="closeStudentEdit()">取消</button>
+    </div>
+  </div>
+</div>
+
 <div id="app" style="display:none">
   <div class="topbar">
     <h1>課程管理後台</h1>
@@ -136,8 +153,16 @@
 
     <!-- 學員列表 -->
     <div class="card">
-      <h2>👥 學員列表</h2>
+      <h2 id="students-title">👥 學員列表</h2>
+      <div style="margin-bottom:10px">
+        <input type="text" id="students-search" placeholder="搜尋姓名或 email…" style="width:100%">
+      </div>
       <div id="students-list" class="muted">載入中…</div>
+      <div id="students-pager" style="display:none;align-items:center;justify-content:center;gap:12px;margin-top:12px">
+        <button class="btn btn-ghost btn-sm" id="students-prev" onclick="changeStudentPage(-1)">上一頁</button>
+        <span class="muted" id="students-pageinfo"></span>
+        <button class="btn btn-ghost btn-sm" id="students-next" onclick="changeStudentPage(1)">下一頁</button>
+      </div>
     </div>
 
     <!-- PDF 管理 -->
@@ -191,6 +216,12 @@
   const qs = sel => document.querySelector(sel);
   let mgrKey = sessionStorage.getItem('course_mgr_key') || '';
   let students = [];
+  const STUDENT_PAGE_SIZE = 20;
+  let studentPage = 1;
+  let studentQuery = '';
+  let studentTotal = 0;
+  let editingStudentId = null;
+  let _studentSearchTimer = null;
   let seriesData = { series: [], unclassified: [] };
   let selectedAccessStudent = null;
   let _lastSearchResults = [];
@@ -322,21 +353,124 @@
   async function loadStudents() {
     const el = qs('#students-list');
     try {
-      students = await api('/api/course/admin/students');
-      if (!students.length) { el.innerHTML = '<div class="muted">尚無學員</div>'; }
-      else {
-        el.innerHTML = `<table><thead><tr><th>姓名</th><th>Email</th><th>TV 名稱</th><th>狀態</th><th>來源</th><th>建立時間</th></tr></thead><tbody>` +
-          students.map(s => `<tr>
-            <td>${esc(s.name)}</td>
+      const params = new URLSearchParams({ page: studentPage, pageSize: STUDENT_PAGE_SIZE });
+      if (studentQuery) params.set('q', studentQuery);
+      const data = await api('/api/course/admin/students?' + params.toString());
+      students = data.students || [];
+      studentTotal = data.total || 0;
+      qs('#students-title').textContent = `👥 學員列表（共 ${studentTotal} 人）`;
+
+      if (!students.length) {
+        el.innerHTML = `<div class="muted">${studentQuery ? '找不到符合的學員' : '尚無學員'}</div>`;
+      } else {
+        el.innerHTML = `<table><thead><tr><th>姓名</th><th>Email</th><th>TV 名稱</th><th>狀態</th><th>來源</th><th>建立時間</th><th>操作</th></tr></thead><tbody>` +
+          students.map(s => {
+            const disabled = s.status === 'disabled';
+            return `<tr style="${disabled ? 'opacity:.55;background:var(--gray-50)' : ''}">
+            <td>${esc(s.name)}${disabled ? ' <span class="status-pill status-disabled">已停用</span>' : ''}</td>
             <td>${esc(s.email)}</td>
             <td>${esc(s.tv_name)}</td>
-            <td><span class="status-pill status-${s.status}">${s.status === 'active' ? '啟用' : '停用'}</span></td>
+            <td><span class="status-pill status-${s.status}">${disabled ? '停用' : '啟用'}</span></td>
             <td>${s.source === 'import' ? '名單匯入' : '申請通過'}</td>
             <td>${new Date(s.created_at).toLocaleDateString('zh-TW')}</td>
-          </tr>`).join('') + `</tbody></table>`;
+            <td class="row-actions">
+              <button class="btn btn-ghost btn-sm" onclick="toggleStudentStatus(${s.id})">${disabled ? '啟用' : '停用'}</button>
+              <button class="btn btn-ghost btn-sm" onclick="openStudentEdit(${s.id})">編輯</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteStudent(${s.id})">刪除</button>
+            </td>
+          </tr>`;
+          }).join('') + `</tbody></table>`;
       }
+      renderStudentPager();
     } catch (e) {
       el.innerHTML = `<div class="msg err">載入失敗：${esc(e.message)}</div>`;
+    }
+  }
+
+  function renderStudentPager() {
+    const pager = qs('#students-pager');
+    const totalPages = Math.max(1, Math.ceil(studentTotal / STUDENT_PAGE_SIZE));
+    if (studentPage > totalPages) studentPage = totalPages;
+    pager.style.display = studentTotal > STUDENT_PAGE_SIZE ? 'flex' : 'none';
+    qs('#students-pageinfo').textContent = `第 ${studentPage} / ${totalPages} 頁`;
+    qs('#students-prev').disabled = studentPage <= 1;
+    qs('#students-next').disabled = studentPage >= totalPages;
+  }
+
+  function changeStudentPage(delta) {
+    studentPage = Math.max(1, studentPage + delta);
+    loadStudents();
+  }
+
+  function applyStudentSearch(value) {
+    clearTimeout(_studentSearchTimer);
+    studentQuery = value.trim();
+    studentPage = 1;
+    loadStudents();
+  }
+
+  async function toggleStudentStatus(id) {
+    const s = students.find(x => x.id === id);
+    if (!s) return;
+    const next = s.status === 'disabled' ? 'active' : 'disabled';
+    try {
+      const updated = await api(`/api/course/admin/students/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: next }),
+      });
+      s.status = updated.status;
+      loadStudents();
+    } catch (e) {
+      alert('操作失敗：' + e.message);
+    }
+  }
+
+  function openStudentEdit(id) {
+    const s = students.find(x => x.id === id);
+    if (!s) return;
+    editingStudentId = id;
+    qs('#edit-student-name').value = s.name || '';
+    qs('#edit-student-email').value = s.email || '';
+    qs('#edit-student-tv').value = s.tv_name || '';
+    qs('#edit-student-msg').style.display = 'none';
+    qs('#modal-student-edit').style.display = 'flex';
+  }
+
+  function closeStudentEdit() {
+    editingStudentId = null;
+    qs('#modal-student-edit').style.display = 'none';
+  }
+
+  async function saveStudentEdit() {
+    if (!editingStudentId) return;
+    const msgEl = qs('#edit-student-msg');
+    msgEl.style.display = 'none';
+    const body = {
+      name: qs('#edit-student-name').value.trim(),
+      email: qs('#edit-student-email').value.trim(),
+      tv_name: qs('#edit-student-tv').value.trim(),
+    };
+    try {
+      await api(`/api/course/admin/students/${editingStudentId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      closeStudentEdit();
+      loadStudents();
+    } catch (e) {
+      msgEl.textContent = e.message;
+      msgEl.style.display = '';
+    }
+  }
+
+  async function deleteStudent(id) {
+    const s = students.find(x => x.id === id);
+    if (!confirm(`確定刪除學員「${s ? s.name : id}」？此學員的所有 PDF 開通紀錄也會一併刪除。`)) return;
+    try {
+      await api(`/api/course/admin/students/${id}`, { method: 'DELETE' });
+      loadStudents();
+    } catch (e) {
+      alert('刪除失敗：' + e.message);
     }
   }
 
@@ -495,7 +629,8 @@
     const q = qs('#access-student-search').value.trim();
     const resultsEl = qs('#access-student-results');
     try {
-      const list = await api('/api/course/admin/students' + (q ? '?q=' + encodeURIComponent(q) : ''));
+      const data = await api('/api/course/admin/students?pageSize=1000' + (q ? '&q=' + encodeURIComponent(q) : ''));
+      const list = data.students || [];
       _lastSearchResults = list;
       resultsEl.innerHTML = list.length
         ? list.map(s => `<div class="access-student-row" data-id="${s.id}">${esc(s.name)}（${esc(s.email)}）</div>`).join('')
@@ -586,7 +721,8 @@
     const q = qs('#access-series-student-search').value.trim();
     const listEl = qs('#access-series-list');
     try {
-      const list = await api('/api/course/admin/students' + (q ? '?q=' + encodeURIComponent(q) : ''));
+      const data = await api('/api/course/admin/students?pageSize=1000' + (q ? '&q=' + encodeURIComponent(q) : ''));
+      const list = data.students || [];
       const group = seriesData.series.find(s => String(s.id) === String(seriesId));
       const pdfIds = group ? group.pdfs.map(p => p.id) : [];
       listEl.innerHTML = list.length ? list.map(s => {
@@ -615,6 +751,14 @@
   }
 
   qs('#mgr-pw').addEventListener('keydown', e => { if (e.key === 'Enter') submitMgrLogin(); });
+  qs('#students-search').addEventListener('input', e => {
+    clearTimeout(_studentSearchTimer);
+    const v = e.target.value;
+    _studentSearchTimer = setTimeout(() => applyStudentSearch(v), 300);
+  });
+  qs('#students-search').addEventListener('keydown', e => {
+    if (e.key === 'Enter') applyStudentSearch(e.target.value);
+  });
   qs('#access-student-results').addEventListener('click', e => {
     const row = e.target.closest('.access-student-row');
     if (!row) return;
