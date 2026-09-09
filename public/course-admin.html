@@ -127,6 +127,19 @@
   </div>
 </div>
 
+<div id="modal-pdf-edit" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);align-items:center;justify-content:center;z-index:1000;padding:20px">
+  <div style="background:#fff;border-radius:var(--radius);padding:24px 20px;max-width:340px;width:100%">
+    <h2 style="font-size:1rem;margin-bottom:14px">編輯 PDF</h2>
+    <label class="muted" style="display:block;margin-bottom:3px">標題</label>
+    <input type="text" id="edit-pdf-title" style="width:100%;margin-bottom:10px">
+    <div id="edit-pdf-msg" class="msg err" style="display:none"></div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button class="btn btn-primary" style="flex:1" onclick="savePdfEdit()">存檔</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="closePdfEdit()">取消</button>
+    </div>
+  </div>
+</div>
+
 <div id="app" style="display:none">
   <div class="topbar">
     <h1>課程管理後台</h1>
@@ -228,6 +241,7 @@
   let _lastSearchResults = [];
   let seriesAccessMap = {};
   let _seriesAccessStudents = [];
+  let editingPdfId = null;
 
   function esc(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -527,7 +541,11 @@
             <td><select onchange="updatePdfSeriesId(${p.id}, this.value)">${seriesOptionsHtmlFor(p.series_id)}</select></td>
             <td><input type="number" value="${p.episode_no || 0}" style="width:56px" min="0" onchange="updatePdfEpisodeNo(${p.id}, this.value)"></td>
             <td>${new Date(p.created_at).toLocaleString('zh-TW')}</td>
-            <td><button class="btn btn-danger btn-sm" onclick="deletePdf(${p.id})">刪除</button></td>
+            <td class="row-actions">
+              <button class="btn btn-ghost btn-sm" onclick="openPdfEdit(${p.id})">編輯</button>
+              <button class="btn btn-ghost btn-sm" onclick="previewPdf(${p.id})">預覽</button>
+              <button class="btn btn-danger btn-sm" onclick="deletePdf(${p.id})">刪除</button>
+            </td>
           </tr>`).join('') +
         `</tbody></table>
       </div>`;
@@ -594,13 +612,56 @@
   }
 
   async function deletePdf(id) {
-    if (!confirm('確定刪除此 PDF？已開通的學員將立即失去閱讀權限。')) return;
+    if (!confirm('確定刪除此 PDF？實體檔案與所有學員的開通紀錄都會一併刪除，且無法復原。')) return;
     try {
       await api(`/api/course/admin/pdfs/${id}`, { method: 'DELETE' });
       loadSeriesData();
     } catch (e) {
       alert('刪除失敗：' + e.message);
     }
+  }
+
+  // ── PDF 改標題（互動比照學員編輯 modal）──────────
+  function openPdfEdit(id) {
+    const p = findPdfById(id);
+    if (!p) return;
+    editingPdfId = id;
+    qs('#edit-pdf-title').value = p.title || '';
+    qs('#edit-pdf-msg').style.display = 'none';
+    qs('#modal-pdf-edit').style.display = 'flex';
+  }
+
+  function closePdfEdit() {
+    editingPdfId = null;
+    qs('#modal-pdf-edit').style.display = 'none';
+  }
+
+  async function savePdfEdit() {
+    if (!editingPdfId) return;
+    const msgEl = qs('#edit-pdf-msg');
+    msgEl.style.display = 'none';
+    const title = qs('#edit-pdf-title').value.trim();
+    if (!title) { msgEl.textContent = '請輸入標題'; msgEl.style.display = ''; return; }
+    try {
+      await api(`/api/course/admin/pdfs/${editingPdfId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      });
+      closePdfEdit();
+      loadSeriesData();
+    } catch (e) {
+      msgEl.textContent = e.message;
+      msgEl.style.display = '';
+    }
+  }
+
+  // ── PDF 後台預覽：新分頁開閱讀器（admin 乾淨模式，無浮水印/防護）──
+  function previewPdf(id) {
+    const p = findPdfById(id);
+    const t = p ? '&t=' + encodeURIComponent(p.title) : '';
+    const url = '/course-reader.html?admin=1&id=' + encodeURIComponent(id)
+      + '&key=' + encodeURIComponent(mgrKey) + t;
+    window.open(url, '_blank', 'noopener');
   }
 
   async function updatePdfSeriesId(pdfId, newSeriesId) {

@@ -33,6 +33,16 @@
     body { display: none !important; }
   }
 
+  /* 後台預覽（admin 模式）：管理者自用，取消選取限制與列印封鎖 */
+  html.admin-mode, html.admin-mode body {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    user-select: text;
+  }
+  @media print {
+    html.admin-mode body { display: block !important; }
+  }
+
   .topbar { background: var(--primary); color: #fff; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; position: sticky; top: 0; z-index: 500; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
   .topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .topbar-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
@@ -63,6 +73,12 @@
   .status { text-align: center; padding: 60px 20px; color: var(--gray-500); font-size: .9rem; }
   .status.error { color: var(--danger); }
 </style>
+<script>
+  // 後台預覽模式：盡早掛上 class，讓 user-select / 列印 CSS 生效
+  if (new URLSearchParams(location.search).get('admin') === '1') {
+    document.documentElement.classList.add('admin-mode');
+  }
+</script>
 </head>
 <body>
 
@@ -94,20 +110,24 @@
   const qs = sel => document.querySelector(sel);
   const params = new URLSearchParams(location.search);
   const pdfId = params.get('id');
+  const adminMode = params.get('admin') === '1';   // 後台預覽：乾淨檢視、不套防護
+  const adminKey = params.get('key') || '';
 
   let currentPdf = null;
   let currentZoom = 1;
   let renderGeneration = 0;
 
-  // ── 防護措施（盡力而為，重點是提高轉傳成本）──────────────
-  document.addEventListener('contextmenu', e => e.preventDefault());
-  document.addEventListener('keydown', e => {
-    const key = e.key.toLowerCase();
-    if ((e.ctrlKey || e.metaKey) && (key === 'p' || key === 's')) {
-      e.preventDefault();
-    }
-  });
-  document.addEventListener('dragstart', e => e.preventDefault());
+  // ── 防護措施（盡力而為，重點是提高轉傳成本）；後台預覽模式不套用 ──
+  if (!adminMode) {
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('keydown', e => {
+      const key = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && (key === 'p' || key === 's')) {
+        e.preventDefault();
+      }
+    });
+    document.addEventListener('dragstart', e => e.preventDefault());
+  }
 
   // ── 縮放：改變 currentZoom 後一律重新 render，不用 CSS 放大既有 canvas ──
   function updateZoomLabel() {
@@ -189,19 +209,27 @@
       return;
     }
 
-    let me;
-    try {
-      me = await fetchJson('/api/course/me');
-    } catch (e) {
-      location.href = '/course-login.html';
-      return;
+    if (!adminMode) {
+      try {
+        await fetchJson('/api/course/me');
+      } catch (e) {
+        location.href = '/course-login.html';
+        return;
+      }
+    } else {
+      const backBtn = qs('.back-btn');
+      if (backBtn) { backBtn.textContent = '關閉'; backBtn.onclick = () => window.close(); }
     }
+
+    const fileUrl = adminMode
+      ? '/api/course/admin/pdfs/' + encodeURIComponent(pdfId) + '/file?key=' + encodeURIComponent(adminKey)
+      : '/api/course/pdf/' + encodeURIComponent(pdfId) + '/file';
 
     let fileBuf;
     try {
-      const resp = await fetch('/api/course/pdf/' + encodeURIComponent(pdfId) + '/file', { credentials: 'same-origin' });
+      const resp = await fetch(fileUrl, { credentials: 'same-origin' });
       if (!resp.ok) {
-        const errMsg = resp.status === 403 ? '沒有這份 PDF 的閱讀權限'
+        const errMsg = resp.status === 403 ? (adminMode ? '主管權限驗證失敗' : '沒有這份 PDF 的閱讀權限')
           : resp.status === 404 ? '檔案不存在'
           : '載入失敗';
         throw new Error(errMsg);
@@ -215,7 +243,7 @@
 
     try {
       currentPdf = await pdfjsLib.getDocument({ data: fileBuf }).promise;
-      qs('#title-text').textContent = '課程閱讀';
+      qs('#title-text').textContent = params.get('t') || (adminMode ? '後台預覽' : '課程閱讀');
       statusEl.textContent = '';
       updateZoomLabel();
       await renderAllPages();
@@ -269,10 +297,12 @@
       wrap.style.height = displayViewport.height + 'px';
       wrap.appendChild(canvas);
 
-      const overlay = document.createElement('div');
-      overlay.className = 'watermark-overlay';
-      overlay.style.backgroundImage = `url("${BRAND_WATERMARK_URL}")`;
-      wrap.appendChild(overlay);
+      if (!adminMode) {
+        const overlay = document.createElement('div');
+        overlay.className = 'watermark-overlay';
+        overlay.style.backgroundImage = `url("${BRAND_WATERMARK_URL}")`;
+        wrap.appendChild(overlay);
+      }
 
       viewerEl.appendChild(wrap);
     }

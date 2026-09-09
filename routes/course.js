@@ -407,21 +407,54 @@ router.post('/admin/pdfs/upload', requireManager, (req, res) => {
   });
 });
 
-// ── 管理端：刪除 PDF（含實體檔案，pdf_access 靠 ON DELETE CASCADE 連帶清除）──
+// ── 管理端：刪除 PDF（一併清除實體檔案、pdf_access 開通紀錄、pdf_pdfs 紀錄）──
 router.delete('/admin/pdfs/:id', requireManager, async (req, res) => {
   const id = parseInt(req.params.id);
+  const client = await pool.connect();
   try {
-    const { rows } = await pool.query(`DELETE FROM pdf_pdfs WHERE id = $1 RETURNING *`, [id]);
+    await client.query('BEGIN');
+    await client.query(`DELETE FROM pdf_access WHERE pdf_id = $1`, [id]);
+    const { rows } = await client.query(`DELETE FROM pdf_pdfs WHERE id = $1 RETURNING *`, [id]);
+    await client.query('COMMIT');
     if (!rows.length) return res.status(404).json({ error: 'PDF 不存在' });
 
     const filename = path.basename(rows[0].file_url || '');
     if (filename) {
-      fs.unlink(path.join(PDF_STORAGE_DIR, filename), () => {}); // 檔案不存在也不報錯
+      fs.unlink(path.join(PDF_STORAGE_DIR, filename), () => {}); // Volume 內實體檔案，不存在也不報錯
     }
     res.json({ ok: true });
   } catch (e) {
+    await client.query('ROLLBACK');
     console.error('[Course] pdf delete:', e.message);
     res.status(500).json({ error: '刪除失敗' });
+  } finally {
+    client.release();
+  }
+});
+
+// ── 管理端：PDF 原檔預覽（乾淨檢視，key 走 query 參數方便新分頁直接開啟）──
+router.get('/admin/pdfs/:id/file', async (req, res) => {
+  const mgr = process.env.MANAGER_PASSWORD;
+  if (!mgr) return res.status(500).json({ error: 'MANAGER_PASSWORD 未設定' });
+  if ((req.query.key || req.headers['x-manager-key']) !== mgr) {
+    return res.status(403).json({ error: '需要主管權限' });
+  }
+  const id = parseInt(req.params.id);
+  try {
+    const { rows } = await pool.query(`SELECT file_url FROM pdf_pdfs WHERE id = $1`, [id]);
+    if (!rows.length) return res.status(404).json({ error: 'PDF 不存在' });
+
+    const filename = path.basename(rows[0].file_url || '');
+    const filePath = path.join(PDF_STORAGE_DIR, filename);
+    if (!filename || !fs.existsSync(filePath)) return res.status(404).json({ error: '檔案不存在' });
+
+    res.set('Content-Type', 'application/pdf');
+    res.set('Content-Disposition', 'inline');
+    res.set('Cache-Control', 'no-store');
+    fs.createReadStream(filePath).pipe(res);
+  } catch (e) {
+    console.error('[Course] admin pdf file:', e.message);
+    res.status(500).json({ error: '伺服器錯誤' });
   }
 });
 
