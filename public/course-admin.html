@@ -58,12 +58,13 @@
   .status-approved { background: #d1fae5; color: #065f46; }
   .status-rejected { background: #fee2e2; color: #991b1b; }
 
-  .msg { font-size: .8rem; margin-top: 6px; }
+  .msg { font-size: .8rem; margin-top: 6px; transition: opacity .6s ease; }
   .msg.ok  { color: var(--success); }
   .msg.err { color: var(--danger); }
   .muted { color: var(--gray-500); font-size: .82rem; }
 
   .access-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .access-bulk-bar { display: flex; gap: 8px; margin: 6px 0 12px; }
 
   /* 系列分組 */
   .series-group { border: 1px solid var(--gray-200); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
@@ -226,6 +227,7 @@
   let selectedAccessStudent = null;
   let _lastSearchResults = [];
   let seriesAccessMap = {};
+  let _seriesAccessStudents = [];
 
   function esc(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -292,23 +294,34 @@
     reader.readAsText(file);
   }
 
+  let _importMsgTimer = null;
+  // ok=true 的訊息顯示約 4 秒後淡出；錯誤訊息保留不消失
+  function showImportMsg(text, ok) {
+    const el = qs('#import-msg');
+    clearTimeout(_importMsgTimer);
+    el.textContent = text;
+    el.className = 'msg ' + (ok ? 'ok' : 'err');
+    el.style.opacity = '';
+    el.style.display = '';
+    if (ok) {
+      _importMsgTimer = setTimeout(() => {
+        el.style.opacity = '0';
+        _importMsgTimer = setTimeout(() => { el.style.display = 'none'; el.style.opacity = ''; }, 650);
+      }, 4000);
+    }
+  }
+
   async function submitImport() {
     const csv = qs('#import-csv').value.trim();
-    const msgEl = qs('#import-msg');
-    msgEl.style.display = 'none';
-    if (!csv) { msgEl.textContent = '請貼上 CSV 內容或選擇檔案'; msgEl.className = 'msg err'; msgEl.style.display = ''; return; }
+    if (!csv) { showImportMsg('請貼上 CSV 內容或選擇檔案', false); return; }
     try {
       const r = await api('/api/course/admin/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ csv }) });
-      msgEl.textContent = `✓ 匯入完成，新增 ${r.created} 筆，跳過 ${r.skipped} 筆`;
-      msgEl.className = 'msg ok';
-      msgEl.style.display = '';
+      showImportMsg(`✓ 匯入完成，新增 ${r.created} 筆，跳過 ${r.skipped} 筆`, true);
       qs('#import-csv').value = '';
       qs('#import-file').value = '';
       loadStudents();
     } catch (e) {
-      msgEl.textContent = '匯入失敗：' + e.message;
-      msgEl.className = 'msg err';
-      msgEl.style.display = '';
+      showImportMsg('匯入失敗：' + e.message, false);
     }
   }
 
@@ -656,6 +669,12 @@
   function renderStudentSeriesToggles(student, ownedSet) {
     const groups = [...seriesData.series, { id: null, name: '未分類', pdfs: seriesData.unclassified }];
     let html = `<div class="access-student-name">${esc(student.name)}（${esc(student.email)}）</div>`;
+    if (groups.some(g => g.pdfs.length)) {
+      html += `<div class="access-bulk-bar">
+        <button class="btn btn-success btn-sm" onclick="bulkStudentAccess(${student.id}, true)">全部開通</button>
+        <button class="btn btn-ghost btn-sm" onclick="bulkStudentAccess(${student.id}, false)">全部關閉</button>
+      </div>`;
+    }
     let any = false;
     for (const g of groups) {
       if (!g.pdfs.length) continue;
@@ -701,6 +720,30 @@
     if (selectedAccessStudent && selectedAccessStudent.id === studentId) selectAccessStudent(selectedAccessStudent);
   }
 
+  // 一鍵：對該學員的所有系列（含未分類 PDF）迴圈呼叫現有單筆開關 API
+  async function bulkStudentAccess(studentId, grant) {
+    if (!grant && !confirm('確定要關閉這位學員「所有系列」的開通權限嗎？')) return;
+    const detailEl = qs('#access-student-detail');
+    detailEl.innerHTML = '<div class="muted">處理中…</div>';
+    try {
+      for (const s of seriesData.series) {
+        await api('/api/course/admin/access/toggle-series', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ student_id: studentId, series_id: s.id, grant }),
+        });
+      }
+      for (const p of seriesData.unclassified) {
+        await api('/api/course/admin/access/toggle', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ student_id: studentId, pdf_id: p.id, grant }),
+        });
+      }
+    } catch (e) {
+      alert('操作失敗：' + e.message);
+    }
+    if (selectedAccessStudent && selectedAccessStudent.id === studentId) selectAccessStudent(selectedAccessStudent);
+  }
+
   // ── 權限開通：依系列 ────────────────────────────
   async function loadSeriesAccessView() {
     const seriesId = qs('#access-series-select').value;
@@ -723,15 +766,20 @@
     try {
       const data = await api('/api/course/admin/students?pageSize=1000' + (q ? '&q=' + encodeURIComponent(q) : ''));
       const list = data.students || [];
+      _seriesAccessStudents = list;
       const group = seriesData.series.find(s => String(s.id) === String(seriesId));
       const pdfIds = group ? group.pdfs.map(p => p.id) : [];
-      listEl.innerHTML = list.length ? list.map(s => {
+      const bar = `<div class="access-bulk-bar">
+        <button class="btn btn-success btn-sm" onclick="bulkSeriesAccess(true)">全部開通</button>
+        <button class="btn btn-ghost btn-sm" onclick="bulkSeriesAccess(false)">全部關閉</button>
+      </div>`;
+      listEl.innerHTML = bar + (list.length ? list.map(s => {
         const allOwned = pdfIds.length > 0 && pdfIds.every(pid => (seriesAccessMap[pid] || []).includes(s.id));
         return `<div class="pdf-toggle-row">
           <span>${esc(s.name)}（${esc(s.email)}）</span>
           <label class="switch"><input type="checkbox" ${allOwned ? 'checked' : ''} onchange="onToggleSeriesForStudent(${s.id}, ${seriesId}, this.checked)"><span class="slider"></span></label>
         </div>`;
-      }).join('') : '<div class="muted">找不到符合的學員</div>';
+      }).join('') : '<div class="muted">找不到符合的學員</div>');
     } catch (e) {
       listEl.innerHTML = `<div class="msg err">${esc(e.message)}</div>`;
     }
@@ -743,6 +791,27 @@
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ student_id: studentId, series_id: Number(seriesId), grant }),
       });
+      seriesAccessMap = await api(`/api/course/admin/access/by-series/${seriesId}`);
+    } catch (e) {
+      alert('操作失敗：' + e.message);
+    }
+    await renderSeriesAccessList();
+  }
+
+  // 一鍵：對目前列出的所有學員，就選定系列迴圈呼叫現有單筆開關 API
+  async function bulkSeriesAccess(grant) {
+    const seriesId = qs('#access-series-select').value;
+    if (!seriesId) return;
+    if (!grant && !confirm('確定要關閉此系列「所有學員」的開通權限嗎？')) return;
+    const listEl = qs('#access-series-list');
+    listEl.innerHTML = '<div class="muted">處理中…</div>';
+    try {
+      for (const s of _seriesAccessStudents) {
+        await api('/api/course/admin/access/toggle-series', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ student_id: s.id, series_id: Number(seriesId), grant }),
+        });
+      }
       seriesAccessMap = await api(`/api/course/admin/access/by-series/${seriesId}`);
     } catch (e) {
       alert('操作失敗：' + e.message);
