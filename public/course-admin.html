@@ -99,6 +99,10 @@
   .report-err  { border-color: #fecaca; background: #fef2f2; }
   .tier-series-checks { display: flex; flex-wrap: wrap; gap: 4px 12px; }
   .tier-series-checks label { display: inline-flex; align-items: center; gap: 4px; font-size: .8rem; white-space: nowrap; cursor: pointer; }
+  .mini-progress { min-width: 90px; }
+  .mini-progress .mp-text { font-size: .75rem; white-space: nowrap; margin-bottom: 3px; }
+  .mini-progress .mp-bar { height: 5px; background: var(--gray-200); border-radius: 999px; overflow: hidden; }
+  .mini-progress .mp-bar span { display: block; height: 100%; background: var(--success); }
   .lock-note { font-size: .78rem; color: #1e40af; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 8px 10px; margin: 6px 0 10px; }
 
   /* 依學員 / 依系列 分頁籤 */
@@ -536,7 +540,7 @@
     const el = qs('#students-list');
     try {
       const [data, tierList] = await Promise.all([
-        api('/api/course/admin/students?pageSize=1000'),
+        api('/api/course/admin/students?pageSize=1000&with_progress=1'),
         api('/api/course/admin/tiers').catch(() => tiers),
       ]);
       allStudents = data.students || [];
@@ -582,6 +586,16 @@
     return `<span class="deposit-cell" title="點一下修改入金" onclick="startDepositEdit(${s.id})">${fmtUsd(s.deposit_usd)}</span>`;
   }
 
+  // 學習進度：completed = 已看完且目前可看、total = 目前可看篇數
+  function progressCellHtml(s) {
+    if (s.total == null) return '—';
+    const p = s.total ? Math.round(s.completed / s.total * 100) : 0;
+    return `<div class="mini-progress">
+      <div class="mp-text">${s.completed} / ${s.total}（${p}%）</div>
+      <div class="mp-bar"><span style="width:${p}%"></span></div>
+    </div>`;
+  }
+
   function renderStudents() {
     const el = qs('#students-list');
     const list = filteredStudents();
@@ -595,7 +609,7 @@
     if (!pageRows.length) {
       el.innerHTML = `<div class="muted">${studentQuery ? '找不到符合的學員' : '尚無學員'}</div>`;
     } else {
-      el.innerHTML = `<div class="table-scroll"><table><thead><tr><th>姓名</th><th>Email</th><th>TV 名稱</th><th>狀態</th><th>入金(USD)</th><th>目前等級</th><th>寬限</th><th>資金更新</th><th>權限模式</th><th>來源</th><th>建立時間</th><th>操作</th></tr></thead><tbody>` +
+      el.innerHTML = `<div class="table-scroll"><table><thead><tr><th>姓名</th><th>Email</th><th>TV 名稱</th><th>狀態</th><th>入金(USD)</th><th>目前等級</th><th>寬限</th><th>資金更新</th><th>權限模式</th><th>學習進度</th><th>來源</th><th>建立時間</th><th>操作</th></tr></thead><tbody>` +
         pageRows.map(s => {
           const disabled = s.status === 'disabled';
           const grace = graceText(s);
@@ -612,6 +626,7 @@
             <span class="status-pill ${s.is_override ? 'mode-manual' : 'mode-auto'}">${s.is_override ? '手動覆蓋' : '自動(依資金)'}</span>
             <button class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="toggleOverride(${s.id})">${s.is_override ? '切回自動' : '改手動覆蓋'}</button>
           </td>
+          <td>${progressCellHtml(s)}</td>
           <td>${s.source === 'import' ? '名單匯入' : '申請通過'}</td>
           <td>${new Date(s.created_at).toLocaleDateString('zh-TW')}</td>
           <td class="row-actions">

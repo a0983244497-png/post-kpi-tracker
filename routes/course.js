@@ -236,6 +236,25 @@ router.get('/admin/students', requireManager, async (req, res) => {
       `SELECT * FROM pdf_students ${where} ORDER BY created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params
     );
+
+    // ?with_progress=1：逐人補上學習進度（學員列表用；登入檢查、權限搜尋不帶，避免每次輸入都重算）
+    //   total     = 目前可看篇數（listAccessiblePdfs）
+    //   completed = 已完成且目前仍可看的篇數（不會超過 100%）
+    if (req.query.with_progress === '1' && rows.length) {
+      const { rows: prog } = await pool.query(
+        `SELECT student_id, pdf_id FROM pdf_progress WHERE student_id = ANY($1::int[])`,
+        [rows.map(r => r.id)]
+      );
+      const doneByStudent = {};
+      for (const p of prog) (doneByStudent[p.student_id] ||= new Set()).add(p.pdf_id);
+      for (const s of rows) {
+        const accessible = await listAccessiblePdfs(s);
+        const done = doneByStudent[s.id] || new Set();
+        s.total = accessible.length;
+        s.completed = accessible.filter(p => done.has(p.id)).length;
+      }
+    }
+
     res.json({ students: rows, total, page, pageSize });
   } catch (e) {
     console.error('[Course] admin/students:', e.message);
