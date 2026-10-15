@@ -307,6 +307,7 @@ export async function initDb() {
 
   // Seed default series（先查再插，避免重複）
   const DEFAULT_SERIES = [
+    { name: '新手篇',       sort_order: 0 }, // 分級開通：新手級對應系列（內容先留空）
     { name: '交易心理系列', sort_order: 1 },
     { name: '基礎系列',     sort_order: 2 },
     { name: '進階系列',     sort_order: 3 },
@@ -350,6 +351,84 @@ export async function initDb() {
         `UPDATE pdf_pdfs SET series_id = $1, episode_no = $2 WHERE id = $3`,
         [seriesId, episodeNo, pdf.id]
       );
+    }
+  }
+
+  // ── 課程分級開通 Phase1：依入金資金分級（只建結構，權限判斷尚未接上）──
+  // 學員資金欄位；is_override 第一次新增時，把當下所有既有學員設為 true，保留現有逐篇開通權限
+  {
+    const { rows: overrideCol } = await pool.query(
+      `SELECT 1 FROM information_schema.columns WHERE table_name = 'pdf_students' AND column_name = 'is_override'`
+    );
+    const isFirstRun = overrideCol.length === 0;
+
+    await pool.query(`ALTER TABLE pdf_students ADD COLUMN IF NOT EXISTS deposit_usd        NUMERIC   DEFAULT 0`);
+    await pool.query(`ALTER TABLE pdf_students ADD COLUMN IF NOT EXISTS deposit_updated_at TIMESTAMP`);
+    await pool.query(`ALTER TABLE pdf_students ADD COLUMN IF NOT EXISTS access_deposit_usd NUMERIC   DEFAULT 0`);
+    await pool.query(`ALTER TABLE pdf_students ADD COLUMN IF NOT EXISTS grace_until        TIMESTAMP NULL`);
+    await pool.query(`ALTER TABLE pdf_students ADD COLUMN IF NOT EXISTS is_override        BOOLEAN   DEFAULT false`);
+
+    // 只在欄位剛建立的這次啟動執行，之後重啟不會把新學員或已切回自動模式的學員再改成 override
+    if (isFirstRun) {
+      const { rowCount } = await pool.query(`UPDATE pdf_students SET is_override = true`);
+      console.log(`[Tier] 既有學員 ${rowCount} 位設為 is_override = true（保留現有權限）`);
+    }
+  }
+
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_pdf_students_deposit_usd ON pdf_students (deposit_usd)`);
+  // email 已有 UNIQUE 索引；登入/比對都用 LOWER(TRIM(email))，補表達式索引才吃得到
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_pdf_students_email_norm  ON pdf_students (LOWER(TRIM(email)))`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_pdf_students_tv_name     ON pdf_students (tv_name)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tiers (
+      id              SERIAL PRIMARY KEY,
+      name            VARCHAR(50) UNIQUE NOT NULL,
+      min_deposit_usd NUMERIC     NOT NULL DEFAULT 0,
+      sort_order      INTEGER     DEFAULT 0
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tier_series (
+      tier_id   INTEGER NOT NULL REFERENCES tiers(id)      ON DELETE CASCADE,
+      series_id INTEGER NOT NULL REFERENCES pdf_series(id) ON DELETE CASCADE,
+      PRIMARY KEY (tier_id, series_id)
+    )
+  `);
+
+  // Seed tiers + 對應系列：只在表為空時塞一次，之後後台調整不會被開機覆蓋
+  {
+    const DEFAULT_TIERS = [
+      { name: '新手', min_deposit_usd: 0,    sort_order: 1, series: '新手篇' },
+      { name: '基礎', min_deposit_usd: 500,  sort_order: 2, series: '基礎系列' },
+      { name: '心理', min_deposit_usd: 1000, sort_order: 3, series: '交易心理系列' },
+      { name: '進階', min_deposit_usd: 2000, sort_order: 4, series: '進階系列' },
+    ];
+
+    const { rows: tierCount } = await pool.query(`SELECT COUNT(*)::int AS cnt FROM tiers`);
+    if (tierCount[0].cnt === 0) {
+      for (const t of DEFAULT_TIERS) {
+        await pool.query(
+          `INSERT INTO tiers (name, min_deposit_usd, sort_order) VALUES ($1,$2,$3) ON CONFLICT (name) DO NOTHING`,
+          [t.name, t.min_deposit_usd, t.sort_order]
+        );
+      }
+    }
+
+    const { rows: mapCount } = await pool.query(`SELECT COUNT(*)::int AS cnt FROM tier_series`);
+    if (mapCount[0].cnt === 0) {
+      for (const t of DEFAULT_TIERS) {
+        const { rows: tierRows }   = await pool.query(`SELECT id FROM tiers WHERE name = $1`, [t.name]);
+        const { rows: seriesRows } = await pool.query(`SELECT id FROM pdf_series WHERE name = $1 ORDER BY id ASC LIMIT 1`, [t.series]);
+        if (!tierRows.length || !seriesRows.length) {
+          console.warn(`[Tier] 找不到對應：tier「${t.name}」→ series「${t.series}」，略過`);
+          continue;
+        }
+        await pool.query(
+          `INSERT INTO tier_series (tier_id, series_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+          [tierRows[0].id, seriesRows[0].id]
+        );
+      }
     }
   }
 
