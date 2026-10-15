@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import pool from '../db.js';
-import { listAccessiblePdfs, getStudentForAccess, tierFor } from '../lib/courseAccess.js';
+import { listAccessiblePdfs, getStudentForAccess, applyDepositUpdate } from '../lib/courseAccess.js';
 
 const router = express.Router();
 
@@ -238,64 +238,172 @@ router.patch('/admin/students/:id', requireManager, async (req, res) => {
   }
 });
 
-// ── 管理端：更新學員入金資金（跨級才寬限）────────────────────
-// D = 新入金、A = 目前權限依據的 access_deposit_usd
-//   D ≥ A                  → 升級：access = D、取消寬限
-//   D < A 且 tier(D)=tier(A) → 同級內下降：access 不動、不設寬限（若先前跨級寬限中，已回到原級就取消寬限）
-//   D < A 且 tier(D)<tier(A) → 跨級跌破：access 不動；未在寬限中才設 grace_until = now + 7 天
-// is_override 學員同樣記錄，但權限仍由 override 決定
+// ── 管理端：更新學員入金資金（跨級才寬限，邏輯見 lib/courseAccess.js applyDepositUpdate）──
+function parseDeposit(v) {
+  if (v === undefined || v === null || String(v).trim() === '') return null;
+  const n = Number(String(v).trim());
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 router.patch('/admin/students/:id/deposit', requireManager, async (req, res) => {
   const id = parseInt(req.params.id);
-  const D = Number(req.body?.deposit_usd);
-  if (req.body?.deposit_usd === undefined || req.body?.deposit_usd === null || req.body?.deposit_usd === ''
-      || !Number.isFinite(D) || D < 0) {
-    return res.status(400).json({ error: 'deposit_usd 必須是 ≥ 0 的數字' });
+  const D = parseDeposit(req.body?.deposit_usd);
+  if (D === null) return res.status(400).json({ error: 'deposit_usd 必須是 ≥ 0 的數字' });
+  try {
+    const student = await applyDepositUpdate(id, D);
+    if (!student) return res.status(404).json({ error: '學員不存在' });
+    res.json(student);
+  } catch (e) {
+    console.error('[Course] deposit patch:', e.message);
+    res.status(500).json({ error: '更新失敗' });
+  }
+});
+
+// ── 管理端：批次匯入入金（只更新既有學員，不新建）────────────────
+// 每行：email,入金  或  姓名,email,入金（依欄位數判斷）；第一行若沒有 email 視為標題略過
+router.post('/admin/students/deposit/import', requireManager, async (req, res) => {
+  try {
+    const { csv } = req.body;
+    if (!csv || typeof csv !== 'string') return res.status(400).json({ error: '請提供 CSV 內容' });
+
+    const lines = csv.split('\n');
+    let success = 0;
+    const skipped = [];
+    const errors = [];
+    let seenData = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const lineNo = i + 1;
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      const parts = line.split(',').map(s => s.trim());
+      let email, amountRaw;
+      if (parts.length === 2)      [email, amountRaw] = parts;
+      else if (parts.length === 3) [, email, amountRaw] = parts;
+      else {
+        if (!seenData) { seenData = true; continue; } // 可能是標題行
+        errors.push({ line: lineNo, reason: `欄位數不符（應為 2 或 3 欄，實際 ${parts.length} 欄）` });
+        continue;
+      }
+
+      if (!email.includes('@')) {
+        if (!seenData) { seenData = true; continue; } // 標題行，例如「email,入金」
+        errors.push({ line: lineNo, reason: 'email 格式不正確' });
+        continue;
+      }
+      seenData = true;
+
+      const D = parseDeposit(amountRaw);
+      if (D === null) {
+        errors.push({ line: lineNo, email, reason: `入金「${amountRaw}」不是 ≥ 0 的數字` });
+        continue;
+      }
+
+      const { rows: found } = await pool.query(
+        `SELECT id FROM pdf_students WHERE LOWER(TRIM(email)) = $1`, [norm(email)]
+      );
+      if (!found.length) {
+        skipped.push({ line: lineNo, email, reason: '找不到 email' });
+        continue;
+      }
+
+      await applyDepositUpdate(found[0].id, D);
+      success++;
+    }
+
+    res.json({ success, skipped, errors });
+  } catch (e) {
+    console.error('[Course] deposit import:', e.message);
+    res.status(500).json({ error: '匯入失敗' });
+  }
+});
+
+// ── 管理端：等級對照表 ───────────────────────────────────────
+async function loadTiers() {
+  const { rows: tiers } = await pool.query(
+    `SELECT id, name, min_deposit_usd, sort_order FROM tiers ORDER BY sort_order ASC, id ASC`
+  );
+  const { rows: maps } = await pool.query(
+    `SELECT ts.tier_id, s.id, s.name
+     FROM tier_series ts JOIN pdf_series s ON s.id = ts.series_id
+     ORDER BY s.sort_order ASC, s.id ASC`
+  );
+  return tiers.map(t => ({
+    ...t,
+    min_deposit_usd: parseFloat(t.min_deposit_usd),
+    series: maps.filter(m => m.tier_id === t.id).map(m => ({ id: m.id, name: m.name })),
+  }));
+}
+
+router.get('/admin/tiers', requireManager, async (req, res) => {
+  try {
+    res.json(await loadTiers());
+  } catch (e) {
+    console.error('[Course] tiers get:', e.message);
+    res.status(500).json({ error: '伺服器錯誤' });
+  }
+});
+
+// body: { tiers: [{ id, min_deposit_usd, series_ids?: number[] }] }
+// series_ids 有帶才整組取代該 tier 的對應系列；權限即時推算，改完不需重算
+router.put('/admin/tiers', requireManager, async (req, res) => {
+  const input = req.body?.tiers;
+  if (!Array.isArray(input) || !input.length) return res.status(400).json({ error: '請提供 tiers 陣列' });
+
+  const updates = [];
+  for (const t of input) {
+    const id = parseInt(t?.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'tier id 無效' });
+    const min = parseDeposit(t.min_deposit_usd);
+    if (min === null) return res.status(400).json({ error: `tier ${id} 的 min_deposit_usd 必須是 ≥ 0 的數字` });
+    let seriesIds;
+    if (t.series_ids !== undefined) {
+      if (!Array.isArray(t.series_ids)) return res.status(400).json({ error: `tier ${id} 的 series_ids 必須是陣列` });
+      seriesIds = [...new Set(t.series_ids.map(Number))];
+      if (seriesIds.some(n => !Number.isInteger(n) || n <= 0)) {
+        return res.status(400).json({ error: `tier ${id} 的 series_ids 含無效值` });
+      }
+    }
+    updates.push({ id, min, seriesIds });
   }
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const { rows: cur } = await client.query(
-      `SELECT access_deposit_usd, grace_until FROM pdf_students WHERE id = $1 FOR UPDATE`, [id]
-    );
-    if (!cur.length) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ error: '學員不存在' });
-    }
-    const A = parseFloat(cur[0].access_deposit_usd ?? 0);
 
-    let change;
-    let sql;
-    if (D >= A) {
-      change = 'upgrade';
-      sql = `access_deposit_usd = $1, grace_until = NULL`;
-    } else {
-      const [tierD, tierA] = await Promise.all([tierFor(D, client), tierFor(A, client)]);
-      const rankD = tierD ? parseFloat(tierD.min_deposit_usd) : -Infinity;
-      const rankA = tierA ? parseFloat(tierA.min_deposit_usd) : -Infinity;
-      if (rankD >= rankA) {
-        change = 'same_tier';
-        sql = `grace_until = NULL`;
-      } else if (cur[0].grace_until) {
-        change = 'grace_kept';
-        sql = null;
-      } else {
-        change = 'grace_started';
-        sql = `grace_until = NOW() + INTERVAL '7 days'`;
+    const allSeriesIds = [...new Set(updates.flatMap(u => u.seriesIds || []))];
+    if (allSeriesIds.length) {
+      const { rows } = await client.query(`SELECT id FROM pdf_series WHERE id = ANY($1::int[])`, [allSeriesIds]);
+      const existing = new Set(rows.map(r => r.id));
+      const missing = allSeriesIds.filter(n => !existing.has(n));
+      if (missing.length) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: `系列不存在：${missing.join(', ')}` });
       }
     }
 
-    const { rows } = await client.query(
-      `UPDATE pdf_students
-       SET deposit_usd = $1, deposit_updated_at = NOW()${sql ? ', ' + sql : ''}
-       WHERE id = $2 RETURNING *`,
-      [D, id]
-    );
+    for (const u of updates) {
+      const { rowCount } = await client.query(
+        `UPDATE tiers SET min_deposit_usd = $1 WHERE id = $2`, [u.min, u.id]
+      );
+      if (!rowCount) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: `tier ${u.id} 不存在` });
+      }
+      if (u.seriesIds) {
+        await client.query(`DELETE FROM tier_series WHERE tier_id = $1`, [u.id]);
+        for (const sid of u.seriesIds) {
+          await client.query(`INSERT INTO tier_series (tier_id, series_id) VALUES ($1,$2)`, [u.id, sid]);
+        }
+      }
+    }
+
     await client.query('COMMIT');
-    res.json({ ...rows[0], tier_change: change });
+    res.json(await loadTiers());
   } catch (e) {
     await client.query('ROLLBACK').catch(() => {});
-    console.error('[Course] deposit patch:', e.message);
+    console.error('[Course] tiers put:', e.message);
     res.status(500).json({ error: '更新失敗' });
   } finally {
     client.release();
