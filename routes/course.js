@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import pool from '../db.js';
+import { listAccessiblePdfs, getStudentForAccess, tierFor } from '../lib/courseAccess.js';
 
 const router = express.Router();
 
@@ -81,17 +82,9 @@ router.get('/me', requireStudent, async (req, res) => {
 
 router.get('/my-pdfs', requireStudent, async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT p.id, p.title, p.file_url, p.sort_order, p.series_id, p.episode_no,
-              s.name AS series_name
-       FROM pdf_access a
-       JOIN pdf_pdfs p ON p.id = a.pdf_id
-       LEFT JOIN pdf_series s ON s.id = p.series_id
-       WHERE a.student_id = $1
-       ORDER BY s.sort_order ASC NULLS LAST, p.episode_no ASC, p.id ASC`,
-      [req.session.studentId]
-    );
-    res.json(rows);
+    const student = await getStudentForAccess(req.session.studentId);
+    if (!student) return res.status(401).json({ error: '請先登入' });
+    res.json(await listAccessiblePdfs(student));
   } catch (e) {
     console.error('[Course] my-pdfs:', e.message);
     res.status(500).json({ error: '伺服器錯誤' });
@@ -102,16 +95,12 @@ router.get('/my-pdfs', requireStudent, async (req, res) => {
 router.get('/pdf/:id/file', requireStudent, async (req, res) => {
   const pdfId = parseInt(req.params.id);
   try {
-    const { rows } = await pool.query(
-      `SELECT p.file_url
-       FROM pdf_access a
-       JOIN pdf_pdfs p ON p.id = a.pdf_id
-       WHERE a.student_id = $1 AND a.pdf_id = $2`,
-      [req.session.studentId, pdfId]
-    );
-    if (!rows.length) return res.status(403).json({ error: '無權限存取此檔案' });
+    const student = await getStudentForAccess(req.session.studentId);
+    if (!student) return res.status(401).json({ error: '請先登入' });
+    const pdf = (await listAccessiblePdfs(student)).find(p => p.id === pdfId);
+    if (!pdf) return res.status(403).json({ error: '無權限存取此檔案' });
 
-    const filename = path.basename(rows[0].file_url || '');
+    const filename = path.basename(pdf.file_url || '');
     const filePath = path.join(PDF_STORAGE_DIR, filename);
     if (!filename || !fs.existsSync(filePath)) return res.status(404).json({ error: '檔案不存在' });
 
@@ -246,6 +235,70 @@ router.patch('/admin/students/:id', requireManager, async (req, res) => {
   } catch (e) {
     console.error('[Course] student patch:', e.message);
     res.status(500).json({ error: '更新失敗' });
+  }
+});
+
+// ── 管理端：更新學員入金資金（跨級才寬限）────────────────────
+// D = 新入金、A = 目前權限依據的 access_deposit_usd
+//   D ≥ A                  → 升級：access = D、取消寬限
+//   D < A 且 tier(D)=tier(A) → 同級內下降：access 不動、不設寬限（若先前跨級寬限中，已回到原級就取消寬限）
+//   D < A 且 tier(D)<tier(A) → 跨級跌破：access 不動；未在寬限中才設 grace_until = now + 7 天
+// is_override 學員同樣記錄，但權限仍由 override 決定
+router.patch('/admin/students/:id/deposit', requireManager, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const D = Number(req.body?.deposit_usd);
+  if (req.body?.deposit_usd === undefined || req.body?.deposit_usd === null || req.body?.deposit_usd === ''
+      || !Number.isFinite(D) || D < 0) {
+    return res.status(400).json({ error: 'deposit_usd 必須是 ≥ 0 的數字' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: cur } = await client.query(
+      `SELECT access_deposit_usd, grace_until FROM pdf_students WHERE id = $1 FOR UPDATE`, [id]
+    );
+    if (!cur.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: '學員不存在' });
+    }
+    const A = parseFloat(cur[0].access_deposit_usd ?? 0);
+
+    let change;
+    let sql;
+    if (D >= A) {
+      change = 'upgrade';
+      sql = `access_deposit_usd = $1, grace_until = NULL`;
+    } else {
+      const [tierD, tierA] = await Promise.all([tierFor(D, client), tierFor(A, client)]);
+      const rankD = tierD ? parseFloat(tierD.min_deposit_usd) : -Infinity;
+      const rankA = tierA ? parseFloat(tierA.min_deposit_usd) : -Infinity;
+      if (rankD >= rankA) {
+        change = 'same_tier';
+        sql = `grace_until = NULL`;
+      } else if (cur[0].grace_until) {
+        change = 'grace_kept';
+        sql = null;
+      } else {
+        change = 'grace_started';
+        sql = `grace_until = NOW() + INTERVAL '7 days'`;
+      }
+    }
+
+    const { rows } = await client.query(
+      `UPDATE pdf_students
+       SET deposit_usd = $1, deposit_updated_at = NOW()${sql ? ', ' + sql : ''}
+       WHERE id = $2 RETURNING *`,
+      [D, id]
+    );
+    await client.query('COMMIT');
+    res.json({ ...rows[0], tier_change: change });
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('[Course] deposit patch:', e.message);
+    res.status(500).json({ error: '更新失敗' });
+  } finally {
+    client.release();
   }
 });
 
