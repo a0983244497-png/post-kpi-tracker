@@ -260,7 +260,9 @@ router.patch('/admin/students/:id/deposit', requireManager, async (req, res) => 
 });
 
 // ── 管理端：批次匯入入金（只更新既有學員，不新建）────────────────
-// 每行：email,入金  或  姓名,email,入金（依欄位數判斷）；第一行若沒有 email 視為標題略過
+// 每行：email,入金  或  姓名,email,入金
+// 解析以「含 @ 的欄位」為 email 錨點：前面是姓名（不使用），後面全部接起來去逗號/空白當金額，
+// 所以 a@b.com,2,500 → 2500；第一行若沒有 email 視為標題略過
 router.post('/admin/students/deposit/import', requireManager, async (req, res) => {
   try {
     const { csv } = req.body;
@@ -278,25 +280,24 @@ router.post('/admin/students/deposit/import', requireManager, async (req, res) =
       if (!line) continue;
 
       const parts = line.split(',').map(s => s.trim());
-      let email, amountRaw;
-      if (parts.length === 2)      [email, amountRaw] = parts;
-      else if (parts.length === 3) [, email, amountRaw] = parts;
-      else {
-        if (!seenData) { seenData = true; continue; } // 可能是標題行
-        errors.push({ line: lineNo, reason: `欄位數不符（應為 2 或 3 欄，實際 ${parts.length} 欄）` });
-        continue;
-      }
-
-      if (!email.includes('@')) {
+      const emailIdx = parts.findIndex(p => p.includes('@'));
+      if (emailIdx === -1) {
         if (!seenData) { seenData = true; continue; } // 標題行，例如「email,入金」
-        errors.push({ line: lineNo, reason: 'email 格式不正確' });
+        errors.push({ line: lineNo, reason: '找不到 email（沒有含 @ 的欄位）' });
         continue;
       }
       seenData = true;
 
+      const email = parts[emailIdx];
+      const amountShown = parts.slice(emailIdx + 1).join(',');
+      const amountRaw = amountShown.replace(/[,\s]/g, '');
+      if (!amountRaw) {
+        errors.push({ line: lineNo, email, reason: '缺少入金金額' });
+        continue;
+      }
       const D = parseDeposit(amountRaw);
       if (D === null) {
-        errors.push({ line: lineNo, email, reason: `入金「${amountRaw}」不是 ≥ 0 的數字` });
+        errors.push({ line: lineNo, email, reason: `入金「${amountShown}」不是 ≥ 0 的數字` });
         continue;
       }
 

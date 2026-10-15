@@ -91,6 +91,14 @@
   .mode-auto   { background: #dbeafe; color: #1e40af; }
   .mode-manual { background: #ede9fe; color: #5b21b6; }
   .grace-pill  { background: #fef3c7; color: #92400e; }
+  .report-block { border: 1px solid var(--gray-200); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; font-size: .82rem; }
+  .report-block h3 { font-size: .8rem; font-weight: 700; margin-bottom: 4px; }
+  .report-block ul { padding-left: 18px; color: var(--gray-700); line-height: 1.6; }
+  .report-ok   { border-color: #bbf7d0; background: #f0fdf4; color: #065f46; }
+  .report-skip { border-color: #fde68a; background: #fffbeb; }
+  .report-err  { border-color: #fecaca; background: #fef2f2; }
+  .tier-series-checks { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+  .tier-series-checks label { display: inline-flex; align-items: center; gap: 4px; font-size: .8rem; white-space: nowrap; cursor: pointer; }
   .lock-note { font-size: .78rem; color: #1e40af; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 8px 10px; margin: 6px 0 10px; }
 
   /* 依學員 / 依系列 分頁籤 */
@@ -168,6 +176,29 @@
         <button class="btn btn-primary" onclick="submitImport()">匯入</button>
       </div>
       <div id="import-msg" class="msg" style="display:none"></div>
+    </div>
+
+    <!-- 批次匯入入金 -->
+    <div class="card">
+      <h2>💰 批次匯入入金</h2>
+      <p class="muted" style="margin-bottom:8px">每行格式：<b>email,入金</b> 或 <b>姓名,email,入金</b>（例：ming@example.com,2500 或 王小明,ming@example.com,2,500）。金額可含逗號，系統會自動處理；只更新既有學員，找不到的 email 會列在「跳過」。</p>
+      <textarea id="deposit-import-csv" placeholder="ming@example.com,2500&#10;陳小美,mei@example.com,1,200"></textarea>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-primary" id="deposit-import-btn" onclick="submitDepositImport()">匯入入金</button>
+      </div>
+      <div id="deposit-import-report" style="display:none;margin-top:10px"></div>
+    </div>
+
+    <!-- 等級對照表 -->
+    <div class="card">
+      <h2>🏅 等級對照表</h2>
+      <p class="muted" style="margin-bottom:8px">自動模式學員依「入金 ≥ 門檻」累加解鎖各級系列；修改後下次讀取即生效，不需重算。</p>
+      <div id="tier-editor" class="muted">載入中…</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+        <button class="btn btn-primary" id="tier-save-btn" onclick="saveTiers()">儲存等級對照表</button>
+        <button class="btn btn-ghost" onclick="loadTierEditor()">重新載入</button>
+      </div>
+      <div id="tier-msg" class="msg" style="display:none"></div>
     </div>
 
     <!-- 待審核申請 -->
@@ -310,6 +341,7 @@
     loadApplications();
     loadStudents();
     loadSeriesData();
+    loadTierEditor();
     searchAccessStudents();
   }
 
@@ -350,6 +382,115 @@
       loadStudents();
     } catch (e) {
       showImportMsg('匯入失敗：' + e.message, false);
+    }
+  }
+
+  // ── 批次匯入入金 ────────────────────────────────
+  async function submitDepositImport() {
+    const csv = qs('#deposit-import-csv').value.trim();
+    const reportEl = qs('#deposit-import-report');
+    if (!csv) {
+      reportEl.innerHTML = '<div class="msg err">請貼上入金資料</div>';
+      reportEl.style.display = '';
+      return;
+    }
+    const btn = qs('#deposit-import-btn');
+    btn.disabled = true;
+    reportEl.innerHTML = '<div class="muted">匯入中…</div>';
+    reportEl.style.display = '';
+    try {
+      const r = await api('/api/course/admin/students/deposit/import', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ csv }),
+      });
+      let html = `<div class="report-block report-ok"><h3>✓ 成功更新 ${r.success} 筆</h3></div>`;
+      if (r.skipped.length) {
+        html += `<div class="report-block report-skip"><h3>⏭ 跳過 ${r.skipped.length} 筆（找不到 email）</h3><ul>` +
+          r.skipped.map(x => `<li>第 ${x.line} 行：${esc(x.email)}</li>`).join('') + `</ul></div>`;
+      }
+      if (r.errors.length) {
+        html += `<div class="report-block report-err"><h3>✗ 錯誤 ${r.errors.length} 筆</h3><ul>` +
+          r.errors.map(x => `<li>第 ${x.line} 行${x.email ? `（${esc(x.email)}）` : ''}：${esc(x.reason)}</li>`).join('') + `</ul></div>`;
+      }
+      reportEl.innerHTML = html;
+      if (!r.skipped.length && !r.errors.length) qs('#deposit-import-csv').value = '';
+      if (r.success) loadStudents();
+    } catch (e) {
+      reportEl.innerHTML = `<div class="msg err">匯入失敗：${esc(e.message)}</div>`;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ── 等級對照表 ──────────────────────────────────
+  // 系列選項沿用 seriesData（與「依系列開通」同一份資料，含空的新手篇）
+  let tierEditorData = null;
+
+  async function loadTierEditor() {
+    const el = qs('#tier-editor');
+    try {
+      tierEditorData = await api('/api/course/admin/tiers');
+      tiers = tierEditorData;
+      renderTierEditor();
+    } catch (e) {
+      el.innerHTML = `<div class="msg err">載入失敗：${esc(e.message)}</div>`;
+    }
+  }
+
+  function renderTierEditor() {
+    const el = qs('#tier-editor');
+    if (!tierEditorData) return;
+    if (!tierEditorData.length) { el.innerHTML = '<div class="muted">尚無等級資料</div>'; return; }
+    const allSeries = seriesData.series || [];
+    el.innerHTML = `<table><thead><tr><th>等級</th><th>門檻（USD）</th><th>解鎖系列</th></tr></thead><tbody>` +
+      tierEditorData.map(t => {
+        const owned = new Set((t.series || []).map(x => x.id));
+        return `<tr data-tier-id="${t.id}">
+          <td style="font-weight:700;white-space:nowrap">${esc(t.name)}</td>
+          <td><input type="number" class="tier-min" min="0" step="any" value="${Number(t.min_deposit_usd) || 0}" style="width:100px;padding:6px 8px;border:1px solid var(--gray-200);border-radius:8px;font-size:.85rem;background:var(--gray-50)"></td>
+          <td><div class="tier-series-checks">${allSeries.length
+            ? allSeries.map(sr => `<label><input type="checkbox" class="tier-series" value="${sr.id}" ${owned.has(sr.id) ? 'checked' : ''}>${esc(sr.name)}</label>`).join('')
+            : '<span class="muted">尚無系列</span>'}</div></td>
+        </tr>`;
+      }).join('') + `</tbody></table>`;
+  }
+
+  function showTierMsg(text, ok) {
+    const el = qs('#tier-msg');
+    el.textContent = text;
+    el.className = 'msg ' + (ok ? 'ok' : 'err');
+    el.style.display = '';
+  }
+
+  async function saveTiers() {
+    const rows = [...document.querySelectorAll('#tier-editor tr[data-tier-id]')];
+    if (!rows.length) return;
+    const payload = [];
+    for (const row of rows) {
+      const id = Number(row.dataset.tierId);
+      const name = tierEditorData.find(t => t.id === id)?.name || id;
+      const raw = row.querySelector('.tier-min').value.trim();
+      const min = Number(raw);
+      if (raw === '' || !Number.isFinite(min) || min < 0) {
+        showTierMsg(`「${name}」的門檻必須是 ≥ 0 的數字`, false);
+        return;
+      }
+      const series_ids = [...row.querySelectorAll('.tier-series:checked')].map(c => Number(c.value));
+      payload.push({ id, min_deposit_usd: min, series_ids });
+    }
+    const btn = qs('#tier-save-btn');
+    btn.disabled = true;
+    try {
+      tierEditorData = await api('/api/course/admin/tiers', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tiers: payload }),
+      });
+      tiers = tierEditorData;
+      renderTierEditor();
+      renderStudents();
+      showTierMsg('✓ 已儲存等級對照表', true);
+    } catch (e) {
+      showTierMsg('儲存失敗：' + e.message, false);
+    } finally {
+      btn.disabled = false;
     }
   }
 
@@ -648,6 +789,7 @@
     }
     renderPdfManageList();
     populateSeriesSelect();
+    renderTierEditor();
     if (selectedAccessStudent) selectAccessStudent(selectedAccessStudent);
   }
 
