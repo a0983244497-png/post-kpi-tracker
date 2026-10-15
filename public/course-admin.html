@@ -81,6 +81,17 @@
   .switch .slider::before { content: ""; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: transform .15s; }
   .switch input:checked + .slider { background: var(--success); }
   .switch input:checked + .slider::before { transform: translateX(18px); }
+  .switch input:disabled + .slider { opacity: .45; cursor: not-allowed; }
+
+  /* 課程分級：入金 / 等級 / 寬限 / 權限模式 */
+  .table-scroll { overflow-x: auto; }
+  .deposit-cell { cursor: pointer; white-space: nowrap; border-bottom: 1px dashed var(--gray-200); }
+  .deposit-cell:hover { color: var(--primary); }
+  .deposit-input { width: 90px; padding: 4px 6px; border: 1px solid var(--primary); border-radius: 6px; font-size: .82rem; }
+  .mode-auto   { background: #dbeafe; color: #1e40af; }
+  .mode-manual { background: #ede9fe; color: #5b21b6; }
+  .grace-pill  { background: #fef3c7; color: #92400e; }
+  .lock-note { font-size: .78rem; color: #1e40af; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 8px 10px; margin: 6px 0 10px; }
 
   /* 依學員 / 依系列 分頁籤 */
   .access-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
@@ -169,7 +180,7 @@
     <div class="card">
       <h2 id="students-title">👥 學員列表</h2>
       <div style="margin-bottom:10px">
-        <input type="text" id="students-search" placeholder="搜尋姓名或 email…" style="width:100%">
+        <input type="text" id="students-search" placeholder="搜尋姓名 / email / TradingView 名稱…" style="width:100%">
       </div>
       <div id="students-list" class="muted">載入中…</div>
       <div id="students-pager" style="display:none;align-items:center;justify-content:center;gap:12px;margin-top:12px">
@@ -234,6 +245,9 @@
   let studentPage = 1;
   let studentQuery = '';
   let studentTotal = 0;
+  let allStudents = [];
+  let tiers = [];
+  let editingDepositId = null;
   let editingStudentId = null;
   let _studentSearchTimer = null;
   let seriesData = { series: [], unclassified: [] };
@@ -376,42 +390,98 @@
     }
   }
 
-  // ── 學員列表 ──────────────────────────────────
+  // ── 學員列表（一次載入，前端搜尋 + 分頁）──────────
   async function loadStudents() {
     const el = qs('#students-list');
     try {
-      const params = new URLSearchParams({ page: studentPage, pageSize: STUDENT_PAGE_SIZE });
-      if (studentQuery) params.set('q', studentQuery);
-      const data = await api('/api/course/admin/students?' + params.toString());
-      students = data.students || [];
-      studentTotal = data.total || 0;
-      qs('#students-title').textContent = `👥 學員列表（共 ${studentTotal} 人）`;
-
-      if (!students.length) {
-        el.innerHTML = `<div class="muted">${studentQuery ? '找不到符合的學員' : '尚無學員'}</div>`;
-      } else {
-        el.innerHTML = `<table><thead><tr><th>姓名</th><th>Email</th><th>TV 名稱</th><th>狀態</th><th>來源</th><th>建立時間</th><th>操作</th></tr></thead><tbody>` +
-          students.map(s => {
-            const disabled = s.status === 'disabled';
-            return `<tr style="${disabled ? 'opacity:.55;background:var(--gray-50)' : ''}">
-            <td>${esc(s.name)}${disabled ? ' <span class="status-pill status-disabled">已停用</span>' : ''}</td>
-            <td>${esc(s.email)}</td>
-            <td>${esc(s.tv_name)}</td>
-            <td><span class="status-pill status-${s.status}">${disabled ? '停用' : '啟用'}</span></td>
-            <td>${s.source === 'import' ? '名單匯入' : '申請通過'}</td>
-            <td>${new Date(s.created_at).toLocaleDateString('zh-TW')}</td>
-            <td class="row-actions">
-              <button class="btn btn-ghost btn-sm" onclick="toggleStudentStatus(${s.id})">${disabled ? '啟用' : '停用'}</button>
-              <button class="btn btn-ghost btn-sm" onclick="openStudentEdit(${s.id})">編輯</button>
-              <button class="btn btn-danger btn-sm" onclick="deleteStudent(${s.id})">刪除</button>
-            </td>
-          </tr>`;
-          }).join('') + `</tbody></table>`;
-      }
-      renderStudentPager();
+      const [data, tierList] = await Promise.all([
+        api('/api/course/admin/students?pageSize=1000'),
+        api('/api/course/admin/tiers').catch(() => tiers),
+      ]);
+      allStudents = data.students || [];
+      students = allStudents;
+      tiers = tierList || [];
+      renderStudents();
     } catch (e) {
       el.innerHTML = `<div class="msg err">載入失敗：${esc(e.message)}</div>`;
     }
+  }
+
+  function filteredStudents() {
+    const q = studentQuery.toLowerCase();
+    if (!q) return allStudents;
+    return allStudents.filter(s =>
+      [s.name, s.email, s.tv_name].some(v => String(v || '').toLowerCase().includes(q))
+    );
+  }
+
+  // 依 access_deposit_usd 對照等級（門檻最高且 ≤ 金額者）
+  function tierNameFor(amount) {
+    const n = Number(amount) || 0;
+    const t = [...tiers].sort((a, b) => b.min_deposit_usd - a.min_deposit_usd).find(t => t.min_deposit_usd <= n);
+    return t ? t.name : '—';
+  }
+
+  function graceText(s) {
+    if (s.is_override || !s.grace_until) return '';
+    const ms = new Date(s.grace_until).getTime() - Date.now();
+    if (!(ms > 0)) return '';
+    return `寬限中 剩 ${Math.ceil(ms / 86400000)} 天`;
+  }
+
+  function fmtUsd(v) {
+    return '$' + (Number(v) || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
+  }
+
+  function depositCellHtml(s) {
+    if (editingDepositId === s.id) {
+      return `<input type="number" class="deposit-input" id="deposit-input-${s.id}" min="0" step="any" value="${Number(s.deposit_usd) || 0}"
+        onkeydown="onDepositKey(event, ${s.id})" onblur="saveDeposit(${s.id})">`;
+    }
+    return `<span class="deposit-cell" title="點一下修改入金" onclick="startDepositEdit(${s.id})">${fmtUsd(s.deposit_usd)}</span>`;
+  }
+
+  function renderStudents() {
+    const el = qs('#students-list');
+    const list = filteredStudents();
+    studentTotal = list.length;
+    qs('#students-title').textContent = `👥 學員列表（共 ${allStudents.length} 人${studentQuery ? `，符合 ${list.length} 人` : ''}）`;
+
+    const totalPages = Math.max(1, Math.ceil(studentTotal / STUDENT_PAGE_SIZE));
+    if (studentPage > totalPages) studentPage = totalPages;
+    const pageRows = list.slice((studentPage - 1) * STUDENT_PAGE_SIZE, studentPage * STUDENT_PAGE_SIZE);
+
+    if (!pageRows.length) {
+      el.innerHTML = `<div class="muted">${studentQuery ? '找不到符合的學員' : '尚無學員'}</div>`;
+    } else {
+      el.innerHTML = `<div class="table-scroll"><table><thead><tr><th>姓名</th><th>Email</th><th>TV 名稱</th><th>狀態</th><th>入金(USD)</th><th>目前等級</th><th>寬限</th><th>資金更新</th><th>權限模式</th><th>來源</th><th>建立時間</th><th>操作</th></tr></thead><tbody>` +
+        pageRows.map(s => {
+          const disabled = s.status === 'disabled';
+          const grace = graceText(s);
+          return `<tr style="${disabled ? 'opacity:.55;background:var(--gray-50)' : ''}">
+          <td>${esc(s.name)}${disabled ? ' <span class="status-pill status-disabled">已停用</span>' : ''}</td>
+          <td>${esc(s.email)}</td>
+          <td>${esc(s.tv_name)}</td>
+          <td><span class="status-pill status-${s.status}">${disabled ? '停用' : '啟用'}</span></td>
+          <td>${depositCellHtml(s)}</td>
+          <td>${s.is_override ? '手動' : esc(tierNameFor(s.access_deposit_usd))}</td>
+          <td>${grace ? `<span class="status-pill grace-pill">${grace}</span>` : ''}</td>
+          <td style="white-space:nowrap">${s.deposit_updated_at ? new Date(s.deposit_updated_at).toLocaleString('zh-TW') : '—'}</td>
+          <td style="white-space:nowrap">
+            <span class="status-pill ${s.is_override ? 'mode-manual' : 'mode-auto'}">${s.is_override ? '手動覆蓋' : '自動(依資金)'}</span>
+            <button class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="toggleOverride(${s.id})">${s.is_override ? '切回自動' : '改手動覆蓋'}</button>
+          </td>
+          <td>${s.source === 'import' ? '名單匯入' : '申請通過'}</td>
+          <td>${new Date(s.created_at).toLocaleDateString('zh-TW')}</td>
+          <td class="row-actions">
+            <button class="btn btn-ghost btn-sm" onclick="toggleStudentStatus(${s.id})">${disabled ? '啟用' : '停用'}</button>
+            <button class="btn btn-ghost btn-sm" onclick="openStudentEdit(${s.id})">編輯</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteStudent(${s.id})">刪除</button>
+          </td>
+        </tr>`;
+        }).join('') + `</tbody></table></div>`;
+    }
+    renderStudentPager();
   }
 
   function renderStudentPager() {
@@ -426,14 +496,82 @@
 
   function changeStudentPage(delta) {
     studentPage = Math.max(1, studentPage + delta);
-    loadStudents();
+    renderStudents();
   }
 
   function applyStudentSearch(value) {
     clearTimeout(_studentSearchTimer);
     studentQuery = value.trim();
     studentPage = 1;
-    loadStudents();
+    renderStudents();
+  }
+
+  // 用 API 回傳的最新學員資料取代本地那一列，並同步權限開通區
+  function replaceStudent(updated) {
+    const idx = allStudents.findIndex(x => x.id === updated.id);
+    if (idx !== -1) allStudents[idx] = { ...allStudents[idx], ...updated };
+    renderStudents();
+    if (selectedAccessStudent && selectedAccessStudent.id === updated.id) {
+      selectAccessStudent({ ...selectedAccessStudent, ...updated });
+    }
+    if (qs('#access-series-select').value) renderSeriesAccessList();
+  }
+
+  // ── 入金行內編輯 ──────────────────────────────
+  function startDepositEdit(id) {
+    editingDepositId = id;
+    renderStudents();
+    const input = qs(`#deposit-input-${id}`);
+    if (input) { input.focus(); input.select(); }
+  }
+
+  function onDepositKey(e, id) {
+    if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+    if (e.key === 'Escape') { editingDepositId = null; renderStudents(); }
+  }
+
+  async function saveDeposit(id) {
+    if (editingDepositId !== id) return;
+    const input = qs(`#deposit-input-${id}`);
+    const s = allStudents.find(x => x.id === id);
+    editingDepositId = null;
+    if (!input || !s) { renderStudents(); return; }
+    const raw = input.value.trim();
+    const D = Number(raw);
+    if (raw === '' || !Number.isFinite(D) || D < 0) { alert('入金必須是 ≥ 0 的數字'); renderStudents(); return; }
+    if (D === Number(s.deposit_usd)) { renderStudents(); return; }
+    try {
+      const updated = await api(`/api/course/admin/students/${id}/deposit`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deposit_usd: D }),
+      });
+      replaceStudent(updated);
+    } catch (e) {
+      alert('入金更新失敗：' + e.message);
+      renderStudents();
+    }
+  }
+
+  // ── 權限模式切換（自動 ⇄ 手動覆蓋）──────────────────
+  async function toggleOverride(id) {
+    const s = allStudents.find(x => x.id === id);
+    if (!s) return;
+    const next = !s.is_override;
+    if (!next) {
+      const msg = (Number(s.deposit_usd) || 0) === 0
+        ? `「${s.name}」目前入金為 $0，切回自動後只會依「${tierNameFor(0)}」等級開通（可能只剩空的新手篇），原本手動開的 PDF 將不再生效。\n\n建議先填好入金再切換。確定要切回自動嗎？`
+        : `確定把「${s.name}」切回自動模式？之後權限依入金 ${fmtUsd(s.deposit_usd)}（${tierNameFor(s.deposit_usd)}）決定，手動開通將不再生效。`;
+      if (!confirm(msg)) return;
+    }
+    try {
+      const updated = await api(`/api/course/admin/students/${id}/override`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_override: next }),
+      });
+      replaceStudent(updated);
+    } catch (e) {
+      alert('切換失敗：' + e.message);
+    }
   }
 
   async function toggleStudentStatus(id) {
@@ -729,11 +867,17 @@
 
   function renderStudentSeriesToggles(student, ownedSet) {
     const groups = [...seriesData.series, { id: null, name: '未分類', pdfs: seriesData.unclassified }];
-    let html = `<div class="access-student-name">${esc(student.name)}（${esc(student.email)}）</div>`;
+    const locked = !student.is_override;
+    const dis = locked ? 'disabled' : '';
+    let html = `<div class="access-student-name">${esc(student.name)}（${esc(student.email)}）
+      <span class="status-pill ${locked ? 'mode-auto' : 'mode-manual'}">${locked ? '自動(依資金)' : '手動覆蓋'}</span></div>`;
+    if (locked) {
+      html += `<div class="lock-note">🔒 此學員為自動模式，權限依入金等級即時決定，以下手動開關僅供檢視、無法調整。到學員列表切成「手動覆蓋」後才能手動開通。</div>`;
+    }
     if (groups.some(g => g.pdfs.length)) {
       html += `<div class="access-bulk-bar">
-        <button class="btn btn-success btn-sm" onclick="bulkStudentAccess(${student.id}, true)">全部開通</button>
-        <button class="btn btn-ghost btn-sm" onclick="bulkStudentAccess(${student.id}, false)">全部關閉</button>
+        <button class="btn btn-success btn-sm" ${dis} onclick="bulkStudentAccess(${student.id}, true)">全部開通</button>
+        <button class="btn btn-ghost btn-sm" ${dis} onclick="bulkStudentAccess(${student.id}, false)">全部關閉</button>
       </div>`;
     }
     let any = false;
@@ -744,12 +888,12 @@
       html += `<div class="series-group">
         <div class="series-group-header">
           <span>${esc(g.name)}</span>
-          ${g.id !== null ? `<label class="switch"><input type="checkbox" ${allOwned ? 'checked' : ''} onchange="onToggleSeries(${student.id}, ${g.id}, this.checked)"><span class="slider"></span></label>` : ''}
+          ${g.id !== null ? `<label class="switch"><input type="checkbox" ${allOwned ? 'checked' : ''} ${dis} onchange="onToggleSeries(${student.id}, ${g.id}, this.checked)"><span class="slider"></span></label>` : ''}
         </div>
         <div class="series-group-body">
           ${g.pdfs.map(p => `<div class="pdf-toggle-row">
             <span>${esc(p.title)}</span>
-            <label class="switch"><input type="checkbox" ${ownedSet.has(p.id) ? 'checked' : ''} onchange="onTogglePdf(${student.id}, ${p.id}, this.checked)"><span class="slider"></span></label>
+            <label class="switch"><input type="checkbox" ${ownedSet.has(p.id) ? 'checked' : ''} ${dis} onchange="onTogglePdf(${student.id}, ${p.id}, this.checked)"><span class="slider"></span></label>
           </div>`).join('')}
         </div>
       </div>`;
@@ -757,7 +901,14 @@
     return any ? html : html + '<div class="muted">目前尚無任何 PDF</div>';
   }
 
+  function isAccessLocked(studentId) {
+    const s = allStudents.find(x => x.id === studentId)
+      || (selectedAccessStudent && selectedAccessStudent.id === studentId ? selectedAccessStudent : null);
+    return s ? !s.is_override : false;
+  }
+
   async function onTogglePdf(studentId, pdfId, grant) {
+    if (isAccessLocked(studentId)) return;
     try {
       await api('/api/course/admin/access/toggle', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -770,6 +921,7 @@
   }
 
   async function onToggleSeries(studentId, seriesId, grant) {
+    if (isAccessLocked(studentId)) return;
     try {
       await api('/api/course/admin/access/toggle-series', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -783,6 +935,7 @@
 
   // 一鍵：對該學員的所有系列（含未分類 PDF）迴圈呼叫現有單筆開關 API
   async function bulkStudentAccess(studentId, grant) {
+    if (isAccessLocked(studentId)) return;
     if (!grant && !confirm('確定要關閉這位學員「所有系列」的開通權限嗎？')) return;
     const detailEl = qs('#access-student-detail');
     detailEl.innerHTML = '<div class="muted">處理中…</div>';
@@ -833,12 +986,14 @@
       const bar = `<div class="access-bulk-bar">
         <button class="btn btn-success btn-sm" onclick="bulkSeriesAccess(true)">全部開通</button>
         <button class="btn btn-ghost btn-sm" onclick="bulkSeriesAccess(false)">全部關閉</button>
+        <span class="muted" style="align-self:center">（自動模式學員會略過）</span>
       </div>`;
       listEl.innerHTML = bar + (list.length ? list.map(s => {
         const allOwned = pdfIds.length > 0 && pdfIds.every(pid => (seriesAccessMap[pid] || []).includes(s.id));
+        const locked = !s.is_override;
         return `<div class="pdf-toggle-row">
-          <span>${esc(s.name)}（${esc(s.email)}）</span>
-          <label class="switch"><input type="checkbox" ${allOwned ? 'checked' : ''} onchange="onToggleSeriesForStudent(${s.id}, ${seriesId}, this.checked)"><span class="slider"></span></label>
+          <span>${esc(s.name)}（${esc(s.email)}）${locked ? ' <span class="status-pill mode-auto" title="自動模式，需切成手動覆蓋才能調整">🔒 自動</span>' : ''}</span>
+          <label class="switch"><input type="checkbox" ${allOwned ? 'checked' : ''} ${locked ? 'disabled' : ''} onchange="onToggleSeriesForStudent(${s.id}, ${seriesId}, this.checked)"><span class="slider"></span></label>
         </div>`;
       }).join('') : '<div class="muted">找不到符合的學員</div>');
     } catch (e) {
@@ -847,6 +1002,8 @@
   }
 
   async function onToggleSeriesForStudent(studentId, seriesId, grant) {
+    const target = _seriesAccessStudents.find(x => x.id === studentId);
+    if (target && !target.is_override) return;
     try {
       await api('/api/course/admin/access/toggle-series', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -868,6 +1025,7 @@
     listEl.innerHTML = '<div class="muted">處理中…</div>';
     try {
       for (const s of _seriesAccessStudents) {
+        if (!s.is_override) continue; // 自動模式學員鎖定，不寫手動開通
         await api('/api/course/admin/access/toggle-series', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ student_id: s.id, series_id: Number(seriesId), grant }),
