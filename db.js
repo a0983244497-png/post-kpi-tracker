@@ -319,6 +319,11 @@ export async function initDb() {
     }
   }
 
+  // 校正系列閱讀順序：新手篇(0) → 基礎(1) → 交易心理(2) → 進階(3)，依名稱比對、每次開機冪等
+  // 目前後台沒有調整系列順序的功能，日後若做了「系列排序」，要把這段移除以免覆蓋手動設定
+  await pool.query(`UPDATE pdf_series SET sort_order = 1 WHERE name = '基礎系列'`);
+  await pool.query(`UPDATE pdf_series SET sort_order = 2 WHERE name = '交易心理系列'`);
+
   // 一次性資料歸位（每次啟動都跑，冪等：只處理 series_id 仍為 NULL 的 PDF）
   {
     const { rows: seriesRows } = await pool.query(`SELECT id, name FROM pdf_series`);
