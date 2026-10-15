@@ -165,7 +165,7 @@ router.post('/admin/import', requireManager, async (req, res) => {
       if (existing.length) { skipped++; continue; }
 
       await pool.query(
-        `INSERT INTO pdf_students (email, name, tv_name, source) VALUES ($1,$2,$3,'import')`,
+        `INSERT INTO pdf_students (email, name, tv_name, source, is_override) VALUES ($1,$2,$3,'import',true)`,
         [email, name, tv_name]
       );
       created++;
@@ -353,7 +353,7 @@ router.post('/admin/applications/:id/approve', requireManager, async (req, res) 
     );
     if (!existing.length) {
       await pool.query(
-        `INSERT INTO pdf_students (email, name, tv_name, source) VALUES ($1,$2,$3,'application')`,
+        `INSERT INTO pdf_students (email, name, tv_name, source, is_override) VALUES ($1,$2,$3,'application',true)`,
         [application.email, application.name, application.tv_name]
       );
     }

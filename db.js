@@ -373,6 +373,9 @@ export async function initDb() {
       const { rowCount } = await pool.query(`UPDATE pdf_students SET is_override = true`);
       console.log(`[Tier] 既有學員 ${rowCount} 位設為 is_override = true（保留現有權限）`);
     }
+
+    // 過渡期：入金資料與 override 切換 UI 上線前，新學員也走手動開通（只改預設值，不動既有資料列）
+    await pool.query(`ALTER TABLE pdf_students ALTER COLUMN is_override SET DEFAULT true`);
   }
 
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_pdf_students_deposit_usd ON pdf_students (deposit_usd)`);
