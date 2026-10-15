@@ -1,5 +1,6 @@
 import express from 'express';
 import session from 'express-session';
+import cron from 'node-cron';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { initDb } from './db.js';
@@ -15,6 +16,7 @@ import contentCalendarRouter from './routes/contentCalendar.js';
 import claudeProxyRouter     from './routes/claudeProxy.js';
 import fieldVisitsRouter     from './routes/fieldVisits.js';
 import courseRouter          from './routes/course.js';
+import { expireGraceDowngrades } from './lib/courseAccess.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -113,6 +115,11 @@ try {
   app.listen(PORT, () => {
     console.log(`✓ Post KPI Tracker → http://localhost:${PORT}`);
   });
+
+  // 課程分級：每天台灣時間 04:00 處理寬限到期降級
+  cron.schedule('0 4 * * *', () => {
+    expireGraceDowngrades().catch(e => console.error('[Tier] 寬限到期排程失敗:', e.message));
+  }, { timezone: 'Asia/Taipei' });
 } catch (e) {
   console.error('啟動失敗:', e.message);
   process.exit(1);

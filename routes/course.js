@@ -302,6 +302,30 @@ router.patch('/admin/students/:id/deposit', requireManager, async (req, res) => 
   }
 });
 
+// ── 管理端：切換 override（手動開通 / 依入金自動）─────────────
+//   true  → 只改旗標，pdf_access 不動（手動開通仍由逐篇/逐系列 toggle 管理）
+//   false → 切回自動，access_deposit_usd 對齊目前入金並取消寬限，立即依入金取得權限
+router.post('/admin/students/:id/override', requireManager, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { is_override } = req.body || {};
+  if (typeof is_override !== 'boolean') return res.status(400).json({ error: 'is_override 必須是 true 或 false' });
+  try {
+    const { rows } = await pool.query(
+      is_override
+        ? `UPDATE pdf_students SET is_override = true WHERE id = $1 RETURNING *`
+        : `UPDATE pdf_students
+           SET is_override = false, access_deposit_usd = deposit_usd, grace_until = NULL
+           WHERE id = $1 RETURNING *`,
+      [id]
+    );
+    if (!rows.length) return res.status(404).json({ error: '學員不存在' });
+    res.json(rows[0]);
+  } catch (e) {
+    console.error('[Course] override toggle:', e.message);
+    res.status(500).json({ error: '更新失敗' });
+  }
+});
+
 // ── 管理端：刪除學員（連帶清除該學員的 pdf_access 紀錄）──────
 router.delete('/admin/students/:id', requireManager, async (req, res) => {
   const id = parseInt(req.params.id);
