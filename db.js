@@ -435,6 +435,17 @@ export async function initDb() {
     }
   }
 
+  // ── 課程觀看進度：捲到最後一頁才記為已完成 ─────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pdf_progress (
+      id           SERIAL PRIMARY KEY,
+      student_id   INTEGER NOT NULL REFERENCES pdf_students(id) ON DELETE CASCADE,
+      pdf_id       INTEGER NOT NULL REFERENCES pdf_pdfs(id)     ON DELETE CASCADE,
+      completed_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(student_id, pdf_id)
+    )
+  `);
+
   // Seed default staff (unconditional, skips if already exists)
   await pool.query(
     `INSERT INTO staff (name) VALUES ('Gino'),('Darren'),('Josh'),('Jenna'),('路克') ON CONFLICT (name) DO NOTHING`

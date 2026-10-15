@@ -91,6 +91,44 @@ router.get('/my-pdfs', requireStudent, async (req, res) => {
   }
 });
 
+// ── 觀看進度 ────────────────────────────────────────────────
+// GET：目前學員所有已看完的 pdf_id
+router.get('/progress', requireStudent, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT pdf_id FROM pdf_progress WHERE student_id = $1 ORDER BY completed_at ASC`,
+      [req.session.studentId]
+    );
+    res.json({ pdf_ids: rows.map(r => r.pdf_id) });
+  } catch (e) {
+    console.error('[Course] progress get:', e.message);
+    res.status(500).json({ error: '伺服器錯誤' });
+  }
+});
+
+// POST：標記已看完（先用現有存取邏輯確認有權限才記錄）
+router.post('/progress', requireStudent, async (req, res) => {
+  const pdfId = parseInt(req.body?.pdf_id);
+  if (!Number.isInteger(pdfId)) return res.status(400).json({ error: '缺少 pdf_id' });
+  try {
+    const student = await getStudentForAccess(req.session.studentId);
+    if (!student) return res.status(401).json({ error: '請先登入' });
+    const allowed = (await listAccessiblePdfs(student)).some(p => p.id === pdfId);
+    if (!allowed) return res.status(403).json({ error: '無權限存取此檔案' });
+
+    const { rows } = await pool.query(
+      `INSERT INTO pdf_progress (student_id, pdf_id, completed_at) VALUES ($1,$2,NOW())
+       ON CONFLICT (student_id, pdf_id) DO UPDATE SET completed_at = NOW()
+       RETURNING pdf_id, completed_at`,
+      [student.id, pdfId]
+    );
+    res.json(rows[0]);
+  } catch (e) {
+    console.error('[Course] progress post:', e.message);
+    res.status(500).json({ error: '伺服器錯誤' });
+  }
+});
+
 // GET /api/course/pdf/:id/file — 實際吐 PDF 位元流，必須先驗證登入 + 開通權限
 router.get('/pdf/:id/file', requireStudent, async (req, res) => {
   const pdfId = parseInt(req.params.id);

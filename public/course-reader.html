@@ -70,6 +70,16 @@
     background-repeat: repeat;
   }
 
+  /* 上一篇 / 下一篇 */
+  .reader-nav { max-width: 1360px; margin: 14px auto 0; padding: 0 12px; display: flex; justify-content: space-between; gap: 10px; }
+  .reader-nav.bottom { margin: 0 auto 40px; }
+  .nav-btn { flex: 1; min-width: 0; max-width: 48%; background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 10px 14px; font-size: .85rem; color: var(--gray-900); cursor: pointer; box-shadow: var(--shadow); text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nav-btn.next { text-align: right; }
+  .nav-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+  .nav-btn:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+  .nav-btn .nav-label { display: block; font-size: .72rem; color: var(--gray-500); margin-bottom: 2px; }
+  .done-badge { font-size: .75rem; font-weight: 700; background: #d1fae5; color: #065f46; padding: 3px 8px; border-radius: 999px; flex-shrink: 0; }
+
   .status { text-align: center; padding: 60px 20px; color: var(--gray-500); font-size: .9rem; }
   .status.error { color: var(--danger); }
 </style>
@@ -94,14 +104,19 @@
       <button class="zoom-btn" onclick="changeZoom(0.2)" aria-label="放大">＋</button>
     </div>
     <div class="progress-text" id="progress-text"></div>
+    <span class="done-badge" id="done-badge" style="display:none">✓ 已看完</span>
   </div>
 </div>
+
+<div class="reader-nav" id="nav-top" style="display:none"></div>
 
 <div class="viewer-scroll" id="viewer-scroll">
   <div class="viewer" id="viewer">
     <div class="status" id="status">載入中…</div>
   </div>
 </div>
+
+<div class="reader-nav bottom" id="nav-bottom" style="display:none"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
@@ -116,6 +131,11 @@
   let currentPdf = null;
   let currentZoom = 1;
   let renderGeneration = 0;
+
+  // 觀看進度：捲到最後一頁（底部哨兵進入畫面）才標記已看完；後台預覽不記錄
+  let isCompleted = false;
+  let completeSending = false;
+  let endObserver = null;
 
   // ── 防護措施（盡力而為，重點是提高轉傳成本）；後台預覽模式不套用 ──
   if (!adminMode) {
@@ -216,6 +236,7 @@
         location.href = '/course-login.html';
         return;
       }
+      loadNavAndProgress(); // 不阻塞 PDF 載入
     } else {
       const backBtn = qs('.back-btn');
       if (backBtn) { backBtn.textContent = '關閉'; backBtn.onclick = () => window.close(); }
@@ -243,7 +264,7 @@
 
     try {
       currentPdf = await pdfjsLib.getDocument({ data: fileBuf }).promise;
-      qs('#title-text').textContent = params.get('t') || (adminMode ? '後台預覽' : '課程閱讀');
+      if (!titleFromList) qs('#title-text').textContent = params.get('t') || (adminMode ? '後台預覽' : '課程閱讀');
       statusEl.textContent = '';
       updateZoomLabel();
       await renderAllPages();
@@ -309,6 +330,93 @@
 
     if (myGeneration === renderGeneration) {
       progressEl.textContent = `共 ${currentPdf.numPages} 頁`;
+      observeEnd(viewerEl);
+    }
+  }
+
+  // ── 上一篇 / 下一篇（依 /my-pdfs 的閱讀順序：系列順序 → 篇號；跨系列自動接續）──
+  let titleFromList = false;
+
+  async function loadNavAndProgress() {
+    try {
+      const [list, progress] = await Promise.all([
+        fetchJson('/api/course/my-pdfs'),
+        fetchJson('/api/course/progress').catch(() => ({ pdf_ids: [] })),
+      ]);
+      const curId = Number(pdfId);
+      if ((progress.pdf_ids || []).includes(curId)) setCompleted();
+
+      const idx = list.findIndex(p => p.id === curId);
+      if (idx === -1) return;
+      const cur = list[idx];
+      titleFromList = true;
+      qs('#title-text').textContent = cur.series_name ? `${cur.series_name}｜${cur.title}` : cur.title;
+      renderNav(idx > 0 ? list[idx - 1] : null, idx < list.length - 1 ? list[idx + 1] : null);
+    } catch (e) {
+      // 導覽載入失敗不影響閱讀
+    }
+  }
+
+  function navBtnHtml(item, dir) {
+    const isPrev = dir === 'prev';
+    if (!item) {
+      return `<button class="nav-btn ${dir}" disabled><span class="nav-label">${isPrev ? '上一篇' : '下一篇'}</span>${isPrev ? '已是第一篇' : '已是最後一篇'}</button>`;
+    }
+    const label = isPrev ? '← 上一篇' : '下一篇 →';
+    const name = (item.series_name ? item.series_name + '｜' : '') + item.title;
+    return `<button class="nav-btn ${dir}" onclick="goToPdf(${item.id})" title="${escAttr(name)}"><span class="nav-label">${label}</span>${escAttr(name)}</button>`;
+  }
+
+  function renderNav(prev, next) {
+    const html = navBtnHtml(prev, 'prev') + navBtnHtml(next, 'next');
+    for (const id of ['#nav-top', '#nav-bottom']) {
+      const el = qs(id);
+      el.innerHTML = html;
+      el.style.display = '';
+    }
+  }
+
+  function goToPdf(id) {
+    location.href = '/course-reader.html?id=' + encodeURIComponent(id);
+  }
+
+  function escAttr(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ── 看完偵測：在最後一頁後面放一個哨兵，進入畫面 = 已捲到最後一頁底部 ──
+  function observeEnd(viewerEl) {
+    if (adminMode || isCompleted || !('IntersectionObserver' in window)) return;
+    if (endObserver) endObserver.disconnect();
+    const sentinel = document.createElement('div');
+    sentinel.style.cssText = 'width:1px;height:1px';
+    viewerEl.appendChild(sentinel);
+    endObserver = new IntersectionObserver(entries => {
+      if (entries.some(e => e.isIntersecting)) markCompleted();
+    });
+    endObserver.observe(sentinel);
+  }
+
+  function setCompleted() {
+    isCompleted = true;
+    qs('#done-badge').style.display = '';
+    if (endObserver) { endObserver.disconnect(); endObserver = null; }
+  }
+
+  async function markCompleted() {
+    if (isCompleted || completeSending) return;
+    completeSending = true;
+    try {
+      const r = await fetch('/api/course/progress', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pdf_id: Number(pdfId) }),
+      });
+      if (r.ok) setCompleted();
+    } catch (e) {
+      // 網路失敗：下次再捲到底會重試
+    } finally {
+      completeSending = false;
     }
   }
 
