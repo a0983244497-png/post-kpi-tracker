@@ -116,6 +116,34 @@
   .access-student-row:hover { background: var(--gray-100); }
   .access-student-name { font-weight: 700; font-size: .9rem; margin: 10px 0 6px; }
 
+  /* 學員追蹤三清單 */
+  .track-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .track-tab { flex: 1; min-width: 140px; text-align: left; border: 1px solid var(--gray-200); background: var(--gray-50); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+  .track-tab .tt-label { font-size: .8rem; font-weight: 700; color: var(--gray-700); }
+  .track-tab .tt-count { font-size: 1.4rem; font-weight: 800; margin-top: 2px; }
+  .track-tab .tt-rule { font-size: .7rem; color: var(--gray-500); margin-top: 2px; }
+  .track-tab.active { border-color: var(--primary); background: #eff6ff; }
+  .track-tab.stuck .tt-count { color: var(--danger); }
+  .track-tab.improving .tt-count { color: var(--success); }
+  .name-link { color: var(--primary); cursor: pointer; font-weight: 700; }
+  .name-link:hover { text-decoration: underline; }
+  .sub-list { margin: 0; padding-left: 16px; line-height: 1.6; }
+  .pill-gray { background: var(--gray-100); color: var(--gray-700); }
+  .pill-green { background: #d1fae5; color: #065f46; }
+  .pill-red { background: #fee2e2; color: #991b1b; }
+  .pill-amber { background: #fef3c7; color: #92400e; }
+  .week-strip { display: flex; gap: 4px; flex-wrap: wrap; }
+  .week-cell { width: 54px; border-radius: 6px; padding: 4px 2px; text-align: center; font-size: .68rem; line-height: 1.4; background: var(--gray-100); color: var(--gray-500); }
+  .week-cell.yes { background: #d1fae5; color: #065f46; }
+  .week-cell.no { background: #fee2e2; color: #991b1b; }
+  .week-cell.no_trade { background: #e0e7ff; color: #3730a3; }
+  .modal-wrap { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+  .modal-box { background: #fff; border-radius: var(--radius); padding: 20px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  .quiz-edit-q { border: 1px solid var(--gray-200); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+  .quiz-edit-q textarea { min-height: 54px; margin-bottom: 6px; }
+  .quiz-edit-opt { display: flex; gap: 6px; align-items: center; margin-bottom: 5px; }
+  .quiz-edit-opt input[type=text] { flex: 1; }
+
   /* Manager login modal */
   #modal-mgr { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
   #modal-mgr .box { background: #fff; border-radius: var(--radius); padding: 24px 20px; max-width: 320px; width: 100%; }
@@ -142,6 +170,9 @@
     <input type="email" id="edit-student-email" style="width:100%;margin-bottom:10px">
     <label class="muted" style="display:block;margin-bottom:3px">TradingView 名稱</label>
     <input type="text" id="edit-student-tv" style="width:100%;margin-bottom:10px">
+    <label class="muted" style="display:flex;align-items:center;gap:6px;margin-bottom:10px;cursor:pointer">
+      <input type="checkbox" id="edit-student-exclude"> 不列入學員追蹤（講師本人、測試帳號）
+    </label>
     <div id="edit-student-msg" class="msg err" style="display:none"></div>
     <div style="display:flex;gap:8px;margin-top:6px">
       <button class="btn btn-primary" style="flex:1" onclick="saveStudentEdit()">存檔</button>
@@ -163,6 +194,30 @@
   </div>
 </div>
 
+<div id="modal-track-detail" class="modal-wrap" onclick="if (event.target === this) closeTrackDetail()">
+  <div class="modal-box" style="max-width:640px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h2 style="font-size:1rem" id="track-detail-title">學員追蹤明細</h2>
+      <button class="btn btn-ghost btn-sm" onclick="closeTrackDetail()">關閉</button>
+    </div>
+    <div id="track-detail-body" class="muted">載入中…</div>
+  </div>
+</div>
+
+<div id="modal-quiz-edit" class="modal-wrap">
+  <div class="modal-box" style="max-width:640px">
+    <h2 style="font-size:1rem;margin-bottom:4px" id="quiz-edit-title">編輯題目</h2>
+    <p class="muted" style="margin-bottom:10px">建議每篇 3 題、每題 3～4 個選項，點圓點設定正確答案。已有人作答的題目若改了答案或選項數，系統會自動當成新題目，舊的作答紀錄不受影響。</p>
+    <div id="quiz-edit-list"></div>
+    <button class="btn btn-ghost btn-sm" id="quiz-add-btn" onclick="addQuizQuestion()">＋ 新增一題</button>
+    <div id="quiz-edit-msg" class="msg err" style="display:none"></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-primary" style="flex:1" onclick="saveQuizEdit()">存檔</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="closeQuizEdit()">取消</button>
+    </div>
+  </div>
+</div>
+
 <div id="app" style="display:none">
   <div class="topbar">
     <h1>課程管理後台</h1>
@@ -170,6 +225,26 @@
   </div>
 
   <div class="content">
+    <!-- 學員追蹤：三清單即時推算 -->
+    <div class="card">
+      <h2>📊 學員追蹤 <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="loadTracking()">重新整理</button></h2>
+      <div class="track-tabs">
+        <button class="track-tab stuck active" id="track-tab-stuck" onclick="switchTrackTab('stuck')">
+          <div class="tt-label">🟥 卡住的人</div><div class="tt-count" id="track-count-stuck">–</div>
+          <div class="tt-rule">14 天內同一題錯 2 次以上、還沒答對</div>
+        </button>
+        <button class="track-tab" id="track-tab-inactive" onclick="switchTrackTab('inactive')">
+          <div class="tt-label">⬜ 消失的人</div><div class="tt-count" id="track-count-inactive">–</div>
+          <div class="tt-rule">7 天沒有登入、看課、作答、打卡</div>
+        </button>
+        <button class="track-tab improving" id="track-tab-improving" onclick="switchTrackTab('improving')">
+          <div class="tt-label">🟩 進步的人</div><div class="tt-count" id="track-count-improving">–</div>
+          <div class="tt-rule">連續照計畫做單，或測驗答對率明顯提升</div>
+        </button>
+      </div>
+      <div id="track-list" class="muted">載入中…</div>
+    </div>
+
     <!-- 名單匯入 -->
     <div class="card">
       <h2>📋 名單匯入</h2>
@@ -291,6 +366,7 @@
   let seriesAccessMap = {};
   let _seriesAccessStudents = [];
   let editingPdfId = null;
+  let quizCounts = {};
 
   function esc(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -342,6 +418,7 @@
   }
 
   function loadAll() {
+    loadTracking();
     loadApplications();
     loadStudents();
     loadSeriesData();
@@ -547,6 +624,7 @@
       students = allStudents;
       tiers = tierList || [];
       renderStudents();
+      if (trackTab === 'inactive') renderTracking(); // 消失清單的「目前等級」要等等級表載入
     } catch (e) {
       el.innerHTML = `<div class="msg err">載入失敗：${esc(e.message)}</div>`;
     }
@@ -753,6 +831,7 @@
     qs('#edit-student-name').value = s.name || '';
     qs('#edit-student-email').value = s.email || '';
     qs('#edit-student-tv').value = s.tv_name || '';
+    qs('#edit-student-exclude').checked = !!s.exclude_from_tracking;
     qs('#edit-student-msg').style.display = 'none';
     qs('#modal-student-edit').style.display = 'flex';
   }
@@ -770,6 +849,7 @@
       name: qs('#edit-student-name').value.trim(),
       email: qs('#edit-student-email').value.trim(),
       tv_name: qs('#edit-student-tv').value.trim(),
+      exclude_from_tracking: qs('#edit-student-exclude').checked,
     };
     try {
       await api(`/api/course/admin/students/${editingStudentId}`, {
@@ -778,6 +858,7 @@
       });
       closeStudentEdit();
       loadStudents();
+      loadTracking();
     } catch (e) {
       msgEl.textContent = e.message;
       msgEl.style.display = '';
@@ -795,10 +876,252 @@
     }
   }
 
+  // ── 學員追蹤三清單 ──────────────────────────────
+  let trackTab = 'stuck';
+  let trackData = { stuck: null, inactive: null, improving: null };
+  const CONSENT_LABELS = { none: '未詢問', asked: '已詢問', agreed: '同意', declined: '不同意' };
+  const CONSENT_PILL = { none: 'pill-gray', asked: 'pill-amber', agreed: 'pill-green', declined: 'pill-red' };
+  let improvingOnlyAgreed = false;
+
+  async function loadTracking() {
+    const results = await Promise.allSettled([
+      api('/api/course/admin/tracking/stuck'),
+      api('/api/course/admin/tracking/inactive'),
+      api('/api/course/admin/tracking/improving'),
+    ]);
+    ['stuck', 'inactive', 'improving'].forEach((k, i) => {
+      trackData[k] = results[i].status === 'fulfilled' ? results[i].value : { error: results[i].reason.message };
+    });
+    qs('#track-count-stuck').textContent = trackData.stuck.error ? '!' : trackData.stuck.students.length;
+    qs('#track-count-inactive').textContent = trackData.inactive.error ? '!' : trackData.inactive.filter(s => !s.never_started).length;
+    qs('#track-count-improving').textContent = trackData.improving.error ? '!' : trackData.improving.length;
+    renderTracking();
+  }
+
+  function switchTrackTab(tab) {
+    trackTab = tab;
+    for (const k of ['stuck', 'inactive', 'improving']) qs('#track-tab-' + k).classList.toggle('active', k === tab);
+    renderTracking();
+  }
+
+  function relDays(t) {
+    if (!t) return '—';
+    const d = Math.floor((Date.now() - new Date(t).getTime()) / 86400000);
+    return d <= 0 ? '今天' : `${d} 天前`;
+  }
+
+  function fmtDate(t) {
+    return t ? new Date(t).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' }) : '—';
+  }
+
+  function nameLink(id, name) {
+    return `<span class="name-link" onclick="openTrackDetail(${id})">${esc(name)}</span>`;
+  }
+
+  function pdfLabel(it) {
+    return (it.series_name ? esc(it.series_name) + '｜' : '') + esc(it.pdf_title);
+  }
+
+  function renderTracking() {
+    const el = qs('#track-list');
+    const data = trackData[trackTab];
+    if (!data) { el.innerHTML = '<div class="muted">載入中…</div>'; return; }
+    if (data.error) { el.innerHTML = `<div class="msg err">載入失敗：${esc(data.error)}</div>`; return; }
+    if (trackTab === 'stuck') el.innerHTML = stuckHtml(data);
+    if (trackTab === 'inactive') el.innerHTML = inactiveHtml(data);
+    if (trackTab === 'improving') el.innerHTML = improvingHtml(data);
+  }
+
+  function stuckHtml(data) {
+    let html = data.students.length
+      ? `<div class="table-scroll"><table><thead><tr><th>學員</th><th>卡在哪</th><th>題目</th><th>錯幾次</th><th>最後作答</th></tr></thead><tbody>` +
+        data.students.map(s => s.items.map((it, i) => `<tr>
+          ${i === 0 ? `<td rowspan="${s.items.length}">${nameLink(s.student_id, s.name)}</td>` : ''}
+          <td>${pdfLabel(it)}</td>
+          <td>${esc(it.question)}</td>
+          <td>${it.wrong_count}</td>
+          <td style="white-space:nowrap">${relDays(it.last_answered_at)}</td>
+        </tr>`).join('')).join('') + `</tbody></table></div>`
+      : '<div class="muted">目前沒有卡住的學員 👍</div>';
+    if (data.hardest_questions.length) {
+      html += `<h3 style="font-size:.82rem;margin:16px 0 6px">全班最常錯的題（近 30 天）<span class="muted" style="font-weight:400">— 錯的人多，可能是題目或課程本身要補充</span></h3>
+        <div class="table-scroll"><table><thead><tr><th>課程</th><th>題目</th><th>答錯率</th><th>答錯人數</th></tr></thead><tbody>` +
+        data.hardest_questions.map(q => `<tr><td>${pdfLabel(q)}</td><td>${esc(q.question)}</td>
+          <td>${Math.round(q.wrong / q.answers * 100)}%（${q.wrong}/${q.answers}）</td><td>${q.wrong_students}</td></tr>`).join('') +
+        `</tbody></table></div>`;
+    }
+    return html;
+  }
+
+  function inactiveHtml(list) {
+    if (!list.length) return '<div class="muted">目前沒有消失的學員 👍</div>';
+    return `<div class="table-scroll"><table><thead><tr><th>學員</th><th>目前等級</th><th>最後活動</th><th>最後在做什麼</th><th>已消失</th><th>備註</th></tr></thead><tbody>` +
+      list.map(s => `<tr style="${s.never_started ? 'opacity:.7' : ''}">
+        <td>${nameLink(s.student_id, s.name)}</td>
+        <td>${s.is_override ? '手動' : esc(tierNameFor(s.access_deposit_usd))}</td>
+        <td style="white-space:nowrap">${fmtDate(s.last_activity_at)}</td>
+        <td>${s.last_action ? esc(s.last_action) : (s.never_started ? '—' : '只有登入')}</td>
+        <td style="white-space:nowrap">${s.never_started ? '—' : s.days_inactive + ' 天'}</td>
+        <td>${s.never_started ? `<span class="status-pill pill-gray">尚未開始（建檔 ${fmtDate(s.created_at)}）</span>` : ''}${s.finished_all ? '<span class="status-pill pill-green">已看完全部</span>' : ''}</td>
+      </tr>`).join('') + `</tbody></table></div>`;
+  }
+
+  function improvingHtml(list) {
+    const shown = improvingOnlyAgreed ? list.filter(s => s.case_consent === 'agreed') : list;
+    const filter = `<label class="muted" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:8px;cursor:pointer">
+      <input type="checkbox" ${improvingOnlyAgreed ? 'checked' : ''} onchange="improvingOnlyAgreed = this.checked; renderTracking()"> 只看已同意當案例的學員</label>`;
+    if (!shown.length) return filter + `<div class="muted">${list.length ? '沒有已同意的學員' : '目前沒有符合的學員（打卡和測驗資料需累積幾週）'}</div>`;
+    const fmtMood = v => v == null ? '—' : v.toFixed(1);
+    return filter + `<div class="table-scroll"><table><thead><tr><th>學員</th><th>進步在哪</th><th>照計畫（前 4 週 → 近 4 週）</th><th>心情（參考）</th><th>案例同意</th></tr></thead><tbody>` +
+      shown.map(s => `<tr>
+        <td>${nameLink(s.student_id, s.name)}</td>
+        <td><ul class="sub-list">${s.reasons.map(r => `<li>${esc(r.text)}</li>`).join('')}</ul></td>
+        <td style="white-space:nowrap">${s.plan_prior} → ${s.plan_recent}</td>
+        <td style="white-space:nowrap">${fmtMood(s.mood_prior)} → ${fmtMood(s.mood_recent)}</td>
+        <td><select onchange="setCaseConsent(${s.student_id}, this.value)">${Object.entries(CONSENT_LABELS).map(([k, v]) =>
+          `<option value="${k}" ${s.case_consent === k ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      </tr>`).join('') + `</tbody></table></div>`;
+  }
+
+  async function setCaseConsent(id, value) {
+    try {
+      await api(`/api/course/admin/students/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ case_consent: value }),
+      });
+      const s = (trackData.improving || []).find(x => x.student_id === id);
+      if (s) s.case_consent = value;
+      renderTracking();
+    } catch (e) {
+      alert('更新失敗：' + e.message);
+    }
+  }
+
+  const PLAN_SHORT = { yes: '有照計畫', no: '沒照計畫', no_trade: '沒做單' };
+
+  async function openTrackDetail(id) {
+    qs('#modal-track-detail').style.display = 'flex';
+    qs('#track-detail-body').innerHTML = '載入中…';
+    try {
+      const d = await api(`/api/course/admin/tracking/students/${id}`);
+      qs('#track-detail-title').textContent = `${d.student.name} 的追蹤明細`;
+      const weeks = `<div class="week-strip">` + d.weeks.map(w => {
+        const c = w.checkin;
+        const [, m, day] = w.week_start.split('-');
+        return `<div class="week-cell ${c ? c.followed_plan : ''}">${+m}/${+day}<br>${c ? PLAN_SHORT[c.followed_plan] + '<br>心情 ' + c.mood : '未打卡'}</div>`;
+      }).join('') + `</div>`;
+      const quiz = d.quiz.length
+        ? `<div class="table-scroll"><table><thead><tr><th>課程</th><th>答對題數</th><th>答錯次數</th><th>錯過的題目</th><th>最後作答</th></tr></thead><tbody>` +
+          d.quiz.map(q => `<tr><td>${pdfLabel(q)}</td><td>${q.questions_correct} / ${q.questions_answered}</td><td>${q.wrong_total}</td>
+            <td>${q.wrong_questions.length ? `<ul class="sub-list">${q.wrong_questions.map(w => `<li>${esc(w.question)}（${w.wrong_count} 次）</li>`).join('')}</ul>` : '—'}</td>
+            <td style="white-space:nowrap">${relDays(q.last_answered_at)}</td></tr>`).join('') + `</tbody></table></div>`
+        : '<div class="muted">還沒有作答紀錄</div>';
+      qs('#track-detail-body').innerHTML = `
+        <div class="muted" style="margin-bottom:12px">${esc(d.student.email)}　最後登入／開課程：${d.student.last_seen_at ? new Date(d.student.last_seen_at).toLocaleString('zh-TW') : '—'}
+          ${d.student.exclude_from_tracking ? '<span class="status-pill pill-gray">不列入追蹤</span>' : ''}</div>
+        <h3 style="font-size:.85rem;margin-bottom:6px">每週打卡（最近 8 週）</h3>${weeks}
+        <h3 style="font-size:.85rem;margin:14px 0 6px">課後測驗</h3>${quiz}`;
+    } catch (e) {
+      qs('#track-detail-body').innerHTML = `<div class="msg err">載入失敗：${esc(e.message)}</div>`;
+    }
+  }
+
+  function closeTrackDetail() {
+    qs('#modal-track-detail').style.display = 'none';
+  }
+
+  // ── 課後小測驗出題 ──────────────────────────────
+  let quizEditPdfId = null;
+  let quizEditList = [];
+
+  async function openQuizEdit(pdfId) {
+    const pdf = findPdfById(pdfId);
+    quizEditPdfId = pdfId;
+    qs('#quiz-edit-title').textContent = `編輯題目：${pdf ? pdf.title : ''}`;
+    qs('#quiz-edit-msg').style.display = 'none';
+    qs('#quiz-edit-list').innerHTML = '<div class="muted">載入中…</div>';
+    qs('#modal-quiz-edit').style.display = 'flex';
+    try {
+      const rows = await api(`/api/course/admin/pdfs/${pdfId}/quiz`);
+      quizEditList = rows.map(q => ({ ...q, options: [...q.options] }));
+      if (!quizEditList.length) for (let i = 0; i < 3; i++) quizEditList.push(blankQuizQuestion());
+      renderQuizEdit();
+    } catch (e) {
+      qs('#quiz-edit-list').innerHTML = `<div class="msg err">載入失敗：${esc(e.message)}</div>`;
+    }
+  }
+
+  function blankQuizQuestion() {
+    return { id: null, question: '', options: ['', '', ''], correct_index: null, explanation: '', answer_count: 0 };
+  }
+
+  function renderQuizEdit() {
+    qs('#quiz-edit-list').innerHTML = quizEditList.map((q, qi) => `<div class="quiz-edit-q">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <b style="font-size:.85rem">第 ${qi + 1} 題 ${q.answer_count ? `<span class="muted" style="font-weight:400">（已有 ${q.answer_count} 次作答）</span>` : ''}</b>
+        <button class="btn btn-ghost btn-sm" onclick="removeQuizQuestion(${qi})">移除</button>
+      </div>
+      <textarea placeholder="題目" oninput="quizEditList[${qi}].question = this.value">${esc(q.question)}</textarea>
+      ${q.options.map((o, oi) => `<div class="quiz-edit-opt">
+        <input type="radio" name="quiz-correct-${qi}" title="設為正確答案" ${q.correct_index === oi ? 'checked' : ''} onchange="quizEditList[${qi}].correct_index = ${oi}">
+        <input type="text" placeholder="選項 ${oi + 1}" value="${esc(o)}" oninput="quizEditList[${qi}].options[${oi}] = this.value">
+        ${q.options.length > 2 ? `<button class="btn btn-ghost btn-sm" onclick="removeQuizOption(${qi}, ${oi})">✕</button>` : ''}
+      </div>`).join('')}
+      ${q.options.length < 5 ? `<button class="btn btn-ghost btn-sm" style="margin-bottom:6px" onclick="addQuizOption(${qi})">＋ 選項</button>` : ''}
+      <textarea placeholder="解釋（答完後顯示給學員，對錯都會看到）" oninput="quizEditList[${qi}].explanation = this.value">${esc(q.explanation || '')}</textarea>
+    </div>`).join('') || '<div class="muted">這篇目前沒有題目</div>';
+    qs('#quiz-add-btn').style.display = quizEditList.length >= 5 ? 'none' : '';
+  }
+
+  function addQuizQuestion() { quizEditList.push(blankQuizQuestion()); renderQuizEdit(); }
+  function removeQuizQuestion(qi) { quizEditList.splice(qi, 1); renderQuizEdit(); }
+  function addQuizOption(qi) { quizEditList[qi].options.push(''); renderQuizEdit(); }
+  function removeQuizOption(qi, oi) {
+    const q = quizEditList[qi];
+    q.options.splice(oi, 1);
+    if (q.correct_index === oi) q.correct_index = null;
+    else if (q.correct_index > oi) q.correct_index--;
+    renderQuizEdit();
+  }
+
+  function closeQuizEdit() {
+    quizEditPdfId = null;
+    qs('#modal-quiz-edit').style.display = 'none';
+  }
+
+  async function saveQuizEdit() {
+    const msgEl = qs('#quiz-edit-msg');
+    msgEl.style.display = 'none';
+    // 空白選項不送；正確答案的位置依剩下的選項重新對應
+    const payload = [];
+    for (const [i, q] of quizEditList.entries()) {
+      if (!q.question.trim() && q.options.every(o => !o.trim())) continue; // 整題空白就略過
+      const kept = q.options.map((o, oi) => ({ o: o.trim(), oi })).filter(x => x.o);
+      const correct = kept.findIndex(x => x.oi === q.correct_index);
+      if (correct === -1) { msgEl.textContent = `第 ${i + 1} 題請點選正確答案`; msgEl.style.display = ''; return; }
+      payload.push({ id: q.id, question: q.question, options: kept.map(x => x.o), correct_index: correct, explanation: q.explanation });
+    }
+    try {
+      await api(`/api/course/admin/pdfs/${quizEditPdfId}/quiz`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questions: payload }),
+      });
+      quizCounts[quizEditPdfId] = payload.length;
+      closeQuizEdit();
+      renderPdfManageList();
+    } catch (e) {
+      msgEl.textContent = e.message;
+      msgEl.style.display = '';
+    }
+  }
+
   // ── PDF 管理（依系列分組）──────────────────────
   async function loadSeriesData() {
     try {
-      seriesData = await api('/api/course/admin/series');
+      [seriesData, quizCounts] = await Promise.all([
+        api('/api/course/admin/series'),
+        api('/api/course/admin/quiz-counts').catch(() => ({})),
+      ]);
     } catch (e) {
       seriesData = { series: [], unclassified: [] };
     }
@@ -838,6 +1161,7 @@
             <td>${new Date(p.created_at).toLocaleString('zh-TW')}</td>
             <td class="row-actions">
               <button class="btn btn-ghost btn-sm" onclick="openPdfEdit(${p.id})">編輯</button>
+              <button class="btn btn-ghost btn-sm" onclick="openQuizEdit(${p.id})">題目（${quizCounts[p.id] || 0}）</button>
               <button class="btn btn-ghost btn-sm" onclick="previewPdf(${p.id})">預覽</button>
               <button class="btn btn-danger btn-sm" onclick="deletePdf(${p.id})">刪除</button>
             </td>

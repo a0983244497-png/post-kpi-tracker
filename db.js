@@ -451,6 +451,56 @@ export async function initDb() {
     )
   `);
 
+  // ── 學員進度追蹤：課後小測驗 + 每週打卡（規格見 docs/學員進度追蹤規格.md）──
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pdf_quiz_questions (
+      id            SERIAL PRIMARY KEY,
+      pdf_id        INTEGER NOT NULL REFERENCES pdf_pdfs(id) ON DELETE CASCADE,
+      sort_order    INTEGER DEFAULT 0,
+      question      TEXT    NOT NULL,
+      options       JSONB   NOT NULL DEFAULT '[]',
+      correct_index INTEGER NOT NULL,
+      explanation   TEXT    DEFAULT '',
+      is_active     BOOLEAN DEFAULT true,
+      created_at    TIMESTAMPTZ DEFAULT NOW(),
+      updated_at    TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_pdf_quiz_questions_pdf ON pdf_quiz_questions (pdf_id)`);
+
+  // 作答紀錄：每答一次新增一列、不覆蓋（「卡住」要算錯幾次、「進步」要比前後答對率）
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pdf_quiz_answers (
+      id           SERIAL PRIMARY KEY,
+      student_id   INTEGER NOT NULL REFERENCES pdf_students(id)       ON DELETE CASCADE,
+      pdf_id       INTEGER NOT NULL REFERENCES pdf_pdfs(id)           ON DELETE CASCADE,
+      question_id  INTEGER NOT NULL REFERENCES pdf_quiz_questions(id) ON DELETE CASCADE,
+      chosen_index INTEGER NOT NULL,
+      is_correct   BOOLEAN NOT NULL,
+      answered_at  TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_pdf_quiz_answers_student  ON pdf_quiz_answers (student_id, answered_at)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_pdf_quiz_answers_question ON pdf_quiz_answers (question_id, student_id)`);
+
+  // 每週打卡：一週一筆（week_start = 台灣時間該週週一），同週再按 = 修改
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pdf_checkins (
+      id            SERIAL PRIMARY KEY,
+      student_id    INTEGER NOT NULL REFERENCES pdf_students(id) ON DELETE CASCADE,
+      week_start    DATE    NOT NULL,
+      followed_plan VARCHAR(10) NOT NULL CHECK (followed_plan IN ('yes','no','no_trade')),
+      mood          SMALLINT    NOT NULL CHECK (mood BETWEEN 1 AND 5),
+      created_at    TIMESTAMPTZ DEFAULT NOW(),
+      updated_at    TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(student_id, week_start)
+    )
+  `);
+
+  await pool.query(`ALTER TABLE pdf_students ADD COLUMN IF NOT EXISTS last_seen_at          TIMESTAMPTZ NULL`);
+  await pool.query(`ALTER TABLE pdf_students ADD COLUMN IF NOT EXISTS case_consent          VARCHAR(10) DEFAULT 'none'`);
+  await pool.query(`ALTER TABLE pdf_students ADD COLUMN IF NOT EXISTS exclude_from_tracking BOOLEAN     DEFAULT false`);
+
   // Seed default staff (unconditional, skips if already exists)
   await pool.query(
     `INSERT INTO staff (name) VALUES ('Gino'),('Darren'),('Josh'),('Jenna'),('路克') ON CONFLICT (name) DO NOTHING`

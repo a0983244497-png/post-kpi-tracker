@@ -45,6 +45,24 @@
   .series-progress .pbar { flex: 1; max-width: 320px; }
   .series-progress-text { font-size: .75rem; color: var(--gray-500); white-space: nowrap; }
 
+  /* 每週打卡：一題 + 心情分數，不用打字 */
+  /* 左右 40px 對齊下方 #list（它帶 .loading 的 40px padding） */
+  .checkin { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; margin: 0 40px; }
+  .checkin-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .checkin-title { font-size: .92rem; font-weight: 700; }
+  .checkin-streak { font-size: .75rem; color: var(--gray-500); white-space: nowrap; }
+  .checkin-q { font-size: .85rem; color: var(--gray-700); margin: 6px 0; }
+  .choice-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .choice { border: 1px solid var(--gray-200); background: var(--gray-50); border-radius: 8px; padding: 8px 14px; font-size: .86rem; cursor: pointer; color: var(--gray-900); }
+  .choice.mood { min-width: 42px; text-align: center; padding: 8px 0; }
+  .choice.on { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; }
+  .mood-ends { font-size: .75rem; color: var(--gray-500); align-self: center; }
+  .checkin-submit { background: var(--primary); color: #fff; border: none; border-radius: 8px; padding: 9px 18px; font-size: .86rem; font-weight: 700; cursor: pointer; }
+  .checkin-submit:disabled { opacity: .45; cursor: not-allowed; }
+  .checkin-done { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: .88rem; }
+  .checkin-done b { color: #16a34a; }
+  .link-btn { background: none; border: none; color: var(--primary); font-weight: 700; font-size: .82rem; cursor: pointer; white-space: nowrap; }
+
   .empty { text-align: center; padding: 60px 20px; color: var(--gray-500); }
   .empty-icon { font-size: 2.2rem; margin-bottom: 10px; }
   .loading { text-align: center; padding: 40px; color: var(--gray-500); font-size: .88rem; }
@@ -61,6 +79,7 @@
 </div>
 
 <div class="content">
+  <div id="checkin" class="checkin" style="display:none"></div>
   <div id="list" class="loading">載入中…</div>
 </div>
 
@@ -75,7 +94,77 @@
       location.href = '/course-login.html';
       return;
     }
+    loadCheckin();
     await loadPdfs();
+  }
+
+  // ── 每週打卡（週一換週，同週再送 = 修改）──
+  const PLAN_LABELS = { yes: '有', no: '沒有', no_trade: '這週沒做單' };
+  const PLAN_DONE_TEXT = { yes: '有照計畫', no: '沒有照計畫', no_trade: '這週沒做單' };
+  let checkinData = null;
+  let checkinDraft = { followed_plan: null, mood: null };
+  let checkinEditing = false;
+
+  async function loadCheckin() {
+    try {
+      checkinData = await api('/api/course/checkin/current');
+      checkinEditing = !checkinData.checkin;
+      checkinDraft = { ...(checkinData.checkin || { followed_plan: null, mood: null }) };
+      renderCheckin();
+    } catch (e) {
+      // 打卡載入失敗不影響看課
+    }
+  }
+
+  function weekRangeText(weekStart) {
+    const d = new Date(weekStart + 'T00:00:00');
+    const e = new Date(d); e.setDate(d.getDate() + 6);
+    const f = x => `${x.getMonth() + 1}/${x.getDate()}`;
+    return `${f(d)}–${f(e)}`;
+  }
+
+  function renderCheckin() {
+    const el = qs('#checkin');
+    const streak = checkinData.streak ? `已連續打卡 ${checkinData.streak} 週` : '';
+    const head = `<div class="checkin-head"><span class="checkin-title">本週打卡（${weekRangeText(checkinData.week_start)}）</span><span class="checkin-streak">${streak}</span></div>`;
+
+    if (!checkinEditing && checkinData.checkin) {
+      const c = checkinData.checkin;
+      el.innerHTML = `<div class="checkin-done"><span><b>✓ 本週已打卡</b>（${PLAN_DONE_TEXT[c.followed_plan]}・心情 ${c.mood}）${streak ? '　' + streak : ''}</span>
+        <button class="link-btn" onclick="editCheckin()">修改</button></div>`;
+      el.style.display = '';
+      return;
+    }
+
+    const planBtns = Object.entries(PLAN_LABELS).map(([k, label]) =>
+      `<button class="choice ${checkinDraft.followed_plan === k ? 'on' : ''}" onclick="pickPlan('${k}')">${label}</button>`).join('');
+    const moodBtns = [1, 2, 3, 4, 5].map(n =>
+      `<button class="choice mood ${checkinDraft.mood === n ? 'on' : ''}" onclick="pickMood(${n})">${n}</button>`).join('');
+    const ready = checkinDraft.followed_plan && checkinDraft.mood;
+    el.innerHTML = head + `
+      <div class="checkin-q">這週有照計畫做單嗎？</div>
+      <div class="choice-row">${planBtns}</div>
+      <div class="checkin-q">這週心情？</div>
+      <div class="choice-row"><span class="mood-ends">😣</span>${moodBtns}<span class="mood-ends">😄</span></div>
+      <button class="checkin-submit" ${ready ? '' : 'disabled'} onclick="submitCheckin()">送出</button>`;
+    el.style.display = '';
+  }
+
+  function pickPlan(k) { checkinDraft.followed_plan = k; renderCheckin(); }
+  function pickMood(n) { checkinDraft.mood = n; renderCheckin(); }
+  function editCheckin() { checkinEditing = true; renderCheckin(); }
+
+  async function submitCheckin() {
+    try {
+      checkinData = await api('/api/course/checkin/current', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(checkinDraft),
+      });
+      checkinEditing = false;
+      renderCheckin();
+    } catch (e) {
+      alert('送出失敗：' + e.message);
+    }
   }
 
   async function api(path, opts = {}) {

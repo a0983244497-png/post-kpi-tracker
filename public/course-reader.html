@@ -80,6 +80,24 @@
   .nav-btn .nav-label { display: block; font-size: .72rem; color: var(--gray-500); margin-bottom: 2px; }
   .done-badge { font-size: .75rem; font-weight: 700; background: #d1fae5; color: #065f46; padding: 3px 8px; border-radius: 999px; flex-shrink: 0; }
 
+  /* 課後小測驗：看完（捲到底）才出現，答完立即顯示對錯與解釋 */
+  .quiz { max-width: 760px; margin: 0 auto 20px; padding: 0 12px; }
+  .quiz-card { background: #fff; border-radius: 10px; box-shadow: var(--shadow); padding: 16px; }
+  .quiz-card h2 { font-size: .95rem; margin-bottom: 4px; }
+  .quiz-sub { font-size: .78rem; color: var(--gray-500); margin-bottom: 12px; }
+  .quiz-q { border-top: 1px solid var(--gray-100); padding: 12px 0; }
+  .quiz-q-title { font-size: .9rem; font-weight: 700; margin-bottom: 8px; line-height: 1.5; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 8px; padding: 9px 12px; margin-bottom: 6px; font-size: .86rem; color: var(--gray-900); cursor: pointer; line-height: 1.5; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--primary); }
+  .quiz-opt:disabled { cursor: default; }
+  .quiz-opt.correct { background: #d1fae5; border-color: #10b981; color: #065f46; font-weight: 700; }
+  .quiz-opt.wrong   { background: #fee2e2; border-color: #f87171; color: #991b1b; }
+  .quiz-feedback { font-size: .84rem; line-height: 1.6; border-radius: 8px; padding: 9px 12px; margin-top: 4px; }
+  .quiz-feedback.ok  { background: #ecfdf5; color: #065f46; }
+  .quiz-feedback.bad { background: #fef2f2; color: #991b1b; }
+  .quiz-retry { background: none; border: none; color: var(--primary); font-weight: 700; font-size: .82rem; cursor: pointer; padding: 6px 0 0; }
+  .quiz-summary { font-size: .88rem; font-weight: 700; padding-top: 10px; border-top: 1px solid var(--gray-100); }
+
   .status { text-align: center; padding: 60px 20px; color: var(--gray-500); font-size: .9rem; }
   .status.error { color: var(--danger); }
 </style>
@@ -115,6 +133,8 @@
     <div class="status" id="status">載入中…</div>
   </div>
 </div>
+
+<div class="quiz" id="quiz" style="display:none"></div>
 
 <div class="reader-nav bottom" id="nav-bottom" style="display:none"></div>
 
@@ -401,6 +421,7 @@
     isCompleted = true;
     qs('#done-badge').style.display = '';
     if (endObserver) { endObserver.disconnect(); endObserver = null; }
+    loadQuiz();
   }
 
   async function markCompleted() {
@@ -418,6 +439,78 @@
     } finally {
       completeSending = false;
     }
+  }
+
+  // ── 課後小測驗：看完後出現；答錯不公布正解，讓學員再想一次 ──
+  let quizState = null; // { questions: [{ id, question, options, last, retrying }] }
+
+  async function loadQuiz() {
+    if (adminMode || quizState) return;
+    quizState = { questions: [] };
+    try {
+      const data = await fetchJson('/api/course/quiz/' + encodeURIComponent(pdfId));
+      quizState.questions = data.questions || [];
+      renderQuiz();
+    } catch (e) {
+      // 測驗載入失敗不影響閱讀
+    }
+  }
+
+  function renderQuiz() {
+    const el = qs('#quiz');
+    const list = quizState.questions;
+    if (!list.length) { el.style.display = 'none'; return; }
+    const answered = list.filter(q => q.last).length;
+    const correct = list.filter(q => q.last && q.last.is_correct).length;
+
+    el.innerHTML = `<div class="quiz-card">
+      <h2>✏️ 小測驗（${list.length} 題）</h2>
+      <div class="quiz-sub">看完了，用 ${list.length} 題確認自己有沒有抓到重點。答錯可以再試。</div>
+      ${list.map((q, qi) => quizQuestionHtml(q, qi)).join('')}
+      ${answered === list.length ? `<div class="quiz-summary">${list.length} 題答對 ${correct} 題${correct === list.length ? '，全部答對 👍' : '，答錯的題目可以再試一次'}</div>` : ''}
+    </div>`;
+    el.style.display = '';
+  }
+
+  function quizQuestionHtml(q, qi) {
+    const last = q.retrying ? null : q.last;
+    const opts = q.options.map((o, oi) => {
+      let cls = '';
+      if (last && oi === last.chosen_index) cls = last.is_correct ? 'correct' : 'wrong';
+      return `<button class="quiz-opt ${cls}" ${last ? 'disabled' : ''} onclick="answerQuiz(${qi}, ${oi})">${escAttr(o)}</button>`;
+    }).join('');
+    let feedback = '';
+    if (last) {
+      const exp = last.explanation ? `<br>${escAttr(last.explanation)}` : '';
+      feedback = last.is_correct
+        ? `<div class="quiz-feedback ok">✓ 答對了${exp}</div>`
+        : `<div class="quiz-feedback bad">✗ 答錯了，再想想看${exp}</div><button class="quiz-retry" onclick="retryQuiz(${qi})">再試一次</button>`;
+    }
+    return `<div class="quiz-q"><div class="quiz-q-title">${qi + 1}. ${escAttr(q.question)}</div>${opts}${feedback}</div>`;
+  }
+
+  async function answerQuiz(qi, oi) {
+    const q = quizState.questions[qi];
+    if (!q || (q.last && !q.retrying)) return;
+    try {
+      const r = await fetch('/api/course/quiz/' + encodeURIComponent(pdfId) + '/answer', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question_id: q.id, chosen_index: oi }),
+      });
+      if (!r.ok) throw new Error(String(r.status));
+      const res = await r.json();
+      q.last = { chosen_index: oi, is_correct: res.is_correct, explanation: res.explanation, correct_index: res.correct_index };
+      q.retrying = false;
+      renderQuiz();
+    } catch (e) {
+      alert('送出失敗，請再試一次');
+    }
+  }
+
+  function retryQuiz(qi) {
+    quizState.questions[qi].retrying = true;
+    renderQuiz();
   }
 
   async function fetchJson(path) {

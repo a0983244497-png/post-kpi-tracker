@@ -5,6 +5,7 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import pool from '../db.js';
 import { listAccessiblePdfs, getStudentForAccess, applyDepositUpdate } from '../lib/courseAccess.js';
+import { touchLastSeen, currentWeekStart, checkinStreak, listStuck, listInactive, listImproving, studentDetail } from '../lib/tracking.js';
 
 const router = express.Router();
 
@@ -54,6 +55,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: '帳號或密碼錯誤' });
     }
     req.session.studentId = rows[0].id;
+    touchLastSeen(rows[0].id);
     res.json({ id: rows[0].id, email: rows[0].email, name: rows[0].name, tv_name: rows[0].tv_name });
   } catch (e) {
     console.error('[Course] login:', e.message);
@@ -84,6 +86,7 @@ router.get('/my-pdfs', requireStudent, async (req, res) => {
   try {
     const student = await getStudentForAccess(req.session.studentId);
     if (!student) return res.status(401).json({ error: '請先登入' });
+    touchLastSeen(student.id);
     res.json(await listAccessiblePdfs(student));
   } catch (e) {
     console.error('[Course] my-pdfs:', e.message);
@@ -137,6 +140,7 @@ router.get('/pdf/:id/file', requireStudent, async (req, res) => {
     if (!student) return res.status(401).json({ error: '請先登入' });
     const pdf = (await listAccessiblePdfs(student)).find(p => p.id === pdfId);
     if (!pdf) return res.status(403).json({ error: '無權限存取此檔案' });
+    touchLastSeen(student.id);
 
     const filename = path.basename(pdf.file_url || '');
     const filePath = path.join(PDF_STORAGE_DIR, filename);
@@ -148,6 +152,127 @@ router.get('/pdf/:id/file', requireStudent, async (req, res) => {
     fs.createReadStream(filePath).pipe(res);
   } catch (e) {
     console.error('[Course] pdf file:', e.message);
+    res.status(500).json({ error: '伺服器錯誤' });
+  }
+});
+
+// ── 課後小測驗（學員端）────────────────────────────────────
+// 正確答案只在答對後才給，答錯只回「錯」＋解釋，讓學員再想一次（「卡住」才有意義）
+async function requirePdfAccess(req, res, pdfId) {
+  const student = await getStudentForAccess(req.session.studentId);
+  if (!student) { res.status(401).json({ error: '請先登入' }); return null; }
+  const allowed = (await listAccessiblePdfs(student)).some(p => p.id === pdfId);
+  if (!allowed) { res.status(403).json({ error: '無權限存取此檔案' }); return null; }
+  return student;
+}
+
+router.get('/quiz/:pdfId', requireStudent, async (req, res) => {
+  const pdfId = parseInt(req.params.pdfId);
+  if (!Number.isInteger(pdfId)) return res.status(400).json({ error: '缺少 pdf_id' });
+  try {
+    const student = await requirePdfAccess(req, res, pdfId);
+    if (!student) return;
+    const { rows: qs } = await pool.query(
+      `SELECT id, question, options, correct_index, explanation FROM pdf_quiz_questions
+       WHERE pdf_id = $1 AND is_active ORDER BY sort_order ASC, id ASC`,
+      [pdfId]
+    );
+    const { rows: last } = await pool.query(
+      `SELECT DISTINCT ON (question_id) question_id, chosen_index, is_correct
+       FROM pdf_quiz_answers WHERE student_id = $1 AND pdf_id = $2
+       ORDER BY question_id, answered_at DESC`,
+      [student.id, pdfId]
+    );
+    const lastBy = new Map(last.map(r => [r.question_id, r]));
+    res.json({
+      questions: qs.map(q => {
+        const l = lastBy.get(q.id);
+        return {
+          id: q.id, question: q.question, options: q.options,
+          last: l ? {
+            chosen_index: l.chosen_index, is_correct: l.is_correct,
+            explanation: q.explanation,
+            correct_index: l.is_correct ? q.correct_index : null,
+          } : null,
+        };
+      }),
+    });
+  } catch (e) {
+    console.error('[Course] quiz get:', e.message);
+    res.status(500).json({ error: '伺服器錯誤' });
+  }
+});
+
+router.post('/quiz/:pdfId/answer', requireStudent, async (req, res) => {
+  const pdfId = parseInt(req.params.pdfId);
+  const questionId = parseInt(req.body?.question_id);
+  const chosen = parseInt(req.body?.chosen_index);
+  if (![pdfId, questionId, chosen].every(Number.isInteger)) return res.status(400).json({ error: '缺少作答資料' });
+  try {
+    const student = await requirePdfAccess(req, res, pdfId);
+    if (!student) return;
+    const { rows } = await pool.query(
+      `SELECT options, correct_index, explanation FROM pdf_quiz_questions WHERE id = $1 AND pdf_id = $2 AND is_active`,
+      [questionId, pdfId]
+    );
+    if (!rows.length) return res.status(404).json({ error: '題目不存在' });
+    const q = rows[0];
+    if (chosen < 0 || chosen >= q.options.length) return res.status(400).json({ error: '選項不存在' });
+
+    const isCorrect = chosen === q.correct_index;
+    await pool.query(
+      `INSERT INTO pdf_quiz_answers (student_id, pdf_id, question_id, chosen_index, is_correct) VALUES ($1,$2,$3,$4,$5)`,
+      [student.id, pdfId, questionId, chosen, isCorrect]
+    );
+    touchLastSeen(student.id);
+    res.json({ is_correct: isCorrect, correct_index: isCorrect ? q.correct_index : null, explanation: q.explanation });
+  } catch (e) {
+    console.error('[Course] quiz answer:', e.message);
+    res.status(500).json({ error: '伺服器錯誤' });
+  }
+});
+
+// ── 每週打卡（學員端）：一週一筆，同週再送 = 修改；週一 00:00 台灣時間換週 ──
+async function checkinPayload(studentId) {
+  const weekStart = await currentWeekStart();
+  const { rows } = await pool.query(
+    `SELECT to_char(week_start, 'YYYY-MM-DD') AS week_start, followed_plan, mood
+     FROM pdf_checkins WHERE student_id = $1 ORDER BY week_start DESC LIMIT 60`,
+    [studentId]
+  );
+  const current = rows.find(r => r.week_start === weekStart) || null;
+  return {
+    week_start: weekStart,
+    checkin: current ? { followed_plan: current.followed_plan, mood: current.mood } : null,
+    streak: checkinStreak(rows.map(r => r.week_start), weekStart),
+  };
+}
+
+router.get('/checkin/current', requireStudent, async (req, res) => {
+  try {
+    res.json(await checkinPayload(req.session.studentId));
+  } catch (e) {
+    console.error('[Course] checkin get:', e.message);
+    res.status(500).json({ error: '伺服器錯誤' });
+  }
+});
+
+router.put('/checkin/current', requireStudent, async (req, res) => {
+  const plan = req.body?.followed_plan;
+  const mood = parseInt(req.body?.mood);
+  if (!['yes', 'no', 'no_trade'].includes(plan)) return res.status(400).json({ error: '請選擇這週有沒有照計畫做單' });
+  if (!(mood >= 1 && mood <= 5)) return res.status(400).json({ error: '請選擇心情分數 1～5' });
+  try {
+    const weekStart = await currentWeekStart();
+    await pool.query(
+      `INSERT INTO pdf_checkins (student_id, week_start, followed_plan, mood) VALUES ($1,$2,$3,$4)
+       ON CONFLICT (student_id, week_start) DO UPDATE SET followed_plan = $3, mood = $4, updated_at = NOW()`,
+      [req.session.studentId, weekStart, plan, mood]
+    );
+    touchLastSeen(req.session.studentId);
+    res.json(await checkinPayload(req.session.studentId));
+  } catch (e) {
+    console.error('[Course] checkin put:', e.message);
     res.status(500).json({ error: '伺服器錯誤' });
   }
 });
@@ -265,7 +390,10 @@ router.get('/admin/students', requireManager, async (req, res) => {
 // ── 管理端：更新學員（姓名 / email / TV 名稱 / 狀態）──────
 router.patch('/admin/students/:id', requireManager, async (req, res) => {
   const id = parseInt(req.params.id);
-  const { name, email, tv_name, status } = req.body;
+  const { name, email, tv_name, status, case_consent, exclude_from_tracking } = req.body;
+  if (case_consent !== undefined && !['none', 'asked', 'agreed', 'declined'].includes(case_consent)) {
+    return res.status(400).json({ error: 'case_consent 不正確' });
+  }
   try {
     if (email !== undefined) {
       const { rows: dup } = await pool.query(
@@ -281,6 +409,8 @@ router.patch('/admin/students/:id', requireManager, async (req, res) => {
     if (email !== undefined)   { params.push(String(email).trim());   updates.push(`email = $${params.length}`); }
     if (tv_name !== undefined) { params.push(String(tv_name).trim()); updates.push(`tv_name = $${params.length}`); }
     if (status !== undefined)  { params.push(String(status).trim());  updates.push(`status = $${params.length}`); }
+    if (case_consent !== undefined)          { params.push(case_consent);                  updates.push(`case_consent = $${params.length}`); }
+    if (exclude_from_tracking !== undefined) { params.push(Boolean(exclude_from_tracking)); updates.push(`exclude_from_tracking = $${params.length}`); }
     if (!updates.length) return res.status(400).json({ error: '沒有可更新的欄位' });
     params.push(id);
 
@@ -842,6 +972,127 @@ router.post('/admin/access', requireManager, async (req, res) => {
     res.status(500).json({ error: '設定失敗' });
   } finally {
     client.release();
+  }
+});
+
+// ── 管理端：課後小測驗出題 ──────────────────────────────────
+router.get('/admin/pdfs/:id/quiz', requireManager, async (req, res) => {
+  const pdfId = parseInt(req.params.id);
+  try {
+    const { rows } = await pool.query(
+      `SELECT q.id, q.question, q.options, q.correct_index, q.explanation,
+              (SELECT COUNT(*)::int FROM pdf_quiz_answers a WHERE a.question_id = q.id) AS answer_count
+       FROM pdf_quiz_questions q WHERE q.pdf_id = $1 AND q.is_active ORDER BY q.sort_order ASC, q.id ASC`,
+      [pdfId]
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error('[Course] admin quiz get:', e.message);
+    res.status(500).json({ error: '伺服器錯誤' });
+  }
+});
+
+// 整組存檔：{ questions: [{ id?, question, options[], correct_index, explanation }] }
+// 已有人作答的題目若改了答案或選項數 → 舊題停用、另建新題（舊作答紀錄的對錯才不會失真）；只改文字就直接更新
+// 這次沒送上來的舊題：有作答紀錄的停用、沒有的直接刪除
+router.put('/admin/pdfs/:id/quiz', requireManager, async (req, res) => {
+  const pdfId = parseInt(req.params.id);
+  const input = Array.isArray(req.body?.questions) ? req.body.questions : null;
+  if (!input) return res.status(400).json({ error: '缺少 questions' });
+  if (input.length > 5) return res.status(400).json({ error: '每篇最多 5 題' });
+
+  const clean = [];
+  for (const [i, q] of input.entries()) {
+    const question = String(q.question || '').trim();
+    const options = (Array.isArray(q.options) ? q.options : []).map(o => String(o || '').trim()).filter(Boolean);
+    const correct = parseInt(q.correct_index);
+    if (!question) return res.status(400).json({ error: `第 ${i + 1} 題沒有題目` });
+    if (options.length < 2) return res.status(400).json({ error: `第 ${i + 1} 題至少要 2 個選項` });
+    if (!(correct >= 0 && correct < options.length)) return res.status(400).json({ error: `第 ${i + 1} 題請選正確答案` });
+    clean.push({ id: parseInt(q.id) || null, question, options, correct_index: correct, explanation: String(q.explanation || '').trim() });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: pdf } = await client.query(`SELECT id FROM pdf_pdfs WHERE id = $1`, [pdfId]);
+    if (!pdf.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'PDF 不存在' }); }
+
+    const { rows: existing } = await client.query(
+      `SELECT q.*, (SELECT COUNT(*)::int FROM pdf_quiz_answers a WHERE a.question_id = q.id) AS answer_count
+       FROM pdf_quiz_questions q WHERE q.pdf_id = $1 AND q.is_active`,
+      [pdfId]
+    );
+    const byId = new Map(existing.map(q => [q.id, q]));
+    const kept = new Set();
+
+    for (const [i, q] of clean.entries()) {
+      const old = q.id ? byId.get(q.id) : null;
+      const answerChanged = old && (old.correct_index !== q.correct_index || old.options.length !== q.options.length);
+      if (old && !(old.answer_count > 0 && answerChanged)) {
+        kept.add(old.id);
+        await client.query(
+          `UPDATE pdf_quiz_questions SET sort_order = $1, question = $2, options = $3, correct_index = $4, explanation = $5, updated_at = NOW()
+           WHERE id = $6`,
+          [i + 1, q.question, JSON.stringify(q.options), q.correct_index, q.explanation, old.id]
+        );
+      } else {
+        await client.query(
+          `INSERT INTO pdf_quiz_questions (pdf_id, sort_order, question, options, correct_index, explanation) VALUES ($1,$2,$3,$4,$5,$6)`,
+          [pdfId, i + 1, q.question, JSON.stringify(q.options), q.correct_index, q.explanation]
+        );
+      }
+    }
+    for (const old of existing) {
+      if (kept.has(old.id)) continue;
+      if (old.answer_count > 0) await client.query(`UPDATE pdf_quiz_questions SET is_active = false, updated_at = NOW() WHERE id = $1`, [old.id]);
+      else await client.query(`DELETE FROM pdf_quiz_questions WHERE id = $1`, [old.id]);
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true, count: clean.length });
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('[Course] admin quiz put:', e.message);
+    res.status(500).json({ error: '儲存失敗' });
+  } finally {
+    client.release();
+  }
+});
+
+// 每篇目前的題數（PDF 管理列表顯示「題目 n」用）
+router.get('/admin/quiz-counts', requireManager, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT pdf_id, COUNT(*)::int AS n FROM pdf_quiz_questions WHERE is_active GROUP BY pdf_id`
+    );
+    res.json(Object.fromEntries(rows.map(r => [r.pdf_id, r.n])));
+  } catch (e) {
+    console.error('[Course] admin quiz-counts:', e.message);
+    res.status(500).json({ error: '伺服器錯誤' });
+  }
+});
+
+// ── 管理端：學員追蹤三清單（即時推算，邏輯見 lib/tracking.js）──
+const trackingRoutes = { stuck: listStuck, inactive: listInactive, improving: listImproving };
+for (const [name, fn] of Object.entries(trackingRoutes)) {
+  router.get(`/admin/tracking/${name}`, requireManager, async (req, res) => {
+    try {
+      res.json(await fn());
+    } catch (e) {
+      console.error(`[Course] tracking ${name}:`, e.message);
+      res.status(500).json({ error: '伺服器錯誤' });
+    }
+  });
+}
+
+router.get('/admin/tracking/students/:id', requireManager, async (req, res) => {
+  try {
+    const detail = await studentDetail(parseInt(req.params.id));
+    if (!detail) return res.status(404).json({ error: '學員不存在' });
+    res.json(detail);
+  } catch (e) {
+    console.error('[Course] tracking detail:', e.message);
+    res.status(500).json({ error: '伺服器錯誤' });
   }
 });
 
