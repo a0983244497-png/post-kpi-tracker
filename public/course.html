@@ -46,8 +46,7 @@
   .series-progress-text { font-size: .75rem; color: var(--gray-500); white-space: nowrap; }
 
   /* 每週打卡：一題 + 心情分數，不用打字 */
-  /* 左右 40px 對齊下方 #list（它帶 .loading 的 40px padding） */
-  .checkin { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; margin: 0 40px; }
+  .checkin { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; margin: 0 0 14px; }
   .checkin-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; }
   .checkin-title { font-size: .92rem; font-weight: 700; }
   .checkin-streak { font-size: .75rem; color: var(--gray-500); white-space: nowrap; }
@@ -62,6 +61,27 @@
   .checkin-done { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: .88rem; }
   .checkin-done b { color: #16a34a; }
   .link-btn { background: none; border: none; color: var(--primary); font-weight: 700; font-size: .82rem; cursor: pointer; white-space: nowrap; }
+
+  /* 繼續學習 */
+  .next-up { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: var(--shadow); }
+  .next-up small { display: block; font-size: .75rem; opacity: .85; margin-bottom: 4px; }
+  .next-up b { font-size: 1rem; }
+  .next-up button { background: #fff; color: var(--primary-dark); border: none; border-radius: 8px; padding: 10px 16px; font-size: .88rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .next-up.all-done { background: #16a34a; }
+
+  /* 系列卡片 */
+  .series-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .series-card { background: #fff; border-radius: 12px; box-shadow: var(--shadow); padding: 14px 16px; cursor: pointer; border: 2px solid transparent; text-align: left; font: inherit; color: inherit; transition: border-color .15s, box-shadow .15s; }
+  .series-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,.14); }
+  .series-card.open { border-color: var(--primary); }
+  .series-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; font-weight: 700; font-size: .95rem; }
+  .series-card-meta { font-size: .75rem; color: var(--gray-500); margin-top: 8px; }
+  .badge-new { background: #ef4444; color: #fff; font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .badge-done { color: #16a34a; font-size: .8rem; }
+  #series-detail { scroll-margin-top: 72px; }
+  .series-card.soon { cursor: default; border: 2px dashed var(--gray-200); background: var(--gray-50); }
+  .series-card.soon:hover { box-shadow: var(--shadow); }
+  .badge-soon { background: var(--gray-200); color: var(--gray-700); font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
 
   .empty { text-align: center; padding: 60px 20px; color: var(--gray-500); }
   .empty-icon { font-size: 2.2rem; margin-bottom: 10px; }
@@ -206,24 +226,75 @@
         <div class="pbar"><span style="width:${pct(totalDone, pdfs.length)}%"></span></div>
       </div>`;
 
-      listEl.innerHTML = overall + order.map(key => {
+      // 繼續學習：依閱讀順序找第一篇還沒看完的
+      const next = pdfs.find(p => !doneSet.has(p.id));
+      const nextUp = next
+        ? `<div class="next-up"><div><small>▶ 繼續學習</small><b>${esc(next.series_name || '')}${next.series_name ? '｜' : ''}${esc(next.title)}</b></div><button onclick="openPdf(${next.id})">開始看</button></div>`
+        : `<div class="next-up all-done"><div><small>🎉 太強了</small><b>目前開通的課程全部看完了</b></div></div>`;
+
+      // 預設展開：上次點開的系列 → 下一篇所在系列 → 第一個系列
+      let saved = null;
+      try { saved = localStorage.getItem('course_open_series'); } catch (e) {}
+      const nextKey = next ? String(next.series_id ?? 'none') : null;
+      courseState.groups = groups;
+      courseState.doneSet = doneSet;
+      courseState.openKey = order.map(String).includes(saved) ? saved : (nextKey || String(order[0]));
+
+      const cards = order.map(key => {
         const g = groups[key];
         const done = g.items.filter(p => doneSet.has(p.id)).length;
-        return `<div class="series-section">
-          <div class="series-heading">${esc(g.name)}</div>
-          <div class="series-progress">
-            <div class="pbar"><span style="width:${pct(done, g.items.length)}%"></span></div>
-            <span class="series-progress-text">${done} / ${g.items.length} 已看完</span>
-          </div>
-          ${g.items.map(p => {
-            const isDone = doneSet.has(p.id);
-            return `<div class="pdf-card${isDone ? ' done' : ''}" onclick="openPdf(${p.id})"><span class="pdf-title">${isDone ? '<span class="done-mark" title="已看完">✓</span>' : ''}${esc(p.title)}</span><span class="pdf-arrow">›</span></div>`;
-          }).join('')}
-        </div>`;
-      }).join('');
+        const isNew = NEW_SERIES.includes(g.name) && done === 0;
+        const badge = isNew ? '<span class="badge-new">NEW</span>'
+          : (done === g.items.length ? '<span class="badge-done">✓ 完成</span>' : '');
+        return `<button class="series-card" data-key="${esc(String(key))}" onclick="openSeries(this.dataset.key)">
+          <div class="series-card-head"><span>${esc(g.name)}</span>${badge}</div>
+          <div class="pbar"><span style="width:${pct(done, g.items.length)}%"></span></div>
+          <div class="series-card-meta">${done} / ${g.items.length} 已看完・${pct(done, g.items.length)}%</div>
+        </button>`;
+      }).join('') + COMING_SOON
+        .filter(c => !order.some(k => groups[k].name === c.name))
+        .map(c => `<div class="series-card soon">
+          <div class="series-card-head"><span>${esc(c.name)}</span><span class="badge-soon">即將上線</span></div>
+          <div class="pbar"><span style="width:0%"></span></div>
+          <div class="series-card-meta">共 ${c.count} 篇・敬請期待</div>
+        </div>`).join('');
+
+      listEl.className = '';
+      listEl.innerHTML = nextUp + overall
+        + `<div class="series-grid">${cards}</div>`
+        + `<div id="series-detail"></div>`;
+      renderSeriesDetail();
     } catch (e) {
       listEl.innerHTML = `<div class="empty">載入失敗：${esc(e.message)}</div>`;
     }
+  }
+
+  // 新上架的系列（學員還沒開始看時顯示 NEW）
+  const NEW_SERIES = ['總經系列'];
+  // 預告中的系列：後台還沒上架時顯示「即將上線」卡片，上架後自動換成正式卡片
+  const COMING_SOON = [{ name: '總經系列', count: 10 }];
+  const courseState = { groups: {}, doneSet: new Set(), openKey: null };
+
+  function openSeries(key) {
+    courseState.openKey = key;
+    try { localStorage.setItem('course_open_series', key); } catch (e) {}
+    renderSeriesDetail();
+    qs('#series-detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function renderSeriesDetail() {
+    const { groups, doneSet, openKey } = courseState;
+    document.querySelectorAll('.series-card').forEach(c => c.classList.toggle('open', c.dataset.key === openKey));
+    const g = groups[openKey];
+    const el = qs('#series-detail');
+    if (!g || !el) return;
+    el.innerHTML = `<div class="series-section">
+      <div class="series-heading">${esc(g.name)}</div>
+      ${g.items.map(p => {
+        const isDone = doneSet.has(p.id);
+        return `<div class="pdf-card${isDone ? ' done' : ''}" onclick="openPdf(${p.id})"><span class="pdf-title">${isDone ? '<span class="done-mark" title="已看完">✓</span>' : ''}${esc(p.title)}</span><span class="pdf-arrow">›</span></div>`;
+      }).join('')}
+    </div>`;
   }
 
   function pct(done, total) {
@@ -240,7 +311,7 @@
   }
 
   function esc(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
   init();
