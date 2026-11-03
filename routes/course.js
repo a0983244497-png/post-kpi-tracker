@@ -82,12 +82,18 @@ router.get('/me', requireStudent, async (req, res) => {
   }
 });
 
+// 站內新課通知：上架（created_at）在近 N 天內視為新課；只標記學員本來就看得到的課
+const NEW_CONTENT_DAYS = 14;
+
 router.get('/my-pdfs', requireStudent, async (req, res) => {
   try {
     const student = await getStudentForAccess(req.session.studentId);
     if (!student) return res.status(401).json({ error: '請先登入' });
     touchLastSeen(student.id);
-    res.json(await listAccessiblePdfs(student));
+    const since = Date.now() - NEW_CONTENT_DAYS * 24 * 60 * 60 * 1000;
+    const isRecent = t => !!t && new Date(t).getTime() >= since;
+    const pdfs = await listAccessiblePdfs(student);
+    res.json(pdfs.map(p => ({ ...p, isNew: isRecent(p.created_at), seriesIsNew: isRecent(p.series_created_at) })));
   } catch (e) {
     console.error('[Course] my-pdfs:', e.message);
     res.status(500).json({ error: '伺服器錯誤' });
