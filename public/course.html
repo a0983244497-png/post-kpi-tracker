@@ -233,7 +233,9 @@
         if (!groups[key]) { groups[key] = { name: p.series_name || '未分類', isNew: !!p.seriesIsNew && p.series_id != null, items: [] }; order.push(key); }
         groups[key].items.push(p);
       }
-      renderNewMarquee(order.map(k => groups[k]).filter(g => g.isNew).map(g => g.name));
+      // 跑馬燈：系列本身是新的，或底下有任一堂近期新課，就列出（未分類不算系列）
+      renderNewMarquee(order.filter(k => k !== 'none').map(k => groups[k])
+        .filter(g => g.isNew || g.items.some(p => p.isNew)).map(g => g.name));
 
       // 進度只算目前可看的篇數（X = 已看完且可看、Y = 可看總數）
       const totalDone = pdfs.filter(p => doneSet.has(p.id)).length;
@@ -314,12 +316,12 @@
 
   const NEW_BADGE = '<span class="new-badge">NEW</span>';
 
-  // 跑馬燈：只列學員看得到的近期新系列；沒有就整條隱藏
+  // 跑馬燈：只列學員看得到、有近期新內容的系列；沒有就整條隱藏
   // 內容複製一份接在後面，捲動 -50% 剛好無縫循環
   function renderNewMarquee(names) {
     const el = qs('#new-marquee');
     if (!names.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
-    const text = '🆕 本月新上線：' + names.map(n => '〈' + esc(n) + '〉').join('');
+    const text = '🆕 最近新上線：' + names.map(n => '〈' + esc(n) + '〉').join('');
     el.innerHTML = `<div class="marquee-track"><span>${text}</span><span aria-hidden="true">${text}</span></div>`;
     el.style.setProperty('--marquee-duration', Math.max(12, text.length * 0.35) + 's');
     el.style.display = '';
