@@ -275,7 +275,7 @@
         .map(c => `<div class="series-card soon">
           <div class="series-card-head"><span>${esc(c.name)}</span><span class="badge-soon">即將上線</span></div>
           <div class="pbar"><span style="width:0%"></span></div>
-          <div class="series-card-meta">共 ${c.count} 篇・敬請期待</div>
+          <div class="series-card-meta">${c.count ? `共 ${c.count} 篇・` : ''}敬請期待</div>
         </div>`).join('');
 
       listEl.className = '';
@@ -289,7 +289,7 @@
   }
 
   // 預告中的系列：後台還沒上架時顯示「即將上線」卡片，上架後自動換成正式卡片
-  const COMING_SOON = [{ name: '總經系列', count: 10 }];
+  const COMING_SOON = [{ name: '布林通道' }, { name: 'KD指標' }];
   const courseState = { groups: {}, doneSet: new Set(), openKey: null };
 
   function openSeries(key) {
